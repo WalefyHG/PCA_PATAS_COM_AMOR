@@ -1,87 +1,80 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { db } from '../config/firebase';
-import {doc, getDoc, setDoc} from 'firebase/firestore';
-import { GoogleSignin, isSuccessResponse } from '@react-native-google-signin/google-signin';
-import { ref, getStorage, getDownloadURL } from 'firebase/storage';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getStorage, getDownloadURL } from 'firebase/storage';
 import { uploadBytes } from 'firebase/storage';
 import { Button, Input } from '@ui-kitten/components';
 import InputPassword from '../components/InputPassword';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 
 import { hideToastable, showToastable } from 'react-native-toastable';
 
-
+WebBrowser.maybeCompleteAuthSession();
 
 export default function HomeScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useNavigation<any>();
 
-  const handleLogin = async ()  => {
-    try{
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_ANDROIDCLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_WEBCLIENTID,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      signInWithCredential(auth, credential)
+        .then(async (userCredential) => {
+          const user = userCredential.user;
+          const docRef = doc(db, 'users', user.uid);
+          await setDoc(docRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+          });
+          showToastable({ message: 'Usuário logado com sucesso', status: 'success' });
+          router.navigate('Tabs');
+        })
+        .catch((error) => {
+          showToastable({ message: error.message, status: 'danger' });
+        });
+    } else if (response?.type === 'error') {
+      showToastable({ message: 'Erro ao autenticar com Google', status: 'danger' });
+    }
+  }, [response]);
+
+  const handleLogin = async () => {
+    try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       const docRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        showToastable({message: 'Usuário logado com sucesso', status: 'success'});
+        showToastable({ message: 'Usuário logado com sucesso', status: 'success' });
         router.navigate('Tabs')
-        
+
       } else {
-        showToastable({message: 'Usuário ou senha inválidos', status: 'danger'});
+        showToastable({ message: 'Usuário ou senha inválidos', status: 'danger' });
       }
-    }catch(e: any){
-      showToastable({message: e.message, status: 'danger'});
+    } catch (e: any) {
+      showToastable({ message: e.message, status: 'danger' });
     }
   };
 
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      return;
-    }else{
-      GoogleSignin.configure({
-        webClientId: process.env.EXPO_PUBLIC_WEBCLIENTID,
-        offlineAccess: true,
-      });
-      console.log("Configurado");
-    }
-  }, []);
-
-
   const handleGoogleLogin = async () => {
     try {
-      let user;
-      if (Platform.OS === 'web') {
-        const provider = new GoogleAuthProvider();
-        const userCredential = await signInWithPopup(auth, provider);
-        user = userCredential.user;
-      } else{
-        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-        const response = await GoogleSignin.signIn();
-        if (isSuccessResponse(response)){
-          const googleCredential = GoogleAuthProvider.credential(response.data.idToken);
-          const userCredential = await signInWithCredential(auth, googleCredential);
-          user = userCredential.user;
-        }
-      }
-
-      if (user) {
-        const docRef = doc(db, 'users', user.uid);
-        await setDoc(docRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-        });
-
-          console.log("Usuário logado com sucesso");
-          router.navigate('Tabs');
-      }
-    }catch(e){
-      console.log(e);
+      await promptAsync();
+    } catch (error) {
+      console.log(error);
+      showToastable({ message: 'Erro ao iniciar autenticação com Google', status: 'danger' });
     }
   }
 
@@ -134,7 +127,11 @@ export default function HomeScreen() {
         <Text style={styles.socialText}>Entrar Com</Text>
 
         <View style={styles.socialContainer}>
-          <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin}>
+          <TouchableOpacity
+            style={styles.socialButton}
+            onPress={handleGoogleLogin}
+            disabled={!request}
+          >
             <Image
               source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/2048px-Google_%22G%22_logo.svg.png' }}
               style={styles.socialIcon}
@@ -160,6 +157,7 @@ export default function HomeScreen() {
   );
 }
 
+// Mantenha os estilos exatamente como estão
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -239,7 +237,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 15,
     color: '#000',
-    
+
   },
   enterButton: {
     backgroundColor: '#1A0F0F',
@@ -279,10 +277,10 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-},
-socialIcon: {
+  },
+  socialIcon: {
     width: 30,
     height: 30,
     resizeMode: 'contain',
-},
+  },
 });
