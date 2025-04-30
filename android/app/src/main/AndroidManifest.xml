@@ -24,8 +24,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="myapp"/>
-        <data android:scheme="com.herogamer77.testexpo"/>
+        <data android:scheme="com.app.pca" />
       </intent-filter>
     </activity>
   </application>
