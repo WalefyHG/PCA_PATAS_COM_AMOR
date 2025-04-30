@@ -1,55 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getStorage, getDownloadURL } from 'firebase/storage';
-import { uploadBytes } from 'firebase/storage';
+import { GoogleSignin, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { Button, Input } from '@ui-kitten/components';
 import InputPassword from '../components/InputPassword';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-
-import { hideToastable, showToastable } from 'react-native-toastable';
-
-WebBrowser.maybeCompleteAuthSession();
+import { showToastable } from 'react-native-toastable';
 
 export default function HomeScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useNavigation<any>();
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_ANDROIDCLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_WEBCLIENTID,
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(auth, credential)
-        .then(async (userCredential) => {
-          const user = userCredential.user;
-          const docRef = doc(db, 'users', user.uid);
-          await setDoc(docRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-          });
-          showToastable({ message: 'Usuário logado com sucesso', status: 'success' });
-          router.navigate('Tabs');
-        })
-        .catch((error) => {
-          showToastable({ message: error.message, status: 'danger' });
-        });
-    } else if (response?.type === 'error') {
-      showToastable({ message: 'Erro ao autenticar com Google', status: 'danger' });
-    }
-  }, [response]);
-
+  // Handle Email/Password login
   const handleLogin = async () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -59,29 +25,73 @@ export default function HomeScreen() {
 
       if (docSnap.exists()) {
         showToastable({ message: 'Usuário logado com sucesso', status: 'success' });
-        router.navigate('Tabs')
-
+        router.navigate('Tabs');
       } else {
-        showToastable({ message: 'Usuário ou senha inválidos', status: 'danger' });
+        showToastable({ message: 'Usuário não encontrado', status: 'danger' });
       }
     } catch (e: any) {
       showToastable({ message: e.message, status: 'danger' });
     }
   };
 
+  // Google SignIn Configuration
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_WEBCLIENTID,  // Adapte isso ao seu client ID
+        offlineAccess: true,
+      });
+      console.log('Google SignIn configurado');
+    }
+  }, []);
+
+  // Handle Google Login (for Web and Android)
   const handleGoogleLogin = async () => {
     try {
-      await promptAsync();
-    } catch (error) {
-      console.log(error);
-      showToastable({ message: 'Erro ao iniciar autenticação com Google', status: 'danger' });
+      let user;
+
+      if (Platform.OS === 'web') {
+        // For Web login with Google
+        const provider = new GoogleAuthProvider();
+        const userCredential = await signInWithPopup(auth, provider);
+        user = userCredential.user;
+      } else {
+        // For Android
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const response = await GoogleSignin.signIn();
+
+        if (isSuccessResponse(response)) {
+          const googleCredential = GoogleAuthProvider.credential(response.data.idToken);
+          const userCredential = await signInWithCredential(auth, googleCredential);
+          user = userCredential.user;
+        }
+      }
+
+      if (user) {
+        const docRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(docRef);
+
+        // If user document doesn't exist, create it
+        if (!docSnap.exists()) {
+          await setDoc(docRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+          });
+        }
+
+        console.log('Usuário logado com sucesso');
+        router.navigate('Tabs');
+      }
+    } catch (e) {
+      console.log(e);
+      showToastable({ message: 'Erro ao fazer login com o Google', status: 'danger' });
     }
-  }
+  };
 
   return (
-    <View style={styles.container} className='overflow-y-hidden'>
+    <View style={styles.container}>
       <View style={styles.topShape} />
-
       <View style={styles.content}>
         <Image source={require('../../assets/logo.png')} style={styles.logo} />
         <Text style={styles.platformIndicator}>
@@ -93,12 +103,12 @@ export default function HomeScreen() {
           })}
         </Text>
 
-        <View className='flex justify-center w-full gap-8 p-2' >
+        <View style={styles.formContainer}>
           <Input
             style={styles.input}
             placeholder="Digite seu Email"
             placeholderTextColor="#000"
-            label={'Email'}
+            label="Email"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -111,14 +121,13 @@ export default function HomeScreen() {
             value={password}
             onChangeText={setPassword}
           />
-
         </View>
 
-        <View className='flex-row justify-between w-full p-6'>
-          <Button style={styles.enterButton} className='hover:bg-slate-800' onPress={handleLogin}>
+        <View style={styles.buttonContainer}>
+          <Button style={styles.enterButton} onPress={handleLogin}>
             <Text style={styles.enterButtonText}>Entrar</Text>
           </Button>
-          <Button style={styles.createAccountButton} className='hover:bg-red-900' onPress={() => router.navigate('registers')}>
+          <Button style={styles.createAccountButton} onPress={() => router.navigate('registers')}>
             <Text style={styles.createAccountText}>Criar Conta</Text>
           </Button>
         </View>
@@ -127,37 +136,20 @@ export default function HomeScreen() {
         <Text style={styles.socialText}>Entrar Com</Text>
 
         <View style={styles.socialContainer}>
-          <TouchableOpacity
-            style={styles.socialButton}
-            onPress={handleGoogleLogin}
-            disabled={!request}
-          >
+          <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin}>
             <Image
               source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/2048px-Google_%22G%22_logo.svg.png' }}
               style={styles.socialIcon}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image
-              source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg' }}
-              style={styles.socialIcon}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image
-              source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png' }}
-              style={styles.socialIcon}
-            />
-          </TouchableOpacity>
+          {/* Implement other social logins if needed */}
         </View>
       </View>
-
       <View style={styles.bottomShape} />
     </View>
   );
 }
 
-// Mantenha os estilos exatamente como estão
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -175,37 +167,21 @@ const styles = StyleSheet.create({
     }),
   },
   topShape: {
-    display: 'flex',
     backgroundColor: '#E31E24',
     borderBottomRightRadius: 100,
     alignSelf: 'flex-start',
     ...Platform.select({
-      web: {
-        width: 500,
-        height: 80,
-      },
-      android: {
-        width: 200,
-        height: 50,
-
-      },
+      web: { width: 500, height: 80 },
+      android: { width: 200, height: 50 },
     }),
   },
   bottomShape: {
-    display: 'flex',
     backgroundColor: '#E31E24',
     borderTopLeftRadius: 100,
     alignSelf: 'flex-end',
     ...Platform.select({
-      web: {
-        width: 500,
-        height: 80,
-      },
-      android: {
-        width: 200,
-        height: 50,
-
-      },
+      web: { width: 500, height: 80 },
+      android: { width: 200, height: 50 },
     }),
   },
   content: {
@@ -214,22 +190,20 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     ...Platform.select({
-      web: {
-        maxWidth: 600,
-      },
+      web: { maxWidth: 600 },
     }),
   },
-  logo: {
-    width: 200,
-    height: 200,
-    resizeMode: 'contain',
-    marginBottom: 20,
-  },
+  logo: { width: 200, height: 200, resizeMode: 'contain', marginBottom: 20 },
   platformIndicator: {
     fontSize: 16,
     marginBottom: 20,
     color: '#E31E24',
     fontWeight: 'bold',
+  },
+  buttonContainer: {
+    width: '100%',
+    marginTop: 20,
+    alignItems: 'center',
   },
   input: {
     width: '100%',
@@ -237,7 +211,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 15,
     color: '#000',
-
   },
   enterButton: {
     backgroundColor: '#1A0F0F',
@@ -282,5 +255,9 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     resizeMode: 'contain',
+  },
+  formContainer: {
+    width: '100%',
+    marginBottom: 20,
   },
 });
