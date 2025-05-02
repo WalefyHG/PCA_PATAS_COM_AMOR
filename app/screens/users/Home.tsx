@@ -1,6 +1,6 @@
 import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { db, auth } from '../../config/firebase';
 import { getDoc, doc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -18,6 +18,7 @@ export default function Home() {
   const router = useNavigation<any>();
 
   const [users, setUsers] = useState<User | null>(null);
+
 
 
   useEffect(() => {
@@ -47,11 +48,11 @@ export default function Home() {
   return (
     <View className='flex-1 justify-center items-center bg-white'>
       <Text>Selecione um Usuário</Text>
-      {users ? ( 
+      {users ? (
         <TouchableOpacity
           style={styles.button}
           onPress={() => {
-            router.navigate('Profile',  { id: users.uid } );
+            router.navigate('Profile', { id: users.uid });
           }}
         >
           <Text style={styles.buttonText}>{users.first_name || users.displayName}</Text>

@@ -14,6 +14,7 @@ import Profile from './profile/[id]';
 import About from './about/index';
 import Settings from './settings/index';
 import News from './news/index';
+import HeaderLayout from "@/app/utils/HeaderLayout";
 
 // Interfaces
 
@@ -21,23 +22,23 @@ import News from './news/index';
 
 
 const HomeIcon = (props: any): IconElement => (
-    <Icon {...props} name='home-outline'/>
+    <Icon {...props} name='home-outline' />
 );
 
 const ProfileIcon = (props: any): IconElement => (
-<Icon {...props} name='person-outline'/>
+    <Icon {...props} name='person-outline' />
 );
 
 const AboutIcon = (props: any): IconElement => (
-<Icon {...props} name='info-outline'/>
+    <Icon {...props} name='info-outline' />
 );
 
 const SettingsIcon = (props: any): IconElement => (
-<Icon {...props} name='settings-2-outline'/>
+    <Icon {...props} name='settings-2-outline' />
 );
 
 const NewsIcon = (props: any): IconElement => (
-<Icon {...props} name='book-open-outline'/>
+    <Icon {...props} name='book-open-outline' />
 );
 
 
@@ -67,9 +68,15 @@ const TabLayout = () => {
     const route = useRoute<RouteProp<ProfileRouteParams, 'Profile'>>();
 
     return (
-        <Navigator tabBar={props => <BottomTabBar {...props} />}>
+        <Navigator
+            tabBar={props => <BottomTabBar {...props} />}
+            screenOptions={{
+                headerRight: () => <HeaderLayout />,
+                headerTitleAlign: "left"
+            }}
+        >
             <Screen name='User' component={User} />
-            <Screen name='Profile' component={Profile} initialParams={{id: route.params?.id ?? null}} />
+            <Screen name='Profile' component={Profile} initialParams={{ id: route.params?.id ?? null }} />
             <Screen name='About' component={About} />
             <Screen name='Settings' component={Settings} />
             <Screen name='News' component={News} />
