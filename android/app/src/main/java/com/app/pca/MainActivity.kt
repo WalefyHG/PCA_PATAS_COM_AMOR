@@ -1,4 +1,4 @@
-package com.herogamer77.testexpo
+package com.app.pca
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

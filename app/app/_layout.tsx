@@ -1,8 +1,7 @@
 import CadastroProvider from "./registers/CadastroProvider";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
-import Toastable from "react-native-toastable";
-import { Dimensions } from "react-native";
+import Toastable from "../components/Toastable";
 import '../../global.css';
 import { LinkingOptions } from "@react-navigation/native";
 
@@ -45,6 +44,7 @@ import TabLayout from "./(tabs)/_layout";
 import { S } from "@expo/html-elements";
 
 
+
 const Stack = createNativeStackNavigator();
 
 export default function RouterLayout() {
@@ -54,25 +54,7 @@ export default function RouterLayout() {
     return (
         <CadastroProvider>
             <SafeAreaProvider>
-                <Toastable
-                    statusMap={
-                        {
-                            success: "#198754",
-                            danger: "#ff0000",
-                            warning: "#ffcc00",
-                            info: "#0000ff",
-                        }
-                    }
-                    offset={top}
-                    containerStyle={{
-                        position: "absolute",
-                        top: 0,
-                        left: Dimensions.get("window").width / 2 - (Dimensions.get("window").width * 0.25) / 2,
-                        zIndex: 9999,
-                        width: "25%",
-                    }}
-                    swipeDirection={["up", "left"]}
-                />
+                <Toastable />
 
                 <Stack.Navigator
                     screenOptions={{

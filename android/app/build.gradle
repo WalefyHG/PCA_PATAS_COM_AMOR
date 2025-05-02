@@ -89,7 +89,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.herogamer77.testexpo'
+    namespace 'com.app.pca'
     defaultConfig {
         applicationId 'com.app.pca'
         minSdkVersion rootProject.ext.minSdkVersion
@@ -178,3 +178,5 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+apply plugin: 'com.google.gms.google-services'

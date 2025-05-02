@@ -40,6 +40,7 @@ export default function HomeScreen() {
       GoogleSignin.configure({
         webClientId: process.env.EXPO_PUBLIC_WEBCLIENTID,  // Adapte isso ao seu client ID
         offlineAccess: true,
+
       });
       console.log('Google SignIn configurado');
     }
@@ -58,6 +59,7 @@ export default function HomeScreen() {
       } else {
         // For Android
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        await GoogleSignin.signOut();
         const response = await GoogleSignin.signIn();
 
         if (isSuccessResponse(response)) {
