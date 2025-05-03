@@ -1,4 +1,4 @@
-module.exports = function(api) {
+module.exports = function (api) {
     api.cache(true);
 
     return {
@@ -13,6 +13,8 @@ module.exports = function(api) {
                 "@": "./",
                 "tailwind.config": "./tailwind.config.js"
             }
-        }]]
+        }],
+            'react-native-paper/babel',
+        ]
     };
 };

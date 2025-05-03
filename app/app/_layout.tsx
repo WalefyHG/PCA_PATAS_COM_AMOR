@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import Toastable from "../components/Toastable";
 import '../../global.css';
-import { LinkingOptions, NavigationContainer } from "@react-navigation/native";
+import { LinkingOptions, NavigationContainer, NavigationIndependentTree } from "@react-navigation/native";
 
 
 
@@ -51,39 +51,41 @@ const Stack = createNativeStackNavigator();
 export default function RouterLayout() {
 
     return (
-        <NavigationContainer linking={linking}>
-            <CadastroProvider>
-                <SafeAreaProvider>
-                    <Toastable />
-                    <Stack.Navigator
-                        screenOptions={{
-                            headerShown: false,
-                            contentStyle: {
-                                flex: 1,
-                                overflow: "scroll",
-                                backgroundColor: "#fff",
-                            },
-                        }}
-                        initialRouteName="Home"
-                    >
-                        <Stack.Screen
-                            name="Home"
-                            component={HomeScreen}
-                            options={{ headerShown: false }}
-                        />
-                        <Stack.Screen
-                            name="registers"
-                            component={RegistersLayout}
-                            options={{ title: "Registers" }}
-                        />
-                        <Stack.Screen
-                            name="Tabs"
-                            component={TabLayout}
-                            options={{ title: "Tabs" }}
-                        />
-                    </Stack.Navigator>
-                </SafeAreaProvider>
-            </CadastroProvider>
-        </NavigationContainer>
+        <CadastroProvider>
+            <NavigationIndependentTree >
+                <NavigationContainer linking={linking}>
+                    <SafeAreaProvider>
+                        <Toastable />
+                        <Stack.Navigator
+                            screenOptions={{
+                                headerShown: false,
+                                contentStyle: {
+                                    flex: 1,
+                                    overflow: "scroll",
+                                    backgroundColor: "#fff",
+                                },
+                            }}
+                            initialRouteName="Home"
+                        >
+                            <Stack.Screen
+                                name="Home"
+                                component={HomeScreen}
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="registers"
+                                component={RegistersLayout}
+                                options={{ title: "Registers" }}
+                            />
+                            <Stack.Screen
+                                name="Tabs"
+                                component={TabLayout}
+                                options={{ title: "Tabs" }}
+                            />
+                        </Stack.Navigator>
+                    </SafeAreaProvider>
+                </NavigationContainer>
+            </NavigationIndependentTree>
+        </CadastroProvider>
     )
 }
