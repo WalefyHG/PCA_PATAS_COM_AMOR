@@ -40,9 +40,7 @@ const linking: LinkingOptions<ReactNavigation.RootParamList> = {
 // Screens
 import HomeScreen from "./index";
 import RegistersLayout from "./registers/_layout";
-import TabLayout from "./(tabs)/_layout";
-import { S } from "@expo/html-elements";
-import HeaderLayout from "../utils/HeaderLayout";
+import AppLayout from "./(tabs)/_layout";
 
 
 
@@ -79,7 +77,7 @@ export default function RouterLayout() {
                             />
                             <Stack.Screen
                                 name="Tabs"
-                                component={TabLayout}
+                                component={AppLayout}
                                 options={{ title: "Tabs" }}
                             />
                         </Stack.Navigator>
