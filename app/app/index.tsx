@@ -203,6 +203,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   buttonContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
     marginTop: 20,
     alignItems: 'center',
