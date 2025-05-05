@@ -10,7 +10,7 @@ import { useNavigation } from "@react-navigation/native"
 
 export default function Settings() {
   const { paperTheme, toggleTheme } = useThemeContext()
-  const navigation = useNavigation()
+  const router = useNavigation<any>()
 
   const [notifications, setNotifications] = useState(true)
   const [emailUpdates, setEmailUpdates] = useState(true)
@@ -19,7 +19,7 @@ export default function Settings() {
   const handleLogout = async () => {
     try {
       await signOut(auth)
-      navigation.reset({
+      router.reset({
         index: 0,
         routes: [{ name: "Login" as never }],
       })
@@ -36,6 +36,8 @@ export default function Settings() {
     ])
   }
 
+  const isAdmin = true // Replace with actual admin check logic
+
   return (
     <ScrollView style={{ backgroundColor: paperTheme.colors.background }}>
       <View style={styles.container}>
@@ -51,6 +53,20 @@ export default function Settings() {
             </View>
           </View>
         </View>
+
+        {isAdmin && (
+          <View style={[styles.section, { borderColor: paperTheme.colors.outline }]}>
+            <Text style={[styles.sectionTitle, { color: paperTheme.colors.onBackground }]}>Administração</Text>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => router.navigate("AdminConsole")}>
+              <View style={styles.menuItemContent}>
+                <Feather name="shield" size={20} color={paperTheme.colors.primary} />
+                <Text style={[styles.menuItemText, { color: paperTheme.colors.onBackground }]}>Admin Console</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={[styles.section, { borderColor: paperTheme.colors.outline }]}>
           <Text style={[styles.sectionTitle, { color: paperTheme.colors.onBackground }]}>Notificações</Text>

@@ -20,6 +20,7 @@ import HeaderLayout from "@/app/utils/HeaderLayout";
 import { useThemeContext } from "@/app/utils/ThemeContext";
 import Adopt from "@/app/screens/Adopt";
 import AddBlogPost from "@/app/screens/AddBlogPost";
+import AdminConsole from "@/app/screens/AdminConsole";
 
 // Interfaces
 
@@ -121,6 +122,19 @@ const AppLayout = () => {
             <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{
                 headerRight: () => <HeaderLayout />,
                 title: t("Add Blog Post"),
+                headerTitleAlign: "left",
+                headerStyle: {
+                    backgroundColor: paperTheme.colors.primary,
+                },
+                headerTintColor: paperTheme.colors.surface,
+                headerTitleStyle: {
+                    fontWeight: 'bold',
+                    color: paperTheme.colors.surface,
+                },
+            }} />
+            <Stack.Screen name="AdminConsole" component={AdminConsole} options={{
+                headerRight: () => <HeaderLayout />,
+                title: t("Admin Console"),
                 headerTitleAlign: "left",
                 headerStyle: {
                     backgroundColor: paperTheme.colors.primary,

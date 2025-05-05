@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, UIManager, findNodeHandle } from 'react-native';
 import Popover from 'react-native-popover-view';
 import { Avatar, useTheme } from 'react-native-paper';
 import { Icon } from '@ui-kitten/components';
@@ -21,10 +21,11 @@ function getInitials(name: string) {
 }
 
 export default function HeaderUserMenu() {
-    const navigation = useNavigation<any>();
+    const router = useNavigation<any>();
     const [user, setUser] = useState<User | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    const touchableRef = useRef(null);
+    const [anchorRect, setAnchorRect] = useState<any>(null);
+    const avatarRef = useRef<any>(null);
 
     const { toggleTheme, isDarkTheme } = useThemeContext();
     const { colors } = useTheme();
@@ -36,15 +37,25 @@ export default function HeaderUserMenu() {
 
     const initials = getInitials(user?.displayName || user?.email || 'U');
 
+    const openPopover = () => {
+        if (!avatarRef.current) return;
+        const handle = findNodeHandle(avatarRef.current);
+        if (handle) {
+            UIManager.measureInWindow(handle, (x, y, width, height) => {
+                setAnchorRect({ x, y, width, height });
+                setIsVisible(true);
+            });
+        }
+    };
+
     const handleLogout = async () => {
         setIsVisible(false);
         await signOut(auth);
-        navigation.replace('/');
+        router.replace('Home');
     };
 
     return (
         <View style={[styles.container]}>
-            {/* Botão de tema */}
             <TouchableOpacity
                 onPress={toggleTheme}
                 style={[styles.themeButton, { backgroundColor: colors.elevation.level1 }]}
@@ -52,8 +63,12 @@ export default function HeaderUserMenu() {
                 <EvaIcon name={isDarkTheme ? 'sun-outline' : 'moon-outline'} color={colors.primary} />
             </TouchableOpacity>
 
-            {/* Avatar + Popover */}
-            <TouchableOpacity ref={touchableRef} onPress={() => setIsVisible(true)} style={styles.avatarWrapper}>
+            {/* Avatar com ref */}
+            <TouchableOpacity
+                ref={avatarRef}
+                onPress={openPopover}
+                style={styles.avatarWrapper}
+            >
                 <Avatar.Text
                     size={44}
                     label={initials}
@@ -62,28 +77,35 @@ export default function HeaderUserMenu() {
                 />
             </TouchableOpacity>
 
-            <Popover
-                isVisible={isVisible}
-                from={touchableRef}
-                onRequestClose={() => setIsVisible(false)}
-                popoverStyle={[styles.popoverContent, { backgroundColor: colors.background }]}
-                animationConfig={{
-                    duration: 200,
-                    useNativeDriver: true,
-                }}
-            >
-                <View>
-                    <Text style={[styles.userName, { color: colors.onBackground }]}>{user?.displayName || 'Usuário'}</Text>
-                    <Text style={[styles.userEmail, { color: colors.onSurfaceVariant }]}>{user?.email}</Text>
+            {/* Popover com âncora baseada em coordenadas medidas */}
+            {anchorRect && (
+                <Popover
+                    isVisible={isVisible}
+                    from={anchorRect}
+                    onRequestClose={() => setIsVisible(false)}
+                    popoverStyle={[styles.popoverContent, { backgroundColor: colors.background }]}
+                    animationConfig={{
+                        duration: 200,
+                        useNativeDriver: true,
+                    }}
+                >
+                    <View>
+                        <Text style={[styles.userName, { color: colors.onBackground }]}>
+                            {user?.displayName || 'Usuário'}
+                        </Text>
+                        <Text style={[styles.userEmail, { color: colors.onSurfaceVariant }]}>
+                            {user?.email}
+                        </Text>
 
-                    <View style={[styles.separator, { backgroundColor: colors.outlineVariant }]} />
+                        <View style={[styles.separator, { backgroundColor: colors.outlineVariant }]} />
 
-                    <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-                        <EvaIcon name="log-out-outline" color={colors.primary} />
-                        <Text style={[styles.menuText, { color: colors.primary }]}>Sair</Text>
-                    </TouchableOpacity>
-                </View>
-            </Popover>
+                        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+                            <EvaIcon name="log-out-outline" color={colors.primary} />
+                            <Text style={[styles.menuText, { color: colors.primary }]}>Sair</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Popover>
+            )}
         </View>
     );
 }
