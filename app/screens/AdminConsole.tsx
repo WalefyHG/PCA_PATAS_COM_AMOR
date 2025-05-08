@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
     View,
     Text,
@@ -11,11 +11,13 @@ import {
     Image,
     Alert,
     RefreshControl,
+    Platform,
+    Animated,
 } from "react-native"
 import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
-import FloatingActionButton from "../../app/components/FloatingButton"
+import { LinearGradient } from "expo-linear-gradient"
 
 // Tipos para os dados
 interface AdminTab {
@@ -53,10 +55,34 @@ interface User {
 }
 
 export default function AdminConsole() {
-    const { paperTheme } = useThemeContext()
+    const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation<any>()
     const [activeTab, setActiveTab] = useState<string>("blog")
     const [refreshing, setRefreshing] = useState(false)
+
+    // Animated values
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(30))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        // Start animations when component mounts
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                speed: 12,
+                bounciness: 6,
+                useNativeDriver: true,
+            }),
+        ]).start()
+    }, [])
 
     // Dados de exemplo
     const [blogPosts] = useState<BlogPost[]>([
@@ -203,387 +229,60 @@ export default function AdminConsole() {
         }
     }
 
-    const renderBlogPosts = () => {
-        return (
-            <FlatList
-                data={blogPosts}
-                keyExtractor={(item) => item.id}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[paperTheme.colors.primary]} />
-                }
-                renderItem={({ item }) => (
-                    <View
-                        style={[
-                            styles.listItem,
-                            { backgroundColor: paperTheme.colors.surface, borderColor: paperTheme.colors.outline },
-                        ]}
-                    >
-                        <Image source={{ uri: item.image }} style={styles.itemImage} />
-                        <View style={styles.itemContent}>
-                            <Text style={[styles.itemTitle, { color: paperTheme.colors.onSurface }]}>{item.title}</Text>
-                            <Text style={[styles.itemSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
-                                {item.author} • {item.date}
-                            </Text>
-                            <View style={styles.itemStatus}>
-                                <View
-                                    style={[
-                                        styles.statusBadge,
-                                        {
-                                            backgroundColor:
-                                                item.status === "published" ? paperTheme.colors.primary + "20" : paperTheme.colors.error + "20",
-                                        },
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.statusText,
-                                            {
-                                                color: item.status === "published" ? paperTheme.colors.primary : paperTheme.colors.error,
-                                            },
-                                        ]}
-                                    >
-                                        {item.status === "published" ? "Publicado" : "Rascunho"}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                        <View style={styles.itemActions}>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item.id, "blog")}>
-                                <Feather name="edit-2" size={18} color={paperTheme.colors.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item.id, "blog")}>
-                                <Feather name="trash-2" size={18} color={paperTheme.colors.error} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Feather name="inbox" size={48} color={paperTheme.colors.onSurfaceVariant} />
-                        <Text style={[styles.emptyText, { color: paperTheme.colors.onSurfaceVariant }]}>
-                            Nenhum post encontrado
-                        </Text>
-                    </View>
-                }
-            />
-        )
-    }
-
-    const renderPets = () => {
-        return (
-            <FlatList
-                data={pets}
-                keyExtractor={(item) => item.id}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[paperTheme.colors.primary]} />
-                }
-                renderItem={({ item }) => (
-                    <View
-                        style={[
-                            styles.listItem,
-                            { backgroundColor: paperTheme.colors.surface, borderColor: paperTheme.colors.outline },
-                        ]}
-                    >
-                        <Image source={{ uri: item.image }} style={styles.itemImage} />
-                        <View style={styles.itemContent}>
-                            <Text style={[styles.itemTitle, { color: paperTheme.colors.onSurface }]}>{item.name}</Text>
-                            <Text style={[styles.itemSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
-                                {item.type} • {item.breed} • {item.age}
-                            </Text>
-                            <View style={styles.itemStatus}>
-                                <View
-                                    style={[
-                                        styles.statusBadge,
-                                        {
-                                            backgroundColor:
-                                                item.status === "available"
-                                                    ? paperTheme.colors.primary + "20"
-                                                    : item.status === "pending"
-                                                        ? paperTheme.colors.secondary + "20"
-                                                        : paperTheme.colors.primary + "20",
-                                        },
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.statusText,
-                                            {
-                                                color:
-                                                    item.status === "available"
-                                                        ? paperTheme.colors.primary
-                                                        : item.status === "pending"
-                                                            ? paperTheme.colors.secondary
-                                                            : paperTheme.colors.primary,
-                                            },
-                                        ]}
-                                    >
-                                        {item.status === "available" ? "Disponível" : item.status === "pending" ? "Em processo" : "Adotado"}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                        <View style={styles.itemActions}>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item.id, "pet")}>
-                                <Feather name="edit-2" size={18} color={paperTheme.colors.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item.id, "pet")}>
-                                <Feather name="trash-2" size={18} color={paperTheme.colors.error} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Feather name="inbox" size={48} color={paperTheme.colors.onSurfaceVariant} />
-                        <Text style={[styles.emptyText, { color: paperTheme.colors.onSurfaceVariant }]}>Nenhum pet encontrado</Text>
-                    </View>
-                }
-            />
-        )
-    }
-
-    const renderUsers = () => {
-        return (
-            <FlatList
-                data={users}
-                keyExtractor={(item) => item.id}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[paperTheme.colors.primary]} />
-                }
-                renderItem={({ item }) => (
-                    <View
-                        style={[
-                            styles.listItem,
-                            { backgroundColor: paperTheme.colors.surface, borderColor: paperTheme.colors.outline },
-                        ]}
-                    >
-                        <Image
-                            source={{ uri: item.avatar || `https://ui-avatars.com/api/?name=${item.name}&background=random` }}
-                            style={styles.avatarImage}
-                        />
-                        <View style={styles.itemContent}>
-                            <Text style={[styles.itemTitle, { color: paperTheme.colors.onSurface }]}>{item.name}</Text>
-                            <Text style={[styles.itemSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>{item.email}</Text>
-                            <View style={styles.itemStatus}>
-                                <View
-                                    style={[
-                                        styles.statusBadge,
-                                        {
-                                            backgroundColor:
-                                                item.role === "admin" ? paperTheme.colors.secondary + "20" : paperTheme.colors.primary + "20",
-                                        },
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.statusText,
-                                            {
-                                                color: item.role === "admin" ? paperTheme.colors.secondary : paperTheme.colors.primary,
-                                            },
-                                        ]}
-                                    >
-                                        {item.role === "admin" ? "Admin" : "Usuário"}
-                                    </Text>
-                                </View>
-                                <View
-                                    style={[
-                                        styles.statusBadge,
-                                        {
-                                            backgroundColor:
-                                                item.status === "active" ? paperTheme.colors.primary + "20" : paperTheme.colors.error + "20",
-                                            marginLeft: 8,
-                                        },
-                                    ]}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.statusText,
-                                            {
-                                                color: item.status === "active" ? paperTheme.colors.primary : paperTheme.colors.error,
-                                            },
-                                        ]}
-                                    >
-                                        {item.status === "active" ? "Ativo" : "Inativo"}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                        <View style={styles.itemActions}>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item.id, "user")}>
-                                <Feather name="edit-2" size={18} color={paperTheme.colors.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item.id, "user")}>
-                                <Feather name="trash-2" size={18} color={paperTheme.colors.error} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Feather name="inbox" size={48} color={paperTheme.colors.onSurfaceVariant} />
-                        <Text style={[styles.emptyText, { color: paperTheme.colors.onSurfaceVariant }]}>
-                            Nenhum usuário encontrado
-                        </Text>
-                    </View>
-                }
-            />
-        )
-    }
-
-    const renderSettings = () => {
-        return (
-            <ScrollView
-                style={{ flex: 1 }}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[paperTheme.colors.primary]} />
-                }
-            >
-                <View style={styles.settingsContainer}>
-                    <View style={[styles.settingsCard, { backgroundColor: paperTheme.colors.surface }]}>
-                        <Text style={[styles.settingsTitle, { color: paperTheme.colors.onSurface }]}>
-                            Configurações do Aplicativo
-                        </Text>
-
-                        <View style={styles.settingsSection}>
-                            <Text style={[styles.sectionTitle, { color: paperTheme.colors.onSurface }]}>Notificações</Text>
-                            <TouchableOpacity
-                                style={[styles.settingsItem, { borderBottomColor: paperTheme.colors.outline }]}
-                                onPress={() => Alert.alert("Configurações de Notificações", "Funcionalidade em desenvolvimento")}
-                            >
-                                <View style={styles.settingsItemContent}>
-                                    <Feather name="bell" size={20} color={paperTheme.colors.primary} />
-                                    <Text style={[styles.settingsItemText, { color: paperTheme.colors.onSurface }]}>
-                                        Configurar notificações push
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.settingsItem, { borderBottomColor: paperTheme.colors.outline }]}
-                                onPress={() => Alert.alert("Configurações de Email", "Funcionalidade em desenvolvimento")}
-                            >
-                                <View style={styles.settingsItemContent}>
-                                    <Feather name="mail" size={20} color={paperTheme.colors.primary} />
-                                    <Text style={[styles.settingsItemText, { color: paperTheme.colors.onSurface }]}>
-                                        Configurar emails automáticos
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.settingsSection}>
-                            <Text style={[styles.sectionTitle, { color: paperTheme.colors.onSurface }]}>Aparência</Text>
-                            <TouchableOpacity
-                                style={[styles.settingsItem, { borderBottomColor: paperTheme.colors.outline }]}
-                                onPress={() => Alert.alert("Configurações de Tema", "Funcionalidade em desenvolvimento")}
-                            >
-                                <View style={styles.settingsItemContent}>
-                                    <Feather name="layout" size={20} color={paperTheme.colors.primary} />
-                                    <Text style={[styles.settingsItemText, { color: paperTheme.colors.onSurface }]}>
-                                        Personalizar tema do aplicativo
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.settingsItem, { borderBottomColor: paperTheme.colors.outline }]}
-                                onPress={() => Alert.alert("Configurações de Logo", "Funcionalidade em desenvolvimento")}
-                            >
-                                <View style={styles.settingsItemContent}>
-                                    <Feather name="image" size={20} color={paperTheme.colors.primary} />
-                                    <Text style={[styles.settingsItemText, { color: paperTheme.colors.onSurface }]}>
-                                        Alterar logo e imagens
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.settingsSection}>
-                            <Text style={[styles.sectionTitle, { color: paperTheme.colors.onSurface }]}>Sistema</Text>
-                            <TouchableOpacity
-                                style={[styles.settingsItem, { borderBottomColor: paperTheme.colors.outline }]}
-                                onPress={() => Alert.alert("Backup", "Funcionalidade em desenvolvimento")}
-                            >
-                                <View style={styles.settingsItemContent}>
-                                    <Feather name="database" size={20} color={paperTheme.colors.primary} />
-                                    <Text style={[styles.settingsItemText, { color: paperTheme.colors.onSurface }]}>
-                                        Backup e restauração
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.settingsItem, { borderBottomColor: paperTheme.colors.outline }]}
-                                onPress={() => Alert.alert("Logs", "Funcionalidade em desenvolvimento")}
-                            >
-                                <View style={styles.settingsItemContent}>
-                                    <Feather name="file-text" size={20} color={paperTheme.colors.primary} />
-                                    <Text style={[styles.settingsItemText, { color: paperTheme.colors.onSurface }]}>Logs do sistema</Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.settingsItem}
-                                onPress={() => Alert.alert("Versão", "Versão atual: 1.0.0")}
-                            >
-                                <View style={styles.settingsItemContent}>
-                                    <Feather name="info" size={20} color={paperTheme.colors.primary} />
-                                    <Text style={[styles.settingsItemText, { color: paperTheme.colors.onSurface }]}>
-                                        Informações do aplicativo
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </ScrollView>
-        )
-    }
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case "blog":
-                return renderBlogPosts()
-            case "pets":
-                return renderPets()
-            case "users":
-                return renderUsers()
-            case "settings":
-                return renderSettings()
-            default:
-                return renderBlogPosts()
-        }
-    }
-
     return (
-        <View style={{ flex: 1, backgroundColor: paperTheme.colors.background }}>
-            {/* Tabs de navegação */}
-            <View style={[styles.tabsContainer, { backgroundColor: paperTheme.colors.surface }]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScrollContent}>
+        <View className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+            {/* Header with gradient */}
+            <LinearGradient
+                colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                className="pt-16 pb-4 px-4"
+            >
+                <View className="flex-row items-center justify-between">
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+                    >
+                        <Feather name="arrow-left" size={20} color="white" />
+                    </TouchableOpacity>
+                    <Text className="text-white text-xl font-bold">Admin Console</Text>
+                    <View className="w-10" />
+                </View>
+            </LinearGradient>
+
+            {/* Tabs Navigation */}
+            <View
+                className={`${isDarkTheme ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-2">
                     {tabs.map((tab) => (
                         <TouchableOpacity
                             key={tab.id}
-                            style={[
-                                styles.tab,
-                                activeTab === tab.id && [styles.activeTab, { borderColor: paperTheme.colors.primary }],
-                            ]}
                             onPress={() => setActiveTab(tab.id)}
+                            className={`flex-row items-center mx-2 px-4 py-2 rounded-full ${activeTab === tab.id ? (isDarkTheme ? "bg-gray-700" : "bg-gray-100") : "bg-transparent"
+                                }`}
                         >
                             <Feather
                                 name={tab.icon}
                                 size={18}
-                                color={activeTab === tab.id ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant}
+                                color={
+                                    activeTab === tab.id ? colors.primary : isDarkTheme ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)"
+                                }
                             />
                             <Text
-                                style={[
-                                    styles.tabText,
-                                    {
-                                        color: activeTab === tab.id ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant,
-                                    },
-                                ]}
+                                className={`ml-2 font-medium ${activeTab === tab.id
+                                        ? isDarkTheme
+                                            ? "text-white"
+                                            : "text-gray-800"
+                                        : isDarkTheme
+                                            ? "text-gray-400"
+                                            : "text-gray-500"
+                                    }`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
                             >
                                 {tab.title}
                             </Text>
@@ -592,156 +291,700 @@ export default function AdminConsole() {
                 </ScrollView>
             </View>
 
-            {/* Conteúdo principal */}
-            <View style={styles.content}>{renderContent()}</View>
+            {/* Content Area */}
+            <Animated.View
+                style={{
+                    flex: 1,
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }],
+                }}
+            >
+                {activeTab === "blog" && (
+                    <FlatList
+                        data={blogPosts}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={{ padding: 16 }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[colors.primary]}
+                                tintColor={colors.primary}
+                            />
+                        }
+                        renderItem={({ item, index }) => (
+                            <BlogPostItem
+                                post={item}
+                                index={index}
+                                isDark={isDarkTheme}
+                                colors={colors}
+                                onEdit={() => handleEdit(item.id, "blog")}
+                                onDelete={() => handleDelete(item.id, "blog")}
+                            />
+                        )}
+                        ListEmptyComponent={
+                            <View className="flex-1 items-center justify-center py-20">
+                                <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                <Text
+                                    className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                    style={Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    })}
+                                >
+                                    Nenhum post encontrado
+                                </Text>
+                            </View>
+                        }
+                    />
+                )}
 
-            {/* Botão flutuante de adição (não mostrar na aba de configurações) */}
-            {activeTab !== "settings" && <FloatingActionButton onPress={handleAdd} />}
+                {activeTab === "pets" && (
+                    <FlatList
+                        data={pets}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={{ padding: 16 }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[colors.primary]}
+                                tintColor={colors.primary}
+                            />
+                        }
+                        renderItem={({ item, index }) => (
+                            <PetItem
+                                pet={item}
+                                index={index}
+                                isDark={isDarkTheme}
+                                colors={colors}
+                                onEdit={() => handleEdit(item.id, "pet")}
+                                onDelete={() => handleDelete(item.id, "pet")}
+                            />
+                        )}
+                        ListEmptyComponent={
+                            <View className="flex-1 items-center justify-center py-20">
+                                <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                <Text
+                                    className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                    style={Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    })}
+                                >
+                                    Nenhum pet encontrado
+                                </Text>
+                            </View>
+                        }
+                    />
+                )}
+
+                {activeTab === "users" && (
+                    <FlatList
+                        data={users}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={{ padding: 16 }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[colors.primary]}
+                                tintColor={colors.primary}
+                            />
+                        }
+                        renderItem={({ item, index }) => (
+                            <UserItem
+                                user={item}
+                                index={index}
+                                isDark={isDarkTheme}
+                                colors={colors}
+                                onEdit={() => handleEdit(item.id, "user")}
+                                onDelete={() => handleDelete(item.id, "user")}
+                            />
+                        )}
+                        ListEmptyComponent={
+                            <View className="flex-1 items-center justify-center py-20">
+                                <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                <Text
+                                    className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                    style={Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    })}
+                                >
+                                    Nenhum usuário encontrado
+                                </Text>
+                            </View>
+                        }
+                    />
+                )}
+
+                {activeTab === "settings" && <SettingsPanel isDark={isDarkTheme} colors={colors} />}
+            </Animated.View>
+
+            {/* Floating Action Button */}
+            {activeTab !== "settings" && (
+                <TouchableOpacity
+                    onPress={handleAdd}
+                    className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
+                    style={{
+                        backgroundColor: colors.secondary,
+                        ...styles.fabShadow,
+                    }}
+                >
+                    <Feather name="plus" size={24} color="white" />
+                </TouchableOpacity>
+            )}
         </View>
     )
 }
 
+// Blog Post Item Component
+interface BlogPostItemProps {
+    post: BlogPost
+    index: number
+    isDark: boolean
+    colors: any
+    onEdit: () => void
+    onDelete: () => void
+}
+
+function BlogPostItem({ post, index, isDark, colors, onEdit, onDelete }: BlogPostItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        // Staggered animation for each item
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
+    return (
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
+        >
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="flex-row">
+                    <Image source={{ uri: post.image }} className="w-24 h-24 object-cover" />
+                    <View className="flex-1 p-3 justify-center">
+                        <View className="flex-row items-center justify-between">
+                            <Text
+                                className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                                numberOfLines={1}
+                            >
+                                {post.title}
+                            </Text>
+                        </View>
+                        <Text
+                            className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {post.author} • {post.date}
+                        </Text>
+                        <View className="flex-row items-center mt-2">
+                            <View
+                                className="px-2 py-1 rounded-full"
+                                style={{
+                                    backgroundColor: post.status === "published" ? `${colors.primary}20` : `${colors.error}20`,
+                                }}
+                            >
+                                <Text
+                                    className="text-xs font-medium"
+                                    style={{
+                                        color: post.status === "published" ? colors.primary : colors.error,
+                                    }}
+                                >
+                                    {post.status === "published" ? "Publicado" : "Rascunho"}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                    <View className="p-3 justify-center">
+                        <TouchableOpacity onPress={onEdit} className="mb-3">
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.primary}15` }}
+                            >
+                                <Feather name="edit-2" size={16} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onDelete}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.error}15` }}
+                            >
+                                <Feather name="trash-2" size={16} color={colors.error} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
+    )
+}
+
+// Pet Item Component
+interface PetItemProps {
+    pet: Pet
+    index: number
+    isDark: boolean
+    colors: any
+    onEdit: () => void
+    onDelete: () => void
+}
+
+function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        // Staggered animation for each item
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
+    const getStatusColor = () => {
+        switch (pet.status) {
+            case "available":
+                return colors.primary
+            case "pending":
+                return colors.secondary
+            case "adopted":
+                return colors.success || "#10B981"
+            default:
+                return colors.primary
+        }
+    }
+
+    const getStatusText = () => {
+        switch (pet.status) {
+            case "available":
+                return "Disponível"
+            case "pending":
+                return "Em processo"
+            case "adopted":
+                return "Adotado"
+            default:
+                return pet.status
+        }
+    }
+
+    return (
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
+        >
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="flex-row">
+                    <Image source={{ uri: pet.image }} className="w-24 h-24 object-cover" />
+                    <View className="flex-1 p-3 justify-center">
+                        <View className="flex-row items-center justify-between">
+                            <Text
+                                className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                                numberOfLines={1}
+                            >
+                                {pet.name}
+                            </Text>
+                        </View>
+                        <Text
+                            className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {pet.type} • {pet.breed} • {pet.age}
+                        </Text>
+                        <View className="flex-row items-center mt-2">
+                            <View
+                                className="px-2 py-1 rounded-full"
+                                style={{
+                                    backgroundColor: `${getStatusColor()}20`,
+                                }}
+                            >
+                                <Text
+                                    className="text-xs font-medium"
+                                    style={{
+                                        color: getStatusColor(),
+                                    }}
+                                >
+                                    {getStatusText()}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                    <View className="p-3 justify-center">
+                        <TouchableOpacity onPress={onEdit} className="mb-3">
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.primary}15` }}
+                            >
+                                <Feather name="edit-2" size={16} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onDelete}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.error}15` }}
+                            >
+                                <Feather name="trash-2" size={16} color={colors.error} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
+    )
+}
+
+// User Item Component
+interface UserItemProps {
+    user: User
+    index: number
+    isDark: boolean
+    colors: any
+    onEdit: () => void
+    onDelete: () => void
+}
+
+function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        // Staggered animation for each item
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
+    return (
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
+        >
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="flex-row">
+                    <Image
+                        source={{ uri: user.avatar || `https://ui-avatars.com/api/?name=${user.name}&background=random` }}
+                        className="w-16 h-16 rounded-full m-4"
+                    />
+                    <View className="flex-1 py-3 justify-center">
+                        <View className="flex-row items-center justify-between">
+                            <Text
+                                className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                                numberOfLines={1}
+                            >
+                                {user.name}
+                            </Text>
+                        </View>
+                        <Text
+                            className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {user.email}
+                        </Text>
+                        <View className="flex-row items-center mt-2">
+                            <View
+                                className="px-2 py-1 rounded-full mr-2"
+                                style={{
+                                    backgroundColor: user.role === "admin" ? `${colors.secondary}20` : `${colors.primary}20`,
+                                }}
+                            >
+                                <Text
+                                    className="text-xs font-medium"
+                                    style={{
+                                        color: user.role === "admin" ? colors.secondary : colors.primary,
+                                    }}
+                                >
+                                    {user.role === "admin" ? "Admin" : "Usuário"}
+                                </Text>
+                            </View>
+                            <View
+                                className="px-2 py-1 rounded-full"
+                                style={{
+                                    backgroundColor: user.status === "active" ? `${colors.success || "#10B981"}20` : `${colors.error}20`,
+                                }}
+                            >
+                                <Text
+                                    className="text-xs font-medium"
+                                    style={{
+                                        color: user.status === "active" ? colors.success || "#10B981" : colors.error,
+                                    }}
+                                >
+                                    {user.status === "active" ? "Ativo" : "Inativo"}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                    <View className="p-3 justify-center">
+                        <TouchableOpacity onPress={onEdit} className="mb-3">
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.primary}15` }}
+                            >
+                                <Feather name="edit-2" size={16} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onDelete}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.error}15` }}
+                            >
+                                <Feather name="trash-2" size={16} color={colors.error} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
+    )
+}
+
+// Settings Panel Component
+interface SettingsPanelProps {
+    isDark: boolean
+    colors: any
+}
+
+function SettingsPanel({ isDark, colors }: SettingsPanelProps) {
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    const settingsSections = [
+        {
+            id: "notifications",
+            title: "Notificações",
+            icon: "bell",
+            items: [
+                {
+                    id: "push",
+                    title: "Configurar notificações push",
+                    icon: "bell",
+                    action: () => Alert.alert("Configurações de Notificações", "Funcionalidade em desenvolvimento"),
+                },
+                {
+                    id: "email",
+                    title: "Configurar emails automáticos",
+                    icon: "mail",
+                    action: () => Alert.alert("Configurações de Email", "Funcionalidade em desenvolvimento"),
+                },
+            ],
+        },
+        {
+            id: "appearance",
+            title: "Aparência",
+            icon: "layout",
+            items: [
+                {
+                    id: "theme",
+                    title: "Personalizar tema do aplicativo",
+                    icon: "layout",
+                    action: () => Alert.alert("Configurações de Tema", "Funcionalidade em desenvolvimento"),
+                },
+                {
+                    id: "logo",
+                    title: "Alterar logo e imagens",
+                    icon: "image",
+                    action: () => Alert.alert("Configurações de Logo", "Funcionalidade em desenvolvimento"),
+                },
+            ],
+        },
+        {
+            id: "system",
+            title: "Sistema",
+            icon: "settings",
+            items: [
+                {
+                    id: "backup",
+                    title: "Backup e restauração",
+                    icon: "database",
+                    action: () => Alert.alert("Backup", "Funcionalidade em desenvolvimento"),
+                },
+                {
+                    id: "logs",
+                    title: "Logs do sistema",
+                    icon: "file-text",
+                    action: () => Alert.alert("Logs", "Funcionalidade em desenvolvimento"),
+                },
+                {
+                    id: "info",
+                    title: "Informações do aplicativo",
+                    icon: "info",
+                    action: () => Alert.alert("Versão", "Versão atual: 1.0.0"),
+                },
+            ],
+        },
+    ]
+
+    return (
+        <ScrollView className="flex-1 p-4">
+            {settingsSections.map((section) => (
+                <View key={section.id} className="mb-6">
+                    <View className="flex-row items-center mb-3">
+                        <View
+                            className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                            style={{ backgroundColor: `${colors.primary}15` }}
+                        >
+                            <Feather name={section.icon as any} size={16} color={colors.primary} />
+                        </View>
+                        <Text
+                            className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {section.title}
+                        </Text>
+                    </View>
+
+                    <View
+                        className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                        style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+                    >
+                        {section.items.map((item, index) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                onPress={item.action}
+                                className={`flex-row items-center justify-between p-4 ${index < section.items.length - 1 ? "border-b border-gray-200" : ""
+                                    }`}
+                            >
+                                <View className="flex-row items-center">
+                                    <View
+                                        className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                                        style={{ backgroundColor: `${colors.primary}10` }}
+                                    >
+                                        <Feather name={item.icon as any} size={18} color={colors.primary} />
+                                    </View>
+                                    <Text
+                                        className={`${isDark ? "text-white" : "text-gray-800"}`}
+                                        style={Platform.select({
+                                            ios: { fontFamily: "San Francisco" },
+                                            android: { fontFamily: "Roboto" },
+                                        })}
+                                    >
+                                        {item.title}
+                                    </Text>
+                                </View>
+                                <Feather name="chevron-right" size={20} color={isDark ? "#6B7280" : "#9CA3AF"} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            ))}
+        </ScrollView>
+    )
+}
+
 const styles = StyleSheet.create({
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: "rgba(0,0,0,0.1)",
-        elevation: 2,
+    iosShadow: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
     },
-    backButton: {
-        padding: 8,
+    androidShadow: {
+        elevation: 3,
     },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: "bold",
+    webShadow: {
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     },
-    placeholder: {
-        width: 40,
-    },
-    tabsContainer: {
-        borderBottomWidth: 1,
-        borderBottomColor: "rgba(0,0,0,0.1)",
-    },
-    tabsScrollContent: {
-        paddingHorizontal: 8,
-    },
-    tab: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        marginHorizontal: 4,
-        borderBottomWidth: 2,
-        borderBottomColor: "transparent",
-    },
-    activeTab: {
-        borderBottomWidth: 2,
-    },
-    tabText: {
-        marginLeft: 8,
-        fontWeight: "500",
-    },
-    content: {
-        flex: 1,
-    },
-    listItem: {
-        flexDirection: "row",
-        borderBottomWidth: 1,
-        padding: 12,
-    },
-    itemImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
-    },
-    avatarImage: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-    },
-    itemContent: {
-        flex: 1,
-        marginLeft: 12,
-        justifyContent: "center",
-    },
-    itemTitle: {
-        fontSize: 16,
-        fontWeight: "600",
-        marginBottom: 4,
-    },
-    itemSubtitle: {
-        fontSize: 14,
-        marginBottom: 4,
-    },
-    itemStatus: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 12,
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: "500",
-    },
-    itemActions: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    actionButton: {
-        padding: 8,
-        marginLeft: 4,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 40,
-    },
-    emptyText: {
-        marginTop: 12,
-        fontSize: 16,
-    },
-    settingsContainer: {
-        padding: 16,
-    },
-    settingsCard: {
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 16,
-    },
-    settingsTitle: {
-        fontSize: 18,
-        fontWeight: "bold",
-        marginBottom: 16,
-    },
-    settingsSection: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: "600",
-        marginBottom: 12,
-    },
-    settingsItem: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-    },
-    settingsItemContent: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    settingsItemText: {
-        fontSize: 16,
-        marginLeft: 12,
+    fabShadow: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
     },
 })

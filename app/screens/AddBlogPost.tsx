@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import { useState, useEffect } from "react"
 import {
     View,
     Text,
@@ -12,20 +12,49 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    Animated,
 } from "react-native"
 import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
+import { LinearGradient } from "expo-linear-gradient"
 
 export default function AddBlogPost() {
-    const { paperTheme } = useThemeContext()
+    const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation()
 
     const [title, setTitle] = useState("")
     const [content, setContent] = useState("")
+    const [category, setCategory] = useState("")
     const [image, setImage] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Animated values
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(30))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    const categories = ["Cuidados", "Alimentação", "Adoção", "Comportamento", "Saúde", "Dicas"]
+
+    useEffect(() => {
+        // Start animations when component mounts
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                speed: 12,
+                bounciness: 6,
+                useNativeDriver: true,
+            }),
+        ]).start()
+    }, [])
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -80,11 +109,9 @@ export default function AddBlogPost() {
             // await addDoc(collection(db, "posts"), newPost)
 
             // Simulando um atraso para demonstração
-            await new Promise(resolve => setTimeout(resolve, 1000))
+            await new Promise((resolve) => setTimeout(resolve, 1000))
 
-            Alert.alert("Sucesso", "Post adicionado com sucesso!", [
-                { text: "OK", onPress: () => navigation.goBack() }
-            ])
+            Alert.alert("Sucesso", "Post adicionado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
         } catch (error) {
             console.error("Erro ao adicionar post:", error)
             Alert.alert("Erro", "Ocorreu um erro ao adicionar o post. Tente novamente.")
@@ -99,174 +126,218 @@ export default function AddBlogPost() {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
-            <ScrollView style={{ backgroundColor: paperTheme.colors.background }}>
-                <View style={styles.container}>
-                    <TouchableOpacity
-                        style={[
-                            styles.imageContainer,
-                            {
-                                backgroundColor: paperTheme.colors.surfaceVariant,
-                                borderColor: paperTheme.colors.outline,
-                            },
-                        ]}
-                        onPress={pickImage}
-                    >
-                        {image ? (
-                            <Image source={{ uri: image }} style={styles.image} />
-                        ) : (
-                            <View style={styles.imagePlaceholder}>
-                                <Feather name="image" size={48} color={paperTheme.colors.outline} />
-                                <Text style={[styles.imagePlaceholderText, { color: paperTheme.colors.onSurfaceVariant }]}>
-                                    Toque para adicionar uma imagem
-                                </Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-
-                    <View style={styles.formGroup}>
-                        <Text style={[styles.label, { color: paperTheme.colors.onBackground }]}>Título</Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                {
-                                    backgroundColor: paperTheme.colors.surface,
-                                    color: paperTheme.colors.onSurface,
-                                    borderColor: paperTheme.colors.outline,
-                                },
-                            ]}
-                            placeholder="Digite o título do post"
-                            placeholderTextColor={paperTheme.colors.onSurfaceVariant}
-                            value={title}
-                            onChangeText={setTitle}
-                            maxLength={100}
-                        />
+            <View className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+                {/* Header with gradient */}
+                <LinearGradient
+                    colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    className="pt-16 pb-8 px-4"
+                >
+                    <View className="flex-row items-center justify-between">
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+                        >
+                            <Feather name="arrow-left" size={20} color="white" />
+                        </TouchableOpacity>
+                        <Text className="text-white text-xl font-bold">Novo Post</Text>
+                        <View className="w-10" />
                     </View>
+                </LinearGradient>
 
-                    <View style={styles.formGroup}>
-                        <Text style={[styles.label, { color: paperTheme.colors.onBackground }]}>Conteúdo</Text>
-                        <TextInput
-                            style={[
-                                styles.textArea,
-                                {
-                                    backgroundColor: paperTheme.colors.surface,
-                                    color: paperTheme.colors.onSurface,
-                                    borderColor: paperTheme.colors.outline,
-                                },
-                            ]}
-                            placeholder="Digite o conteúdo do post"
-                            placeholderTextColor={paperTheme.colors.onSurfaceVariant}
-                            value={content}
-                            onChangeText={setContent}
-                            multiline
-                            numberOfLines={10}
-                            textAlignVertical="top"
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.submitButton,
-                            {
-                                backgroundColor: isSubmitting ? paperTheme.colors.surfaceVariant : paperTheme.colors.primary,
-                            },
-                        ]}
-                        onPress={handleSubmit}
-                        disabled={isSubmitting}
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        }}
+                        className="px-4 pt-4 pb-8"
                     >
-                        {isSubmitting ? (
-                            <Text style={[styles.submitButtonText, { color: paperTheme.colors.onSurfaceVariant }]}>
-                                Publicando...
+                        <TouchableOpacity
+                            className={`w-full h-56 rounded-xl mb-6 overflow-hidden ${isDarkTheme ? "bg-gray-800" : "bg-white"
+                                } items-center justify-center`}
+                            style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+                            onPress={pickImage}
+                        >
+                            {image ? (
+                                <Image source={{ uri: image }} className="w-full h-full" />
+                            ) : (
+                                <View className="items-center">
+                                    <View
+                                        className="w-16 h-16 rounded-full items-center justify-center mb-3"
+                                        style={{ backgroundColor: `${colors.primary}15` }}
+                                    >
+                                        <Feather name="image" size={32} color={colors.primary} />
+                                    </View>
+                                    <Text
+                                        className={`text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                        style={Platform.select({
+                                            ios: { fontFamily: "San Francisco" },
+                                            android: { fontFamily: "Roboto" },
+                                        })}
+                                    >
+                                        Toque para adicionar uma imagem
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
+                        <View className="mb-6">
+                            <Text
+                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                Categoria
                             </Text>
-                        ) : (
-                            <Text style={[styles.submitButtonText, { color: paperTheme.colors.onPrimary }]}>Publicar Post</Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
+                                {categories.map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        onPress={() => setCategory(cat)}
+                                        className={`px-4 py-2 mr-2 rounded-full ${category === cat
+                                                ? isDarkTheme
+                                                    ? "bg-primary-700"
+                                                    : "bg-primary-500"
+                                                : isDarkTheme
+                                                    ? "bg-gray-800"
+                                                    : "bg-white"
+                                            }`}
+                                        style={
+                                            category !== cat && (isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow)
+                                        }
+                                    >
+                                        <Text
+                                            className={`${category === cat ? "text-white" : isDarkTheme ? "text-gray-300" : "text-gray-700"
+                                                } font-medium`}
+                                        >
+                                            {cat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
+                        <View className="mb-6">
+                            <Text
+                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                Título
+                            </Text>
+                            <TextInput
+                                className={`p-4 rounded-xl ${isDarkTheme ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
+                                style={[
+                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow,
+                                    Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    }),
+                                ]}
+                                placeholder="Digite o título do post"
+                                placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                value={title}
+                                onChangeText={setTitle}
+                                maxLength={100}
+                            />
+                        </View>
+
+                        <View className="mb-8">
+                            <Text
+                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                Conteúdo
+                            </Text>
+                            <TextInput
+                                className={`p-4 rounded-xl ${isDarkTheme ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
+                                style={[
+                                    { minHeight: 200, textAlignVertical: "top" },
+                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow,
+                                    Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    }),
+                                ]}
+                                placeholder="Digite o conteúdo do post"
+                                placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                value={content}
+                                onChangeText={setContent}
+                                multiline
+                                numberOfLines={10}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            className={`py-4 rounded-xl flex-row items-center justify-center mb-10 ${isSubmitting ? "opacity-70" : "opacity-100"
+                                }`}
+                            style={{
+                                backgroundColor: isSubmitting ? (isDarkTheme ? "#4B5563" : "#D1D5DB") : colors.primary,
+                                ...styles.submitButton,
+                            }}
+                            onPress={handleSubmit}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <View className="flex-row items-center">
+                                    <Animated.View
+                                        style={{
+                                            transform: [
+                                                {
+                                                    rotate: fadeAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: ["0deg", "360deg"],
+                                                    }),
+                                                },
+                                            ],
+                                        }}
+                                    >
+                                        <Feather name="loader" size={20} color="white" />
+                                    </Animated.View>
+                                    <Text className="ml-2 text-white font-semibold">Publicando...</Text>
+                                </View>
+                            ) : (
+                                <View className="flex-row items-center">
+                                    <Feather name="send" size={20} color="white" />
+                                    <Text className="ml-2 text-white font-semibold">Publicar Post</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </Animated.View>
+                </ScrollView>
+            </View>
         </KeyboardAvoidingView>
     )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 16,
+    iosShadow: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
     },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: "rgba(0,0,0,0.1)",
-        elevation: 2,
+    androidShadow: {
+        elevation: 3,
     },
-    backButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: "bold",
-    },
-    saveButton: {
-        padding: 8,
-    },
-    imageContainer: {
-        width: "100%",
-        height: 200,
-        borderRadius: 12,
-        marginBottom: 16,
-        overflow: "hidden",
-        borderWidth: 1,
-    },
-    image: {
-        width: "100%",
-        height: "100%",
-        resizeMode: "cover",
-    },
-    imagePlaceholder: {
-        width: "100%",
-        height: "100%",
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    imagePlaceholderText: {
-        marginTop: 8,
-        fontSize: 14,
-    },
-    formGroup: {
-        marginBottom: 16,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: "500",
-        marginBottom: 8,
-    },
-    input: {
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 16,
-    },
-    textArea: {
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 16,
-        minHeight: 150,
+    webShadow: {
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     },
     submitButton: {
-        padding: 16,
-        borderRadius: 8,
-        alignItems: "center",
-        marginTop: 16,
-        marginBottom: 32,
-    },
-    submitButtonText: {
-        fontSize: 16,
-        fontWeight: "600",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
     },
 })
+

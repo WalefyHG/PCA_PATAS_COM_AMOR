@@ -1,20 +1,48 @@
 "use client"
 
-import { useState } from "react"
-import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, Alert } from "react-native"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { View, Text, Switch, TouchableOpacity, ScrollView, Alert, Platform, Animated, StyleSheet } from "react-native"
 import { useThemeContext } from "../../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { auth } from "../../config/firebase"
 import { signOut } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
+import { LinearGradient } from "expo-linear-gradient"
 
 export default function Settings() {
-  const { paperTheme, toggleTheme } = useThemeContext()
+  const { paperTheme, toggleTheme, isDarkTheme, colors } = useThemeContext()
   const router = useNavigation<any>()
 
   const [notifications, setNotifications] = useState(true)
   const [emailUpdates, setEmailUpdates] = useState(true)
   const [locationServices, setLocationServices] = useState(false)
+
+  // Animated values
+  const [fadeAnim] = useState(new Animated.Value(0))
+  const [slideAnim] = useState(new Animated.Value(30))
+
+  const isIOS = Platform.OS === "ios"
+  const isAndroid = Platform.OS === "android"
+  const isWeb = Platform.OS === "web"
+
+  useEffect(() => {
+    // Start animations when component mounts
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        speed: 12,
+        bounciness: 4,
+        useNativeDriver: true,
+      }),
+    ]).start()
+  }, [])
 
   const handleLogout = async () => {
     try {
@@ -39,172 +67,259 @@ export default function Settings() {
   const isAdmin = true // Replace with actual admin check logic
 
   return (
-    <ScrollView style={{ backgroundColor: paperTheme.colors.background }}>
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: paperTheme.colors.onBackground }]}>Configurações</Text>
+    <ScrollView className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+      <View className="relative">
+        {/* Header with gradient */}
+        <LinearGradient
+          colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          className="pt-16 pb-8 px-4"
+        >
+        </LinearGradient>
 
-        <View style={[styles.section, { borderColor: paperTheme.colors.outline }]}>
-          <Text style={[styles.sectionTitle, { color: paperTheme.colors.onBackground }]}>Aparência</Text>
+        {/* Settings Content */}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }}
+          className="px-4 pt-4 pb-8"
+        >
+          {/* Appearance Section */}
+          <SettingsSection title="Aparência" icon="sun">
+            <SettingToggleItem
+              icon="moon"
+              title="Modo Escuro"
+              value={isDarkTheme}
+              onToggle={toggleTheme}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
+          </SettingsSection>
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Feather name="moon" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.settingText, { color: paperTheme.colors.onBackground }]}>Modo Escuro</Text>
-            </View>
-          </View>
-        </View>
+          {/* Admin Section */}
+          {isAdmin && (
+            <SettingsSection title="Administração" icon="shield">
+              <SettingLinkItem
+                icon="shield"
+                title="Admin Console"
+                onPress={() => router.navigate("AdminConsole")}
+                colors={colors}
+                isDark={isDarkTheme}
+              />
+            </SettingsSection>
+          )}
 
-        {isAdmin && (
-          <View style={[styles.section, { borderColor: paperTheme.colors.outline }]}>
-            <Text style={[styles.sectionTitle, { color: paperTheme.colors.onBackground }]}>Administração</Text>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => router.navigate("AdminConsole")}>
-              <View style={styles.menuItemContent}>
-                <Feather name="shield" size={20} color={paperTheme.colors.primary} />
-                <Text style={[styles.menuItemText, { color: paperTheme.colors.onBackground }]}>Admin Console</Text>
-              </View>
-              <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={[styles.section, { borderColor: paperTheme.colors.outline }]}>
-          <Text style={[styles.sectionTitle, { color: paperTheme.colors.onBackground }]}>Notificações</Text>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Feather name="bell" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.settingText, { color: paperTheme.colors.onBackground }]}>Notificações Push</Text>
-            </View>
-            <Switch
+          {/* Notifications Section */}
+          <SettingsSection title="Notificações" icon="bell">
+            <SettingToggleItem
+              icon="bell"
+              title="Notificações Push"
               value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: "#767577", true: paperTheme.colors.primaryContainer }}
-              thumbColor={notifications ? paperTheme.colors.primary : "#f4f3f4"}
+              onToggle={setNotifications}
+              colors={colors}
+              isDark={isDarkTheme}
             />
-          </View>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Feather name="mail" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.settingText, { color: paperTheme.colors.onBackground }]}>
-                Atualizações por Email
-              </Text>
-            </View>
-            <Switch
+            <SettingToggleItem
+              icon="mail"
+              title="Atualizações por Email"
               value={emailUpdates}
-              onValueChange={setEmailUpdates}
-              trackColor={{ false: "#767577", true: paperTheme.colors.primaryContainer }}
-              thumbColor={emailUpdates ? paperTheme.colors.primary : "#f4f3f4"}
+              onToggle={setEmailUpdates}
+              colors={colors}
+              isDark={isDarkTheme}
             />
-          </View>
-        </View>
+          </SettingsSection>
 
-        <View style={[styles.section, { borderColor: paperTheme.colors.outline }]}>
-          <Text style={[styles.sectionTitle, { color: paperTheme.colors.onBackground }]}>Privacidade</Text>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Feather name="map-pin" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.settingText, { color: paperTheme.colors.onBackground }]}>
-                Serviços de Localização
-              </Text>
-            </View>
-            <Switch
+          {/* Privacy Section */}
+          <SettingsSection title="Privacidade" icon="lock">
+            <SettingToggleItem
+              icon="map-pin"
+              title="Serviços de Localização"
               value={locationServices}
-              onValueChange={setLocationServices}
-              trackColor={{ false: "#767577", true: paperTheme.colors.primaryContainer }}
-              thumbColor={locationServices ? paperTheme.colors.primary : "#f4f3f4"}
+              onToggle={setLocationServices}
+              colors={colors}
+              isDark={isDarkTheme}
             />
-          </View>
-        </View>
+          </SettingsSection>
 
-        <View style={[styles.section, { borderColor: paperTheme.colors.outline }]}>
-          <Text style={[styles.sectionTitle, { color: paperTheme.colors.onBackground }]}>Conta</Text>
+          {/* Account Section */}
+          <SettingsSection title="Conta" icon="user">
+            <SettingLinkItem
+              icon="user"
+              title="Editar Perfil"
+              onPress={() => router.navigate("EditProfile")}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
+            <SettingLinkItem
+              icon="lock"
+              title="Alterar Senha"
+              onPress={() => router.navigate("ChangePassword")}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
+            <TouchableOpacity
+              className={`flex-row items-center py-4 mt-2 rounded-xl ${isDarkTheme ? "bg-red-900/20" : "bg-red-50"}`}
+              onPress={confirmLogout}
+            >
+              <View className="flex-row items-center flex-1 pl-4">
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ backgroundColor: "rgba(239, 68, 68, 0.2)" }}
+                >
+                  <Feather name="log-out" size={20} color="#EF4444" />
+                </View>
+                <Text className="ml-3 text-red-500 font-semibold">Sair</Text>
+              </View>
+            </TouchableOpacity>
+          </SettingsSection>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemContent}>
-              <Feather name="user" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.menuItemText, { color: paperTheme.colors.onBackground }]}>Editar Perfil</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemContent}>
-              <Feather name="lock" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.menuItemText, { color: paperTheme.colors.onBackground }]}>Alterar Senha</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={confirmLogout}>
-            <View style={styles.menuItemContent}>
-              <Feather name="log-out" size={20} color="#FF3B30" />
-              <Text style={[styles.menuItemText, { color: "#FF3B30" }]}>Sair</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={[styles.versionText, { color: paperTheme.colors.onSurfaceVariant }]}>Versão 1.0.0</Text>
+          {/* App Version */}
+          <Text
+            className={`text-center text-sm mt-8 mb-6 ${isDarkTheme ? "text-gray-500" : "text-gray-400"}`}
+            style={Platform.select({
+              ios: { fontFamily: "San Francisco" },
+              android: { fontFamily: "Roboto" },
+            })}
+          >
+            Versão 1.0.0
+          </Text>
+        </Animated.View>
       </View>
     </ScrollView>
   )
 }
 
+interface SettingsSectionProps {
+  title: string
+  icon?: string
+  children: React.ReactNode
+}
+
+function SettingsSection({ title, icon, children }: SettingsSectionProps) {
+  const { isDarkTheme, colors } = useThemeContext()
+
+  return (
+    <View className="mb-6">
+      <View className="flex-row items-center mb-4">
+        {icon && (
+          <View
+            className="w-6 h-6 rounded-full items-center justify-center mr-2"
+            style={{ backgroundColor: `${colors.primary}20` }}
+          >
+            <Feather name={icon as any} size={14} color={colors.primary} />
+          </View>
+        )}
+        <Text
+          className={`text-lg font-bold ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+          style={Platform.select({
+            ios: { fontFamily: "San Francisco" },
+            android: { fontFamily: "Roboto" },
+          })}
+        >
+          {title}
+        </Text>
+      </View>
+      <View
+        className={`rounded-xl overflow-hidden ${isDarkTheme ? "bg-gray-800" : "bg-white"}`}
+        style={
+          Platform.OS === "ios" ? styles.iosShadow : Platform.OS === "android" ? styles.androidShadow : styles.webShadow
+        }
+      >
+        {children}
+      </View>
+    </View>
+  )
+}
+
+interface SettingToggleItemProps {
+  icon: string
+  title: string
+  value: boolean
+  onToggle: (value: boolean) => void
+  colors: any
+  isDark: boolean
+}
+
+function SettingToggleItem({ icon, title, value, onToggle, colors, isDark }: SettingToggleItemProps) {
+  return (
+    <View className="flex-row items-center justify-between py-4 px-4 border-b border-gray-100 last:border-b-0">
+      <View className="flex-row items-center">
+        <View
+          className="w-10 h-10 rounded-full items-center justify-center"
+          style={{ backgroundColor: `${colors.primary}15` }}
+        >
+          <Feather name={icon as any} size={18} color={colors.primary} />
+        </View>
+        <Text
+          className={`ml-3 ${isDark ? "text-white" : "text-gray-800"}`}
+          style={Platform.select({
+            ios: { fontFamily: "San Francisco" },
+            android: { fontFamily: "Roboto" },
+          })}
+        >
+          {title}
+        </Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        trackColor={{ false: "#767577", true: `${colors.primary}80` }}
+        thumbColor={value ? colors.primary : "#f4f3f4"}
+        ios_backgroundColor="#3e3e3e"
+      />
+    </View>
+  )
+}
+
+interface SettingLinkItemProps {
+  icon: string
+  title: string
+  onPress: () => void
+  colors: any
+  isDark: boolean
+}
+
+function SettingLinkItem({ icon, title, onPress, colors, isDark }: SettingLinkItemProps) {
+  return (
+    <TouchableOpacity
+      className="flex-row items-center justify-between py-4 px-4 border-b border-gray-100 last:border-b-0"
+      onPress={onPress}
+    >
+      <View className="flex-row items-center">
+        <View
+          className="w-10 h-10 rounded-full items-center justify-center"
+          style={{ backgroundColor: `${colors.primary}15` }}
+        >
+          <Feather name={icon as any} size={18} color={colors.primary} />
+        </View>
+        <Text
+          className={`ml-3 ${isDark ? "text-white" : "text-gray-800"}`}
+          style={Platform.select({
+            ios: { fontFamily: "San Francisco" },
+            android: { fontFamily: "Roboto" },
+          })}
+        >
+          {title}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+    </TouchableOpacity>
+  )
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
+  iosShadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 24,
-    textAlign: "center",
+  androidShadow: {
+    elevation: 3,
   },
-  section: {
-    marginBottom: 24,
-    borderTopWidth: 1,
-    paddingTop: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 16,
-  },
-  settingItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  settingInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  settingText: {
-    fontSize: 16,
-  },
-  menuItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  menuItemContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  menuItemText: {
-    fontSize: 16,
-  },
-  versionText: {
-    textAlign: "center",
-    fontSize: 14,
-    marginBottom: 32,
+  webShadow: {
+    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
   },
 })

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Text, View, StyleSheet, ScrollView } from "react-native"
+import { Text, View, ScrollView, Platform, SafeAreaView, StatusBar, Animated } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { db, auth } from "../../config/firebase"
 import { getDoc, doc } from "firebase/firestore"
@@ -17,11 +17,22 @@ interface User {
 
 export default function Home() {
   const navigation = useNavigation<any>()
-  const { paperTheme } = useThemeContext()
+  const { paperTheme, isDarkTheme, colors } = useThemeContext()
+  const isIOS = Platform.OS === "ios"
+  const isAndroid = Platform.OS === "android"
+  const isWeb = Platform.OS === "web"
 
   const [user, setUser] = useState<User | null>(null)
+  const [fadeAnim] = useState(new Animated.Value(0))
 
   useEffect(() => {
+    // Fade in animation
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start()
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         try {
@@ -48,52 +59,71 @@ export default function Home() {
     navigation.navigate(screenName)
   }
 
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: paperTheme.colors.background }}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={[styles.welcomeText, { color: paperTheme.colors.onBackground }]}>
-            {user ? `Olá, ${user.first_name || user.displayName || "Usuário"}!` : "Bem-vindo ao Patas com Amor"}
-          </Text>
-          <Text style={[styles.subtitle, { color: paperTheme.colors.onBackground }]}>
-            O que você deseja fazer hoje?
-          </Text>
-        </View>
+  // Platform-specific styles
+  const containerPadding = isIOS ? "pt-12" : isAndroid ? "pt-6" : "pt-8"
+  const headerMargin = isIOS ? "mt-0" : "mt-4"
+  const scrollViewStyle = `flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`
 
-        <View style={styles.cardsContainer}>
-          <NavigationCard title="Adote" icon="heart" onPress={() => navigateToScreen("Adopt")} />
-          <NavigationCard title="Blog" icon="book-open" onPress={() => navigateToScreen("Blog")} />
-          <NavigationCard title="Perfil" icon="user" onPress={() => navigateToScreen("Profile")} />
-          <NavigationCard title="Configurações" icon="settings" onPress={() => navigateToScreen("Settings")} />
-        </View>
-      </View>
-    </ScrollView>
+  return (
+    <SafeAreaView className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+      <StatusBar
+        barStyle={isDarkTheme ? "light-content" : "dark-content"}
+        backgroundColor={isDarkTheme ? colors.background.dark : colors.background.light}
+      />
+      <ScrollView className={scrollViewStyle}>
+        <Animated.View style={{ opacity: fadeAnim }} className={`flex-1 p-4 ${containerPadding}`}>
+          <View className={`${headerMargin} mb-8 items-center`}>
+            <Text
+              className={`text-3xl font-bold mb-3 ${isDarkTheme ? "text-white" : "text-gray-900"} ${isWeb ? "text-4xl" : ""}`}
+              style={{
+                color: colors.primary,
+                ...Platform.select({
+                  ios: { fontFamily: "San Francisco" },
+                  android: { fontFamily: "Roboto" },
+                }),
+              }}
+            >
+              {user ? `Olá, ${user.first_name || user.displayName || "Usuário"}!` : "Bem-vindo ao Patas com Amor"}
+            </Text>
+            <Text
+              className={`text-base mb-6 ${isDarkTheme ? "text-gray-300" : "text-gray-700"}`}
+              style={Platform.select({
+                ios: { fontFamily: "San Francisco" },
+                android: { fontFamily: "Roboto" },
+              })}
+            >
+              O que você deseja fazer hoje?
+            </Text>
+          </View>
+
+          <View className={`flex-row flex-wrap ${isWeb ? "justify-center" : "justify-between"} px-2`}>
+            <NavigationCard
+              title="Adote"
+              icon="heart"
+              onPress={() => navigateToScreen("Adopt")}
+              platform={Platform.OS}
+            />
+            <NavigationCard
+              title="Blog"
+              icon="book-open"
+              onPress={() => navigateToScreen("Blog")}
+              platform={Platform.OS}
+            />
+            <NavigationCard
+              title="Perfil"
+              icon="user"
+              onPress={() => navigateToScreen("Profile")}
+              platform={Platform.OS}
+            />
+            <NavigationCard
+              title="Configurações"
+              icon="settings"
+              onPress={() => navigateToScreen("Settings")}
+              platform={Platform.OS}
+            />
+          </View>
+        </Animated.View>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  header: {
-    marginTop: 40,
-    marginBottom: 24,
-    alignItems: "center",
-  },
-  welcomeText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 24,
-  },
-  cardsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-  },
-})

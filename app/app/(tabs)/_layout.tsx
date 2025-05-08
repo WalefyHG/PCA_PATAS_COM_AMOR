@@ -1,152 +1,228 @@
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
-import { BottomNavigation, BottomNavigationTab, Icon, IconElement } from "@ui-kitten/components";
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useRoute, RouteProp } from "@react-navigation/native";
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
-
-const Stack = createNativeStackNavigator();
-const { Navigator, Screen } = createBottomTabNavigator();
+import { View, StyleSheet, Text, TouchableOpacity, Platform } from "react-native"
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
+import { createNativeStackNavigator } from "@react-navigation/native-stack"
+import { useRoute, type RouteProp } from "@react-navigation/native"
+import { useTranslation } from "react-i18next"
+import { Feather } from "@expo/vector-icons"
+import { LinearGradient } from "expo-linear-gradient"
+import HeaderLayout from "@/app/utils/HeaderLayout";
+import { useThemeContext } from "@/app/utils/ThemeContext";
 
 // Screens
-
 import User from './users/index';
 import Profile from './profile/[id]';
 import About from './about/index';
 import Settings from './settings/index';
 import News from './news/index';
-import HeaderLayout from "@/app/utils/HeaderLayout";
-import { useThemeContext } from "@/app/utils/ThemeContext";
 import Adopt from "@/app/screens/Adopt";
 import AddBlogPost from "@/app/screens/AddBlogPost";
 import AdminConsole from "@/app/screens/AdminConsole";
 
-// Interfaces
-
-
-
-
-const HomeIcon = (props: any): IconElement => (
-    <Icon {...props} name='home-outline' />
-);
-
-const ProfileIcon = (props: any): IconElement => (
-    <Icon {...props} name='person-outline' />
-);
-
-const AboutIcon = (props: any): IconElement => (
-    <Icon {...props} name='info-outline' />
-);
-
-const SettingsIcon = (props: any): IconElement => (
-    <Icon {...props} name='settings-2-outline' />
-);
-
-const NewsIcon = (props: any): IconElement => (
-    <Icon {...props} name='book-open-outline' />
-);
-
-
-
-
-const BottomTabBar = ({ navigation, state }: BottomTabBarProps) => {
-    const { t } = useTranslation();
-    return (
-        <BottomNavigation
-            selectedIndex={state.index}
-            onSelect={index => navigation.navigate(state.routeNames[index])}>
-            <BottomNavigationTab title={t("Users")} icon={HomeIcon} />
-            <BottomNavigationTab title={t("Profile")} icon={ProfileIcon} />
-            <BottomNavigationTab title={t("About")} icon={AboutIcon} />
-            <BottomNavigationTab title={t("Settings")} icon={SettingsIcon} />
-            <BottomNavigationTab title={t("News")} icon={NewsIcon} />
-        </BottomNavigation>
-    );
-}
+const Stack = createNativeStackNavigator()
+const Tab = createBottomTabNavigator()
 
 type ProfileRouteParams = {
     Profile: {
-        id: string | null;
-    };
-};
+        id: string | null
+    }
+}
+
+// Custom Tab Bar Component
+function CustomTabBar({ state, descriptors, navigation }: any) {
+    const { isDarkTheme, colors } = useThemeContext()
+
+    return (
+        <View
+            style={[
+                styles.tabBarContainer,
+                {
+                    backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF",
+                    borderTopColor: isDarkTheme ? "#374151" : "#E5E7EB",
+                },
+            ]}
+        >
+            {state.routes.map((route: any, index: number) => {
+                const { options } = descriptors[route.key]
+                const label = options.tabBarLabel || options.title || route.name
+
+                const isFocused = state.index === index
+
+                let iconName: "users" | "user" | "info" | "settings" | "book-open" | "circle"
+                switch (route.name) {
+                    case "User":
+                        iconName = "users"
+                        break
+                    case "Profile":
+                        iconName = "user"
+                        break
+                    case "About":
+                        iconName = "info"
+                        break
+                    case "Settings":
+                        iconName = "settings"
+                        break
+                    case "News":
+                        iconName = "book-open"
+                        break
+                    default:
+                        iconName = "circle"
+                }
+
+                const onPress = () => {
+                    const event = navigation.emit({
+                        type: "tabPress",
+                        target: route.key,
+                        canPreventDefault: true,
+                    })
+
+                    if (!isFocused && !event.defaultPrevented) {
+                        navigation.navigate(route.name)
+                    }
+                }
+
+                return (
+                    <TouchableOpacity
+                        key={route.key}
+                        accessibilityRole="button"
+                        accessibilityState={isFocused ? { selected: true } : {}}
+                        onPress={onPress}
+                        style={styles.tabButton}
+                    >
+                        {isFocused ? (
+                            <LinearGradient
+                                colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.tabIndicator}
+                            />
+                        ) : null}
+
+                        <Feather
+                            name={iconName}
+                            size={20}
+                            color={isFocused ? (isDarkTheme ? "#FFFFFF" : colors.primary) : isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                        />
+
+                        <Text
+                            style={[
+                                styles.tabLabel,
+                                {
+                                    color: isFocused ? (isDarkTheme ? "#FFFFFF" : colors.primary) : isDarkTheme ? "#9CA3AF" : "#6B7280",
+                                    fontWeight: isFocused ? "600" : "400",
+                                },
+                            ]}
+                        >
+                            {label}
+                        </Text>
+                    </TouchableOpacity>
+                )
+            })}
+        </View>
+    )
+}
 
 const TabLayout = () => {
-    const route = useRoute<RouteProp<ProfileRouteParams, 'Profile'>>();
-    const { paperTheme } = useThemeContext(); // Obtendo o tema do react-native-paper
-    const { t } = useTranslation();
+    const route = useRoute<RouteProp<ProfileRouteParams, "Profile">>()
+    const { t } = useTranslation()
+    const { isDarkTheme, colors } = useThemeContext()
+    const screenOptions = {
+        headerRight: () => <HeaderLayout />,
+        headerTitleAlign: "left" as "left",
+        headerStyle: {
+            backgroundColor: isDarkTheme ? colors.primaryDark : colors.primary,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 0,
+        },
+        headerTintColor: "#FFFFFF",
+        headerTitleStyle: {
+            fontSize: 18,
+        },
+        tabBarHideOnKeyboard: true,
+    }
+
     return (
-        <Navigator
-            tabBar={props => <BottomTabBar {...props} />}
-            screenOptions={{
-                headerRight: () => <HeaderLayout />,
-                headerTitleAlign: "left",
-                headerStyle: {
-                    backgroundColor: paperTheme.colors.primary,
-                },
-                headerTintColor: paperTheme.colors.surface,
-                headerTitleStyle: {
-                    fontWeight: 'bold',
-                    color: paperTheme.colors.surface,
-                },
-            }}
+        <Tab.Navigator
+            screenOptions={screenOptions}
+            tabBar={(props) => <CustomTabBar {...props} />}
         >
-            <Screen name='User' component={User} options={{ title: t("Users") }} />
-            <Screen name='Profile' component={Profile} initialParams={{ id: route.params?.id ?? null }} options={{ title: t("Profile") }} />
-            <Screen name='About' component={About} options={{ title: t("About") }} />
-            <Screen name='Settings' component={Settings} options={{ title: t("Settings") }} />
-            <Screen name='News' component={News} options={{ title: t("News") }} />
-        </Navigator>
+            <Tab.Screen name="User" component={User} options={{ title: t("Users") }} />
+            <Tab.Screen
+                name="Profile"
+                component={Profile}
+                initialParams={{ id: route.params?.id ?? null }}
+                options={{ title: t("Profile") }}
+            />
+            <Tab.Screen name="About" component={About} options={{ title: t("About") }} />
+            <Tab.Screen name="Settings" component={Settings} options={{ title: t("Settings") }} />
+            <Tab.Screen name="News" component={News} options={{ title: t("News") }} />
+        </Tab.Navigator>
     )
 }
 
 const AppLayout = () => {
-    const { t } = useTranslation();
-    const { paperTheme } = useThemeContext();
+    const { t } = useTranslation()
+    const { isDarkTheme, colors } = useThemeContext()
+    const screenOptions = {
+        headerRight: () => <HeaderLayout />,
+        headerTitleAlign: "left" as "left",
+        headerStyle: {
+            backgroundColor: isDarkTheme ? colors.primaryDark : colors.primary,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 0,
+        },
+        headerTintColor: "#FFFFFF",
+        headerTitleStyle: {
+            fontSize: 18,
+        },
+        tabBarHideOnKeyboard: true,
+    }
     return (
-        <Stack.Navigator screenOptions={{}}>
+        <Stack.Navigator screenOptions={screenOptions}>
             <Stack.Screen name="(tabs)" component={TabLayout} options={{ headerShown: false }} />
-            <Stack.Screen name="Adopt" component={Adopt} options={{
-                headerRight: () => <HeaderLayout />,
-                title: t("Adopt"),
-                headerTitleAlign: "left",
-                headerStyle: {
-                    backgroundColor: paperTheme.colors.primary,
-                },
-                headerTintColor: paperTheme.colors.surface,
-                headerTitleStyle: {
-                    fontWeight: 'bold',
-                    color: paperTheme.colors.surface,
-                },
-            }} />
-            <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{
-                headerRight: () => <HeaderLayout />,
-                title: t("Add Blog Post"),
-                headerTitleAlign: "left",
-                headerStyle: {
-                    backgroundColor: paperTheme.colors.primary,
-                },
-                headerTintColor: paperTheme.colors.surface,
-                headerTitleStyle: {
-                    fontWeight: 'bold',
-                    color: paperTheme.colors.surface,
-                },
-            }} />
-            <Stack.Screen name="AdminConsole" component={AdminConsole} options={{
-                headerRight: () => <HeaderLayout />,
-                title: t("Admin Console"),
-                headerTitleAlign: "left",
-                headerStyle: {
-                    backgroundColor: paperTheme.colors.primary,
-                },
-                headerTintColor: paperTheme.colors.surface,
-                headerTitleStyle: {
-                    fontWeight: 'bold',
-                    color: paperTheme.colors.surface,
-                },
-            }} />
+            <Stack.Screen name="Adopt" component={Adopt} options={{ title: t("Adopt") }} />
+            <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{ title: t("Add Blog Post") }} />
+            <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console") }} />
         </Stack.Navigator>
     )
 }
+
+const styles = StyleSheet.create({
+    tabBarContainer: {
+        flexDirection: "row",
+        height: 60,
+        borderTopWidth: 1,
+        ...Platform.select({
+            ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: -2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 8,
+            },
+        }),
+    },
+    tabButton: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingVertical: 8,
+    },
+    tabIndicator: {
+        position: "absolute",
+        top: 0,
+        height: 3,
+        width: "50%",
+        borderBottomLeftRadius: 3,
+        borderBottomRightRadius: 3,
+    },
+    tabLabel: {
+        fontSize: 12,
+        marginTop: 4,
+    },
+})
 
 export default AppLayout;
