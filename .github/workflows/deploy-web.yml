@@ -1,27 +1,27 @@
-name: Build and Deploy Web to GitHub Pages
+name: 🚀 Deploy Web com Expo
 
 on:
   push:
     branches:
-      - main  # ou 'master', se for o seu branch principal
+      - main  # ou a branch que você usa para deploy
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout do código
         uses: actions/checkout@v3
 
-      - name: 🟢 Instalar Node.js
+      - name: 🔧 Instalar Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
       - name: 📦 Instalar dependências
-        run: npm ci
+        run: npm install
 
-      - name: 🔐 Criar .env com variáveis de ambiente
+      - name: 🔐 Criar arquivo .env com Firebase Secrets
         run: |
           echo "EXPO_PUBLIC_APPKEY=${{ secrets.EXPO_PUBLIC_APPKEY }}" >> .env
           echo "EXPO_PUBLIC_AUTHDOMAIN=${{ secrets.EXPO_PUBLIC_AUTHDOMAIN }}" >> .env
@@ -32,12 +32,10 @@ jobs:
           echo "EXPO_PUBLIC_WEBCLIENTID=${{ secrets.EXPO_PUBLIC_WEBCLIENTID }}" >> .env
           echo "EXPO_PUBLIC_ANDROIDCLIENT_ID=${{ secrets.EXPO_PUBLIC_ANDROIDCLIENT_ID }}" >> .env
 
-
-      - name: ⚙️ Build para Web
+      - name: 🌐 Build Expo Web
         run: npx expo export --platform web
 
-      - name: 🚀 Deploy para GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+      # Opcional: deploy automático para um serviço (Netlify, Vercel, Firebase Hosting, etc.)
+      # Você pode adicionar aqui o comando de deploy, por exemplo para Firebase Hosting:
+      # - name: 🚀 Deploy para Firebase Hosting
+      #   run: npx firebase deploy --only hosting --token "${{ secrets.FIREBASE_TOKEN }}"
