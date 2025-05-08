@@ -20,7 +20,7 @@ jobs:
 
       - name: 📦 Instalar dependências
         run: npm ci
-        
+
       - name: 🔐 Criar .env com variáveis de ambiente
         run: |
           echo "EXPO_PUBLIC_APPKEY=${{ secrets.EXPO_PUBLIC_APPKEY }}" >> .env
@@ -31,6 +31,7 @@ jobs:
           echo "EXPO_PUBLIC_APPID=${{ secrets.EXPO_PUBLIC_APPID }}" >> .env
           echo "EXPO_PUBLIC_WEBCLIENTID=${{ secrets.EXPO_PUBLIC_WEBCLIENTID }}" >> .env
           echo "EXPO_PUBLIC_ANDROIDCLIENT_ID=${{ secrets.EXPO_PUBLIC_ANDROIDCLIENT_ID }}" >> .env
+
 
       - name: ⚙️ Build para Web
         run: npx expo export --platform web
