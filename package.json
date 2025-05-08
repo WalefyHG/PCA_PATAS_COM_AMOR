@@ -101,7 +101,9 @@
     "react-native-webview": "13.12.5",
     "tailwindcss": "^3.4.17",
     "task-commit": "^1.0.1",
-    "ui-kitten": "^5.3.1"
+    "ui-kitten": "^5.3.1",
+    "expo-updates": "~0.27.4",
+    "expo-dev-client": "~5.0.20"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

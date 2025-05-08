@@ -1,0 +1,12 @@
+{
+    "build": {
+        "web": {
+            "development": {
+                "developmentClient": true,
+                "distribution": "internal"
+            },
+            "preview": {},
+            "production": {}
+        }
+    }
+}

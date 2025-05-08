@@ -49,6 +49,19 @@
           "@ui-kitten/components"
         ]
       }
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "12e5ef74-76b4-4dd2-91f4-c0f7bbec3df8"
+      }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/12e5ef74-76b4-4dd2-91f4-c0f7bbec3df8"
+    },
+    "owner": "herogamer77"
   }
 }
