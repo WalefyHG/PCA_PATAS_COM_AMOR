@@ -5,5 +5,5 @@
             "use": "@vercel/node"
         }
     ],
-    "outputDirectory": "web-build"
+    "outputDirectory": "dist"
 }
