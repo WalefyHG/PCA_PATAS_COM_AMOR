@@ -2,7 +2,7 @@
   "name": "expo_app",
   "main": "expo-router/entry",
   "version": "1.0.0",
-  "homepage": "https://walefyhg.github.io/PCA_FIXED>",
+  "homepage": "https://walefyhg.github.io/PCA_FIXED",
   "scripts": {
     "start": "expo start",
     "android": "DARK_MODE=media expo start --android",
