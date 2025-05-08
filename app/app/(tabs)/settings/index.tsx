@@ -1,6 +1,6 @@
-import Settings from "../../../screens/users/Settings";
+import Settings from "../../../screens/settings/Settings";
 
-export default function UserSettings(){
+export default function UserSettings() {
     return (
         <Settings />
     )

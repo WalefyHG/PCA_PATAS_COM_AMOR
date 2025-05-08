@@ -238,13 +238,7 @@ export default function AdminConsole() {
                 end={{ x: 1, y: 0 }}
                 className="pt-16 pb-4 px-4"
             >
-                <View className="flex-row items-center justify-between">
-                    <TouchableOpacity
-                        onPress={() => navigation.goBack()}
-                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
-                    >
-                        <Feather name="arrow-left" size={20} color="white" />
-                    </TouchableOpacity>
+                <View className="flex-row items-center justify-center">
                     <Text className="text-white text-xl font-bold">Admin Console</Text>
                     <View className="w-10" />
                 </View>
@@ -272,12 +266,12 @@ export default function AdminConsole() {
                             />
                             <Text
                                 className={`ml-2 font-medium ${activeTab === tab.id
-                                        ? isDarkTheme
-                                            ? "text-white"
-                                            : "text-gray-800"
-                                        : isDarkTheme
-                                            ? "text-gray-400"
-                                            : "text-gray-500"
+                                    ? isDarkTheme
+                                        ? "text-white"
+                                        : "text-gray-800"
+                                    : isDarkTheme
+                                        ? "text-gray-400"
+                                        : "text-gray-500"
                                     }`}
                                 style={Platform.select({
                                     ios: { fontFamily: "San Francisco" },
@@ -486,7 +480,7 @@ function BlogPostItem({ post, index, isDark, colors, onEdit, onDelete }: BlogPos
             className="mb-4"
         >
             <View
-                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                className={`mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
                 style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
             >
                 <View className="flex-row">
@@ -628,7 +622,7 @@ function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps)
             className="mb-4"
         >
             <View
-                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                className={`mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
                 style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
             >
                 <View className="flex-row">
@@ -744,7 +738,7 @@ function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemPro
             className="mb-4"
         >
             <View
-                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                className={` mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
                 style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
             >
                 <View className="flex-row">

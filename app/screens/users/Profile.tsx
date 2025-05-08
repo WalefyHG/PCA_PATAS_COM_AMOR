@@ -23,52 +23,41 @@ interface User {
 }
 
 export default function Profile() {
-  const { paperTheme, isDarkTheme, colors } = useThemeContext()
-  const router = useNavigation()
+  const { isDarkTheme, colors } = useThemeContext()
+  const navigation = useNavigation<any>()
   const route = useRoute<{ key: string; name: string; params: { id?: string } }>()
+  const isWeb = Platform.OS === "web"
+
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Animated values
   const [fadeAnim] = useState(new Animated.Value(0))
   const [slideAnim] = useState(new Animated.Value(50))
-
-  const isIOS = Platform.OS === "ios"
-  const isAndroid = Platform.OS === "android"
-  const isWeb = Platform.OS === "web"
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const userId = route.params?.id || auth.currentUser?.uid
-
         if (!userId) {
           setLoading(false)
           return
         }
 
         const userDoc = await getDoc(doc(db, "users", userId))
-
         if (userDoc.exists()) {
           const userData = userDoc.data()
           setUser({
             uid: userId,
             ...userData,
-            // Dados fictícios para demonstração
             bio: userData.bio || "Amante de animais e voluntário em abrigos de pets.",
             pets: userData.pets || 2,
             donations: userData.donations || 5,
             adoptions: userData.adoptions || 1,
           })
-        } else {
-          console.log("No such document!")
         }
       } catch (error) {
         console.error("Error fetching user data:", error)
       } finally {
         setLoading(false)
-
-        // Start animations when data is loaded
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 1,
@@ -90,34 +79,23 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <View className={`flex-1 items-center justify-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
-        <View className="flex-row items-center space-x-2">
-          <Animated.View
-            className="w-4 h-4 rounded-full bg-primary-500"
-            style={{
-              backgroundColor: colors.primary,
-              opacity: fadeAnim,
-              transform: [{ scale: fadeAnim }],
-            }}
-          />
-          <Animated.View
-            className="w-4 h-4 rounded-full bg-secondary-500"
-            style={{
-              backgroundColor: colors.secondary,
-              opacity: fadeAnim,
-              transform: [{ scale: fadeAnim }],
-            }}
-          />
-          <Animated.View
-            className="w-4 h-4 rounded-full bg-primary-500"
-            style={{
-              backgroundColor: colors.primary,
-              opacity: fadeAnim,
-              transform: [{ scale: fadeAnim }],
-            }}
-          />
+      <View style={[styles.loadingContainer, { backgroundColor: isDarkTheme ? '#111827' : '#f3f4f6' }]}>
+        <View style={styles.loadingDots}>
+          {[colors.primary, colors.secondary, colors.primary].map((color, index) => (
+            <Animated.View
+              key={index}
+              style={[
+                styles.loadingDot,
+                {
+                  backgroundColor: color,
+                  opacity: fadeAnim,
+                  transform: [{ scale: fadeAnim }],
+                }
+              ]}
+            />
+          ))}
         </View>
-        <Text className={`mt-4 text-lg font-medium ${isDarkTheme ? "text-white" : "text-gray-900"}`}>
+        <Text style={[styles.loadingText, { color: isDarkTheme ? 'white' : '#111827' }]}>
           Carregando...
         </Text>
       </View>
@@ -126,193 +104,205 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <View className={`flex-1 items-center justify-center p-4 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+      <View style={[styles.errorContainer, { backgroundColor: isDarkTheme ? '#111827' : '#f3f4f6' }]}>
         <Feather name="user-x" size={64} color={colors.error} />
-        <Text className={`mt-4 text-xl font-bold ${isDarkTheme ? "text-white" : "text-gray-900"}`}>
+        <Text style={[styles.errorText, { color: isDarkTheme ? 'white' : '#111827' }]}>
           Usuário não encontrado
         </Text>
         <TouchableOpacity
-          className="mt-6 px-6 py-3 rounded-full"
-          style={{ backgroundColor: colors.primary }}
-          onPress={() => router.goBack()}
+          style={[styles.backButton, { backgroundColor: colors.primary }]}
+          onPress={() => navigation.goBack()}
         >
-          <Text className="text-white font-semibold">Voltar</Text>
+          <Text style={styles.backButtonText}>Voltar</Text>
         </TouchableOpacity>
       </View>
     )
   }
 
   return (
-    <ScrollView className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
-      <Animated.View
+    <View style={{ flex: 1, backgroundColor: isDarkTheme ? '#111827' : '#f3f4f6' }}>
+      {/* Header with gradient */}
+      <LinearGradient
+        colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
         style={{
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+          paddingTop: Platform.select({ ios: 60, android: 40, web: 80 }),
+          paddingBottom: 80,
+          paddingHorizontal: isWeb ? '20%' : 0,
+          borderBottomLeftRadius: 24,
+          borderBottomRightRadius: 24
         }}
       >
-        {/* Header with gradient background */}
-        <LinearGradient
-          colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          className="pt-12 pb-20 rounded-b-3xl"
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }}
         >
-        </LinearGradient>
+          {/* Profile Image */}
+          <View style={styles.profileImageWrapper}>
+            <View style={[
+              styles.profileImageContainer,
+              { backgroundColor: isDarkTheme ? '#1f2937' : 'white' },
+            ]}>
+              <Image
+                source={{
+                  uri: user.photoURL || `https://ui-avatars.com/api/?name=${user.first_name || user.displayName || "User"}&background=random`,
+                }}
+                style={styles.profileImage}
+              />
+            </View>
+          </View>
+        </Animated.View>
+      </LinearGradient>
 
-        {/* Profile Image - Positioned to overlap the gradient */}
-        <View className="items-center -mt-16 mb-4">
-          <View
-            className="p-1 rounded-full"
-            style={{
-              backgroundColor: isDarkTheme ? colors.background.dark : colors.background.light,
-              ...styles.profileImageContainer,
-            }}
-          >
-            <Image
-              source={{
-                uri:
-                  user.photoURL ||
-                  "https://ui-avatars.com/api/?name=" +
-                  (user.first_name || user.displayName || "User") +
-                  "&background=random",
-              }}
-              className="w-32 h-32 rounded-full"
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: isWeb ? '20%' : 16,
+          paddingBottom: 40
+        }}
+      >
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }}
+        >
+          {/* Profile Info */}
+          <View style={styles.profileInfo}>
+            <Text style={[
+              styles.profileName,
+              { color: colors.primary }
+            ]}>
+              {user.first_name || user.displayName || "Usuário"}
+              {user.last_name ? ` ${user.last_name}` : ""}
+            </Text>
+            <Text style={[
+              styles.profileBio,
+              { color: isDarkTheme ? '#d1d5db' : '#4b5563' }
+            ]}>
+              {user.bio}
+            </Text>
+          </View>
+
+          {/* Stats Section */}
+          <View style={[
+            styles.statsContainer,
+            isWeb ? { flexDirection: 'row' } : { flexDirection: 'column' }
+          ]}>
+            <StatCard
+              icon="heart"
+              value={user.pets}
+              label="Pets"
+              color={colors.secondary}
+              isDark={isDarkTheme}
+            />
+            <StatCard
+              icon="gift"
+              value={user.donations}
+              label="Doações"
+              color={colors.primary}
+              isDark={isDarkTheme}
+            />
+            <StatCard
+              icon="home"
+              value={user.adoptions}
+              label="Adoções"
+              color={colors.info}
+              isDark={isDarkTheme}
             />
           </View>
-          <Text
-            className="mt-4 text-2xl font-bold"
-            style={{
-              color: colors.primary,
-              ...Platform.select({
-                ios: { fontFamily: "San Francisco" },
-                android: { fontFamily: "Roboto" },
-              }),
-            }}
-          >
-            {user.first_name || user.displayName || "Usuário"}
-            {user.last_name ? ` ${user.last_name}` : ""}
-          </Text>
-          <Text
-            className={`mt-2 text-center px-8 text-sm leading-5 ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}
-            style={Platform.select({
-              ios: { fontFamily: "San Francisco" },
-              android: { fontFamily: "Roboto" },
-            })}
-          >
-            {user.bio}
-          </Text>
-        </View>
 
-        {/* Stats Cards */}
-        <View className="flex-row justify-between px-4 mt-6 mb-8">
-          <StatCard icon="heart" value={user.pets} label="Pets" color={colors.secondary} isDark={isDarkTheme} />
-          <StatCard icon="gift" value={user.donations} label="Doações" color={colors.primary} isDark={isDarkTheme} />
-          <StatCard icon="home" value={user.adoptions} label="Adoções" color={colors.info} isDark={isDarkTheme} />
-        </View>
+          {/* Contact Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.divider} />
+              <Text style={[
+                styles.sectionTitle,
+                { color: isDarkTheme ? 'white' : '#111827' }
+              ]}>
+                Informações de Contato
+              </Text>
+              <View style={styles.divider} />
+            </View>
 
-        {/* Contact Information */}
-        <View className="mx-4 mt-4 mb-6">
-          <View className="flex-row items-center mb-4">
-            <View className="flex-1 h-[1px] bg-gray-300" />
-            <Text
-              className={`mx-4 text-lg font-bold ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-              style={Platform.select({
-                ios: { fontFamily: "San Francisco" },
-                android: { fontFamily: "Roboto" },
-              })}
-            >
-              Informações de Contato
-            </Text>
-            <View className="flex-1 h-[1px] bg-gray-300" />
-          </View>
-
-          <View
-            className={`p-4 rounded-xl mb-4 ${isDarkTheme ? "bg-gray-800" : "bg-white"}`}
-            style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
-          >
-            <View className="flex-row items-center mb-2">
-              <View
-                className="w-10 h-10 rounded-full items-center justify-center mr-4"
-                style={{ backgroundColor: `${colors.primary}20` }}
-              >
-                <Feather name="mail" size={18} color={colors.primary} />
-              </View>
-              <View>
-                <Text className={`text-xs ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}>Email</Text>
-                <Text
-                  className={`text-base font-medium ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-                  style={Platform.select({
-                    ios: { fontFamily: "San Francisco" },
-                    android: { fontFamily: "Roboto" },
-                  })}
-                >
-                  {user.email || "Email não disponível"}
-                </Text>
+            <View style={[
+              styles.card,
+              { backgroundColor: isDarkTheme ? '#1f2937' : 'white' }
+            ]}>
+              <View style={styles.contactItem}>
+                <View style={[
+                  styles.contactIcon,
+                  { backgroundColor: `${colors.primary}20` }
+                ]}>
+                  <Feather name="mail" size={20} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={[
+                    styles.contactLabel,
+                    { color: isDarkTheme ? '#9ca3af' : '#6b7280' }
+                  ]}>
+                    Email
+                  </Text>
+                  <Text style={[
+                    styles.contactValue,
+                    { color: isDarkTheme ? 'white' : '#111827' }
+                  ]}>
+                    {user.email || "Email não disponível"}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
 
-        {/* Edit Profile Button */}
-        <View className="px-4 mb-10">
+          {/* Edit Profile Button */}
           <TouchableOpacity
-            className="py-4 rounded-xl flex-row items-center justify-center"
-            style={{
-              backgroundColor: colors.primary,
-              ...styles.editButton,
-            }}
-            onPress={() => router.navigate("Settings" as never)}
+            style={[
+              styles.editButton,
+              { backgroundColor: colors.primary }
+            ]}
+            onPress={() => navigation.navigate("EditProfile")}
           >
-            <Feather name="edit-2" size={18} color="white" />
-            <Text
-              className="ml-2 text-white font-semibold text-base"
-              style={Platform.select({
-                ios: { fontFamily: "San Francisco" },
-                android: { fontFamily: "Roboto" },
-              })}
-            >
+            <Feather name="edit-2" size={20} color="white" />
+            <Text style={styles.editButtonText}>
               Editar Perfil
             </Text>
           </TouchableOpacity>
-        </View>
-      </Animated.View>
-    </ScrollView>
+        </Animated.View>
+      </ScrollView>
+    </View>
   )
 }
 
 interface StatCardProps {
-  icon: string
-  value?: number
-  label: string
-  color: string
-  isDark: boolean
+  icon: string;
+  value?: number;
+  label: string;
+  color: string;
+  isDark: boolean;
 }
 
 function StatCard({ icon, value = 0, label, color, isDark }: StatCardProps) {
-  const isIOS = Platform.OS === "ios"
-  const isAndroid = Platform.OS === "android"
-
   return (
-    <View
-      className={`px-4 py-5 rounded-xl items-center ${isDark ? "bg-gray-800" : "bg-white"}`}
-      style={[{ width: "31%" }, isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow]}
-    >
-      <View
-        className="w-10 h-10 rounded-full items-center justify-center mb-2"
-        style={{ backgroundColor: `${color}20` }}
-      >
+    <View style={[
+      styles.statCard,
+      { backgroundColor: isDark ? '#1f2937' : 'white' }
+    ]}>
+      <View style={[
+        styles.statIcon,
+        { backgroundColor: `${color}20` }
+      ]}>
         <Feather name={icon as any} size={20} color={color} />
       </View>
-      <Text className="text-xl font-bold" style={{ color }}>
+      <Text style={[styles.statValue, { color }]}>
         {value}
       </Text>
-      <Text
-        className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-        style={Platform.select({
-          ios: { fontFamily: "San Francisco" },
-          android: { fontFamily: "Roboto" },
-        })}
-      >
+      <Text style={[
+        styles.statLabel,
+        { color: isDark ? '#9ca3af' : '#6b7280' }
+      ]}>
         {label}
       </Text>
     </View>
@@ -320,30 +310,249 @@ function StatCard({ icon, value = 0, label, color, isDark }: StatCardProps) {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  loadingDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  loadingDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '500',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 20,
+    fontWeight: '600',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  backButton: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24
+  },
+  backButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  profileImageWrapper: {
+    alignItems: 'center',
+    marginTop: -54
+  },
   profileImageContainer: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    padding: 4,
+    borderRadius: 64,
+    backgroundColor: "transparent",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      }
+    })
   },
-  iosShadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60
   },
-  androidShadow: {
-    elevation: 4,
+  profileInfo: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 24
   },
-  webShadow: {
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  profileBio: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  statsContainer: {
+    marginVertical: 24,
+    gap: 16,
+    paddingHorizontal: 16
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      }
+    })
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 4,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  section: {
+    marginVertical: 24
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e5e7eb'
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginHorizontal: 16,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  card: {
+    borderRadius: 12,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      }
+    })
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  contactIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16
+  },
+  contactLabel: {
+    fontSize: 12,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  contactValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
   },
   editButton: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 5,
+      }
+    })
   },
+  editButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  }
 })

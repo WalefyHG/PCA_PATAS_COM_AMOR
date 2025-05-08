@@ -22,14 +22,15 @@ interface BlogPost {
 export default function Blog() {
   const { isDarkTheme, colors } = useThemeContext()
   const navigation = useNavigation<any>()
+  const isWeb = Platform.OS === "web"
 
-  // Animated values
+  // Animation values
   const [fadeAnim] = useState(new Animated.Value(0))
   const [slideAnim] = useState(new Animated.Value(30))
   const scrollY = useRef(new Animated.Value(0)).current
 
-  // Header animation values
-  const headerHeight = 220 // Approximate header height
+  // Header animation
+  const headerHeight = 220
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, headerHeight * 0.5, headerHeight],
     outputRange: [1, 0.5, 0],
@@ -42,12 +43,8 @@ export default function Blog() {
     extrapolate: "clamp",
   })
 
-  const isIOS = Platform.OS === "ios"
-  const isAndroid = Platform.OS === "android"
-  const isWeb = Platform.OS === "web"
-
-  const [activeCategory, setActiveCategory] = useState("Todos")
   const categories = ["Todos", "Cuidados", "Alimentação", "Adoção", "Comportamento"]
+  const [activeCategory, setActiveCategory] = useState("Todos")
 
   const [posts] = useState<BlogPost[]>([
     {
@@ -123,10 +120,9 @@ export default function Blog() {
     },
   ])
 
-  const filteredPosts = activeCategory === "Todos" ? posts : posts.filter((post) => post.category === activeCategory)
+  const filteredPosts = activeCategory === "Todos" ? posts : posts.filter(post => post.category === activeCategory)
 
   useEffect(() => {
-    // Start animations when component mounts
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -143,8 +139,8 @@ export default function Blog() {
   }, [])
 
   return (
-    <View className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
-      {/* Collapsible Header with gradient */}
+    <View style={{ flex: 1, backgroundColor: isDarkTheme ? '#111827' : '#f3f4f6' }}>
+      {/* Collapsible Header */}
       <Animated.View
         style={{
           position: "absolute",
@@ -160,33 +156,80 @@ export default function Blog() {
           colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          className="pt-16 pb-8 px-4"
+          style={{
+            paddingTop: Platform.select({ ios: 60, android: 40, web: 20 }),
+            paddingBottom: 32,
+            paddingHorizontal: isWeb ? '20%' : 16
+          }}
         >
+          <View style={{ alignItems: 'center' }}>
+            <View style={{
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              width: 60,
+              height: 60,
+              borderRadius: 30,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16
+            }}>
+              <Feather name="book-open" size={28} color="white" />
+            </View>
+            <Text style={{
+              color: 'white',
+              fontSize: 24,
+              fontWeight: 'bold',
+              ...Platform.select({
+                ios: { fontFamily: "San Francisco" },
+                android: { fontFamily: "Roboto" },
+              }),
+            }}>
+              Blog Pet
+            </Text>
+            <Text style={{
+              color: 'rgba(255,255,255,0.8)',
+              fontSize: 16,
+              marginTop: 8,
+              textAlign: 'center',
+              ...Platform.select({
+                ios: { fontFamily: "San Francisco" },
+                android: { fontFamily: "Roboto" },
+              }),
+            }}>
+              Dicas e informações para o bem-estar do seu pet
+            </Text>
+          </View>
 
-          <Text className="text-white/80 text-base mt-4 text-center px-8">
-            Dicas e informações para o bem-estar do seu pet
-          </Text>
-
-          {/* Categories Horizontal Scroll */}
+          {/* Categories */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="mt-6"
-            contentContainerStyle={{ paddingHorizontal: 4 }}
+            contentContainerStyle={{
+              paddingHorizontal: 8,
+              marginTop: 24
+            }}
           >
             {categories.map((category) => (
               <TouchableOpacity
                 key={category}
                 onPress={() => setActiveCategory(category)}
-                className={`px-4 py-2 mx-2 rounded-full ${activeCategory === category ? "bg-white" : "bg-white/20"}`}
+                style={[
+                  styles.categoryButton,
+                  {
+                    backgroundColor: activeCategory === category
+                      ? 'white'
+                      : 'rgba(255,255,255,0.2)'
+                  }
+                ]}
               >
                 <Text
-                  className={`font-medium ${activeCategory === category ? (isDarkTheme ? "text-gray-900" : "text-gray-900") : "text-white"
-                    }`}
-                  style={Platform.select({
-                    ios: { fontFamily: "San Francisco" },
-                    android: { fontFamily: "Roboto" },
-                  })}
+                  style={[
+                    styles.categoryText,
+                    {
+                      color: activeCategory === category
+                        ? (isDarkTheme ? '#111827' : '#111827')
+                        : 'white'
+                    }
+                  ]}
                 >
                   {category}
                 </Text>
@@ -199,16 +242,22 @@ export default function Blog() {
       {/* Main Content */}
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: headerHeight }}
+        contentContainerStyle={{
+          paddingTop: headerHeight,
+          paddingHorizontal: isWeb ? '20%' : 16,
+          paddingBottom: 40
+        }}
       >
         <Animated.View
           style={{
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
           }}
-          className="px-4 pt-4 pb-20"
         >
           {filteredPosts.map((post, index) => (
             <BlogPostCard
@@ -226,11 +275,13 @@ export default function Blog() {
       {/* Floating Action Button */}
       <TouchableOpacity
         onPress={() => navigation.navigate("AddBlogPost")}
-        className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
-        style={{
-          backgroundColor: colors.secondary,
-          ...styles.fabShadow,
-        }}
+        style={[
+          styles.fab,
+          {
+            backgroundColor: colors.secondary,
+            right: isWeb ? (window.innerWidth * 0.2 + 24) : 24
+          }
+        ]}
       >
         <Feather name="plus" size={24} color="white" />
       </TouchableOpacity>
@@ -239,22 +290,18 @@ export default function Blog() {
 }
 
 interface BlogPostCardProps {
-  post: BlogPost
-  index: number
-  isDark: boolean
-  colors: any
-  onPress: () => void
+  post: BlogPost;
+  index: number;
+  isDark: boolean;
+  colors: { primary: string; secondary: string };
+  onPress: () => void;
 }
 
 function BlogPostCard({ post, index, isDark, colors, onPress }: BlogPostCardProps) {
   const [fadeAnim] = useState(new Animated.Value(0))
-  const [slideAnim] = useState(new Animated.Value(50))
-
-  const isIOS = Platform.OS === "ios"
-  const isAndroid = Platform.OS === "android"
+  const [scaleAnim] = useState(new Animated.Value(0.95))
 
   useEffect(() => {
-    // Staggered animation for each card
     const timeout = setTimeout(() => {
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -262,14 +309,13 @@ function BlogPostCard({ post, index, isDark, colors, onPress }: BlogPostCardProp
           duration: 500,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          speed: 12,
-          bounciness: 6,
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
           useNativeDriver: true,
         }),
       ]).start()
-    }, index * 100) // Stagger based on index
+    }, index * 100)
 
     return () => clearTimeout(timeout)
   }, [])
@@ -278,74 +324,86 @@ function BlogPostCard({ post, index, isDark, colors, onPress }: BlogPostCardProp
     <Animated.View
       style={{
         opacity: fadeAnim,
-        transform: [{ translateY: slideAnim }],
+        transform: [{ scale: scaleAnim }],
+        marginBottom: 24
       }}
     >
       <TouchableOpacity
         onPress={onPress}
-        className={`mb-6 rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
-        style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+        style={[
+          styles.postCard,
+          { backgroundColor: isDark ? '#1f2937' : 'white' }
+        ]}
       >
-        <View className="relative">
-          <Image source={{ uri: post.image }} className="w-full h-48 object-cover" />
+        <View style={{ position: 'relative' }}>
+          <Image
+            source={{ uri: post.image }}
+            style={styles.postImage}
+            resizeMode="cover"
+          />
           {post.category && (
             <View
-              className="absolute top-3 left-3 px-3 py-1 rounded-full"
-              style={{ backgroundColor: `${colors.primary}CC` }}
+              style={[
+                styles.categoryBadge,
+                { backgroundColor: `${colors.primary}CC` }
+              ]}
             >
-              <Text className="text-white text-xs font-medium">{post.category}</Text>
+              <Text style={styles.categoryBadgeText}>{post.category}</Text>
             </View>
           )}
         </View>
 
-        <View className="p-4">
-          <Text
-            className={`text-lg font-bold mb-2 ${isDark ? "text-white" : "text-gray-800"}`}
-            style={Platform.select({
-              ios: { fontFamily: "San Francisco" },
-              android: { fontFamily: "Roboto" },
-            })}
-          >
+        <View style={{ padding: 16 }}>
+          <Text style={[
+            styles.postTitle,
+            { color: isDark ? 'white' : '#111827' }
+          ]}>
             {post.title}
           </Text>
 
           <Text
-            className={`text-sm mb-3 ${isDark ? "text-gray-300" : "text-gray-600"}`}
+            style={[
+              styles.postExcerpt,
+              { color: isDark ? '#d1d5db' : '#4b5563' }
+            ]}
             numberOfLines={2}
-            style={Platform.select({
-              ios: { fontFamily: "San Francisco" },
-              android: { fontFamily: "Roboto" },
-            })}
           >
             {post.excerpt}
           </Text>
 
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <View
-                className="w-6 h-6 rounded-full bg-gray-300 mr-2"
-                style={{ backgroundColor: `${colors.secondary}40` }}
-              />
-              <Text
-                className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                style={Platform.select({
-                  ios: { fontFamily: "San Francisco" },
-                  android: { fontFamily: "Roboto" },
-                })}
-              >
+          <View style={styles.postFooter}>
+            <View style={styles.authorInfo}>
+              <View style={[
+                styles.authorAvatar,
+                { backgroundColor: `${colors.secondary}40` }
+              ]} />
+              <Text style={[
+                styles.postMeta,
+                { color: isDark ? '#9ca3af' : '#6b7280' }
+              ]}>
                 {post.author} • {post.date}
               </Text>
             </View>
 
-            <View className="flex-row items-center">
-              <View className="flex-row items-center mr-3">
+            <View style={styles.postStats}>
+              <View style={styles.statItem}>
                 <Feather name="heart" size={14} color={colors.secondary} />
-                <Text className={`ml-1 text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{post.likes}</Text>
+                <Text style={[
+                  styles.statText,
+                  { color: isDark ? '#9ca3af' : '#6b7280' }
+                ]}>
+                  {post.likes}
+                </Text>
               </View>
 
-              <View className="flex-row items-center">
+              <View style={styles.statItem}>
                 <Feather name="message-circle" size={14} color={colors.primary} />
-                <Text className={`ml-1 text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{post.comments}</Text>
+                <Text style={[
+                  styles.statText,
+                  { color: isDark ? '#9ca3af' : '#6b7280' }
+                ]}>
+                  {post.comments}
+                </Text>
               </View>
             </View>
           </View>
@@ -356,23 +414,133 @@ function BlogPostCard({ post, index, isDark, colors, onPress }: BlogPostCardProp
 }
 
 const styles = StyleSheet.create({
-  iosShadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+  categoryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 4
   },
-  androidShadow: {
-    elevation: 4,
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '500',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
   },
-  webShadow: {
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+  postCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      }
+    })
   },
-  fabShadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
+  postImage: {
+    width: '100%',
+    height: 200
   },
+  categoryBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12
+  },
+  categoryBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '500',
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  postTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  postExcerpt: {
+    fontSize: 14,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  postFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  authorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  authorAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 8
+  },
+  postMeta: {
+    fontSize: 12,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  postStats: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16
+  },
+  statText: {
+    fontSize: 12,
+    marginLeft: 4,
+    ...Platform.select({
+      ios: { fontFamily: "San Francisco" },
+      android: { fontFamily: "Roboto" },
+    }),
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 6,
+      }
+    })
+  }
 })

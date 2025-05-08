@@ -14,9 +14,7 @@ interface NavigationCardProps {
 }
 
 export default function NavigationCard({ title, icon, onPress, platform }: NavigationCardProps) {
-    const { paperTheme, isDarkTheme, colors } = useThemeContext()
-    const isIOS = platform === "ios"
-    const isAndroid = platform === "android"
+    const { isDarkTheme, colors } = useThemeContext()
     const isWeb = platform === "web"
 
     // Animated value for press effect
@@ -41,15 +39,7 @@ export default function NavigationCard({ title, icon, onPress, platform }: Navig
         }).start()
     }
 
-    // Platform-specific styles
-    const cardWidth = isWeb ? "w-64" : "w-[48%]"
-    const cardMargin = isWeb ? "mx-4" : ""
     const iconSize = isWeb ? 36 : 30
-
-    // Gradient colors based on theme
-    const gradientStart = isDarkTheme ? colors.primaryDark : colors.primaryLight
-
-    const gradientEnd = isDarkTheme ? colors.secondaryDark : colors.secondaryLight
 
     // Card background based on icon type
     const getGradientColors = () => {
@@ -69,33 +59,42 @@ export default function NavigationCard({ title, icon, onPress, platform }: Navig
 
     return (
         <Animated.View
-            style={[styles.animatedContainer, { transform: [{ scale: scaleAnim }] }]}
-            className={`${cardWidth} ${cardMargin} mb-4`}
+            style={[styles.animatedContainer, {
+                transform: [{ scale: scaleAnim }],
+                width: isWeb ? 256 : '48%', // Largura fixa para web, 48% para mobile
+                marginBottom: 16,
+                marginHorizontal: isWeb ? 8 : 0
+            }]}
         >
             <TouchableOpacity
                 onPress={onPress}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 activeOpacity={0.9}
-                className="w-full h-full"
+                style={{ width: '100%', height: '100%' }}
             >
                 <LinearGradient
                     colors={getGradientColors() as [string, string, ...string[]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    className="w-full h-32 rounded-2xl overflow-hidden"
-                    style={[styles.cardGradient, isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow]}
+                    style={[
+                        styles.cardGradient,
+                        isWeb ? styles.webShadow : Platform.OS === 'ios' ? styles.iosShadow : styles.androidShadow,
+                        { height: 128 }
+                    ]}
                 >
-                    <View className="flex-1 p-4 items-center justify-center">
-                        <View className="bg-white/20 p-3 rounded-full mb-2">
+                    <View style={{ flex: 1, padding: 16, alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: 12, borderRadius: 9999, marginBottom: 8 }}>
                             <Feather name={icon as any} size={iconSize} color="white" />
                         </View>
                         <Text
-                            className="text-white font-bold text-lg"
-                            style={Platform.select({
-                                ios: { fontFamily: "San Francisco" },
-                                android: { fontFamily: "Roboto" },
-                            })}
+                            style={[
+                                { color: 'white', fontWeight: 'bold', fontSize: 18 },
+                                Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                }),
+                            ]}
                         >
                             {title}
                         </Text>
@@ -112,6 +111,7 @@ const styles = StyleSheet.create({
     },
     cardGradient: {
         borderRadius: 16,
+        width: '100%',
     },
     iosShadow: {
         shadowColor: "#000",

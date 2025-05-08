@@ -6,6 +6,7 @@ import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
+import { isWeb } from "@gluestack-ui/nativewind-utils/IsWeb"
 
 interface Pet {
     id: string
@@ -17,9 +18,32 @@ interface Pet {
     image: string
 }
 
+const styles = StyleSheet.create({
+    iosShadow: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+    },
+    androidShadow: {
+        elevation: 4,
+    },
+    webShadow: {
+        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    },
+    adoptButton: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+});
+
 export default function Adopt() {
     const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation()
+    const isWeb = Platform.OS === "web"
 
     // Animated values
     const [fadeAnim] = useState(new Animated.Value(0))
@@ -67,8 +91,8 @@ export default function Adopt() {
         },
     ])
 
+
     useEffect(() => {
-        // Start animations when component mounts
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
@@ -85,33 +109,75 @@ export default function Adopt() {
     }, [])
 
     return (
-        <View className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+        <View style={{ flex: 1, backgroundColor: isDarkTheme ? '#1a202c' : '#f8fafc' }}>
             {/* Header with gradient */}
             <LinearGradient
                 colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                className="pt-16 pb-8 px-4"
+                style={{
+                    paddingTop: Platform.select({ ios: 64, android: 40, web: 80 }),
+                    paddingBottom: 32,
+                    paddingHorizontal: 16
+                }}
             >
-                <View className="items-center">
+                <View style={{ alignItems: 'center' }}>
                     <Feather name="heart" size={40} color="white" />
-                    <Text className="text-white text-2xl font-bold mt-2">Adote um Amigo</Text>
-                    <Text className="text-white/80 text-base mt-1 text-center">
+                    <Text style={{
+                        color: 'white',
+                        fontSize: 24,
+                        fontWeight: 'bold',
+                        marginTop: 8,
+                        ...Platform.select({
+                            ios: { fontFamily: "San Francisco" },
+                            android: { fontFamily: "Roboto" },
+                        }),
+                    }}>
+                        Adote um Amigo
+                    </Text>
+                    <Text style={{
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: 16,
+                        marginTop: 4,
+                        textAlign: 'center',
+                        ...Platform.select({
+                            ios: { fontFamily: "San Francisco" },
+                            android: { fontFamily: "Roboto" },
+                        }),
+                    }}>
                         Encontre um novo companheiro para sua família
                     </Text>
                 </View>
             </LinearGradient>
 
-            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 32 }}
+            >
                 <Animated.View
                     style={{
                         opacity: fadeAnim,
                         transform: [{ translateY: slideAnim }],
+                        flexDirection: isWeb ? 'row' : 'column',
+                        flexWrap: isWeb ? 'wrap' : 'nowrap',
+                        justifyContent: isWeb ? 'center' : 'flex-start',
+                        padding: 16
                     }}
-                    className="px-4 pt-4 pb-8"
                 >
                     {pets.map((pet, index) => (
-                        <PetCard key={pet.id} pet={pet} index={index} isDark={isDarkTheme} colors={colors} />
+                        <View
+                            key={pet.id}
+                            style={{
+                                width: isWeb ? 300 : '100%',
+                                maxWidth: isWeb ? 300 : 500,
+                                marginBottom: 24,
+                                marginHorizontal: isWeb ? 8 : 0,
+                                alignSelf: isWeb ? 'flex-start' : 'center'
+                            }}
+                        >
+                            <PetCard pet={pet} index={index} isDark={isDarkTheme} colors={colors} />
+                        </View>
                     ))}
                 </Animated.View>
             </ScrollView>
@@ -132,11 +198,7 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
     const [heartAnim] = useState(new Animated.Value(1))
     const [liked, setLiked] = useState(false)
 
-    const isIOS = Platform.OS === "ios"
-    const isAndroid = Platform.OS === "android"
-
     useEffect(() => {
-        // Staggered animation for each card
         const timeout = setTimeout(() => {
             Animated.parallel([
                 Animated.timing(fadeAnim, {
@@ -150,7 +212,7 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
                     useNativeDriver: true,
                 }),
             ]).start()
-        }, index * 150) // Stagger based on index
+        }, index * 150)
 
         return () => clearTimeout(timeout)
     }, [])
@@ -181,33 +243,76 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
                 opacity: fadeAnim,
                 transform: [{ scale: scaleAnim }],
             }}
-            className="mb-6"
         >
             <View
-                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
-                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+                style={[
+                    {
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        backgroundColor: isDark ? '#2d3748' : 'white',
+                    },
+                    Platform.select({
+                        ios: styles.iosShadow,
+                        android: styles.iosShadow, // Use iOS shadow as fallback for Android
+                        ...(isWeb ? styles.webShadow : {}),
+                    })
+                ]}
             >
-                <View className="relative">
-                    <Image source={{ uri: pet.image }} className="w-full h-48 object-cover" />
-                    <View className="absolute top-3 right-3">
+                <View style={{ position: 'relative' }}>
+                    <Image
+                        source={{ uri: pet.image }}
+                        style={{ width: '100%', height: 200 }}
+                        resizeMode="cover"
+                    />
+                    <View style={{ position: 'absolute', top: 12, right: 12 }}>
                         <TouchableOpacity
                             onPress={handleLike}
-                            className={`w-10 h-10 rounded-full items-center justify-center ${liked ? "bg-red-500" : isDark ? "bg-gray-800/70" : "bg-white/70"
-                                }`}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: liked
+                                    ? '#ef4444'
+                                    : isDark
+                                        ? 'rgba(45, 55, 72, 0.7)'
+                                        : 'rgba(255, 255, 255, 0.7)'
+                            }}
                         >
                             <Animated.View style={{ transform: [{ scale: heartAnim }] }}>
-                                <Feather name={liked ? "heart" : "heart"} size={20} color={liked ? "white" : colors.secondary} />
+                                <Feather
+                                    name={liked ? "heart" : "heart"}
+                                    size={20}
+                                    color={liked ? "white" : colors.secondary}
+                                />
                             </Animated.View>
                         </TouchableOpacity>
                     </View>
                     <View
-                        className="absolute bottom-0 left-0 right-0 px-4 py-2"
-                        style={{ backgroundColor: isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)" }}
+                        style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)'
+                        }}
                     >
-                        <View className="flex-row items-center">
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <View
-                                className="w-6 h-6 rounded-full items-center justify-center mr-2"
-                                style={{ backgroundColor: pet.type === "Cachorro" ? colors.primary + "40" : colors.secondary + "40" }}
+                                style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: 12,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: 8,
+                                    backgroundColor: pet.type === "Cachorro"
+                                        ? `${colors.primary}40`
+                                        : `${colors.secondary}40`
+                                }}
                             >
                                 <Feather
                                     name={pet.type === "Cachorro" ? "github" : "gitlab"}
@@ -216,11 +321,15 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
                                 />
                             </View>
                             <Text
-                                className={`text-xs font-medium ${isDark ? "text-white" : "text-gray-800"}`}
-                                style={Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                })}
+                                style={{
+                                    fontSize: 12,
+                                    fontWeight: '500',
+                                    color: isDark ? 'white' : '#1a202c',
+                                    ...Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    }),
+                                }}
                             >
                                 {pet.type} • {pet.breed} • {pet.age}
                             </Text>
@@ -228,41 +337,58 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
                     </View>
                 </View>
 
-                <View className="p-4">
+                <View style={{ padding: 16 }}>
                     <Text
-                        className={`text-xl font-bold mb-2 ${isDark ? "text-white" : "text-gray-800"}`}
-                        style={Platform.select({
-                            ios: { fontFamily: "San Francisco" },
-                            android: { fontFamily: "Roboto" },
-                        })}
+                        style={{
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                            marginBottom: 8,
+                            color: isDark ? 'white' : '#1a202c',
+                            ...Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            }),
+                        }}
                     >
                         {pet.name}
                     </Text>
 
                     <Text
-                        className={`text-sm mb-4 ${isDark ? "text-gray-300" : "text-gray-600"}`}
-                        style={Platform.select({
-                            ios: { fontFamily: "San Francisco" },
-                            android: { fontFamily: "Roboto" },
-                        })}
+                        style={{
+                            fontSize: 14,
+                            marginBottom: 16,
+                            color: isDark ? '#cbd5e0' : '#4a5568',
+                            ...Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            }),
+                        }}
                     >
                         {pet.description}
                     </Text>
 
                     <TouchableOpacity
                         onPress={handleAdopt}
-                        className="py-3 rounded-xl flex-row items-center justify-center"
                         style={{
+                            paddingVertical: 12,
+                            borderRadius: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             backgroundColor: colors.primary,
                             ...styles.adoptButton,
                         }}
                     >
                         <Text
-                            className="text-white font-semibold mr-2"
-                            style={Platform.select({
-                                ios: { fontFamily: "San Francisco" },
-                                android: { fontFamily: "Roboto" },
-                            })}
+                            style={{
+                                color: 'white',
+                                fontWeight: '600',
+                                marginRight: 8,
+                                ...Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                }),
+                            }}
                         >
                             Quero Adotar
                         </Text>
@@ -273,26 +399,3 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
         </Animated.View>
     )
 }
-
-const styles = StyleSheet.create({
-    iosShadow: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-    },
-    androidShadow: {
-        elevation: 4,
-    },
-    webShadow: {
-        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    },
-    adoptButton: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-})
-
