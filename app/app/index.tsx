@@ -5,10 +5,17 @@ import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, s
 import { auth } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { GoogleSignin, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { Button, Input } from '@ui-kitten/components';
 import InputPassword from '../components/InputPassword';
 import { showToastable } from 'react-native-toastable';
+
+let GoogleSignin: any, isSuccessResponse: any;
+
+if (Platform.OS !== 'web') {
+  const GoogleModule = require('@react-native-google-signin/google-signin');
+  GoogleSignin = GoogleModule.GoogleSignin;
+  isSuccessResponse = GoogleModule.isSuccessResponse;
+}
 
 export default function HomeScreen() {
   const [email, setEmail] = useState('');
