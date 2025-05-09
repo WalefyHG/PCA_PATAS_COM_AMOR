@@ -4,6 +4,10 @@ export default {
     expo: {
         name: "test expo",
         slug: "test-expo",
+        plugins: ["expo-router"],
+        router: {
+            appRoot: 'app/'
+        },
         extra: {
             apiKey: process.env.EXPO_PUBLIC_APPKEY,
             authDomain: process.env.EXPO_PUBLIC_AUTHDOMAIN,

@@ -63,7 +63,8 @@ export default function NavigationCard({ title, icon, onPress, platform }: Navig
                 transform: [{ scale: scaleAnim }],
                 width: isWeb ? 256 : '48%', // Largura fixa para web, 48% para mobile
                 marginBottom: 16,
-                marginHorizontal: isWeb ? 8 : 0
+                marginHorizontal: isWeb ? 8 : 0,
+                alignSelf: 'center',
             }]}
         >
             <TouchableOpacity

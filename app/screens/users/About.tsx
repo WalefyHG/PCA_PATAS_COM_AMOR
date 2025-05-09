@@ -136,7 +136,7 @@ export default function AboutUs() {
 
           {/* Stats Section */}
           <View style={{
-            flexDirection: isWeb ? 'row' : 'column',
+            flexDirection: 'row',
             justifyContent: 'space-between',
             marginBottom: 32,
             gap: 16
