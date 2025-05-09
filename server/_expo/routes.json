@@ -1,0 +1,241 @@
+{
+  "apiRoutes": [],
+  "htmlRoutes": [
+    {
+      "file": "./app/registers/index.tsx",
+      "page": "/app/registers/index",
+      "namedRegex": "^/app/registers(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/index.tsx",
+      "page": "/app/index",
+      "namedRegex": "^/app(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "expo-router/build/views/Sitemap.js",
+      "page": "/_sitemap",
+      "namedRegex": "^/_sitemap(?:/)?$",
+      "routeKeys": {},
+      "generated": true
+    },
+    {
+      "file": "./app/(tabs)/news/index.tsx",
+      "page": "/app/(tabs)/news/index",
+      "namedRegex": "^/app(?:/\\(tabs\\))?/news(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/(tabs)/users/index.tsx",
+      "page": "/app/(tabs)/users/index",
+      "namedRegex": "^/app(?:/\\(tabs\\))?/users(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/(tabs)/about/index.tsx",
+      "page": "/app/(tabs)/about/index",
+      "namedRegex": "^/app(?:/\\(tabs\\))?/about(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/Blog.tsx",
+      "page": "/screens/Blog",
+      "namedRegex": "^/screens/Blog(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/Adopt.tsx",
+      "page": "/screens/Adopt",
+      "namedRegex": "^/screens/Adopt(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/registers/Screen3/index.tsx",
+      "page": "/app/registers/Screen3/index",
+      "namedRegex": "^/app/registers/Screen3(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/registers/Screen2/index.tsx",
+      "page": "/app/registers/Screen2/index",
+      "namedRegex": "^/app/registers/Screen2(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/(tabs)/settings/index.tsx",
+      "page": "/app/(tabs)/settings/index",
+      "namedRegex": "^/app(?:/\\(tabs\\))?/settings(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./config/firebase.tsx",
+      "page": "/config/firebase",
+      "namedRegex": "^/config/firebase(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/registers/CadastroProvider.tsx",
+      "page": "/app/registers/CadastroProvider",
+      "namedRegex": "^/app/registers/CadastroProvider(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./components/NavBar.tsx",
+      "page": "/components/NavBar",
+      "namedRegex": "^/components/NavBar(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./utils/ThemeContext.tsx",
+      "page": "/utils/ThemeContext",
+      "namedRegex": "^/utils/ThemeContext(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./utils/HeaderLayout.tsx",
+      "page": "/utils/HeaderLayout",
+      "namedRegex": "^/utils/HeaderLayout(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/users/News.tsx",
+      "page": "/screens/users/News",
+      "namedRegex": "^/screens/users/News(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/users/Home.tsx",
+      "page": "/screens/users/Home",
+      "namedRegex": "^/screens/users/Home(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/registers/FinishScreen/index.tsx",
+      "page": "/app/registers/FinishScreen/index",
+      "namedRegex": "^/app/registers/FinishScreen(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/users/About.tsx",
+      "page": "/screens/users/About",
+      "namedRegex": "^/screens/users/About(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/AddBlogPost.tsx",
+      "page": "/screens/AddBlogPost",
+      "namedRegex": "^/screens/AddBlogPost(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./utils/HeaderUserMenu.tsx",
+      "page": "/utils/HeaderUserMenu",
+      "namedRegex": "^/utils/HeaderUserMenu(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/AdminConsole.tsx",
+      "page": "/screens/AdminConsole",
+      "namedRegex": "^/screens/AdminConsole(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./components/Toastable.tsx",
+      "page": "/components/Toastable",
+      "namedRegex": "^/components/Toastable(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./utils/Plataform-utils.ts",
+      "page": "/utils/Plataform-utils",
+      "namedRegex": "^/utils/Plataform\\-utils(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/users/Profile.tsx",
+      "page": "/screens/users/Profile",
+      "namedRegex": "^/screens/users/Profile(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./components/AboutUtils.tsx",
+      "page": "/components/AboutUtils",
+      "namedRegex": "^/components/AboutUtils(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./components/InputPassword.tsx",
+      "page": "/components/InputPassword",
+      "namedRegex": "^/components/InputPassword(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/settings/Settings.tsx",
+      "page": "/screens/settings/Settings",
+      "namedRegex": "^/screens/settings/Settings(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/registers/Screen3.tsx",
+      "page": "/screens/registers/Screen3",
+      "namedRegex": "^/screens/registers/Screen3(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/registers/Screen2.tsx",
+      "page": "/screens/registers/Screen2",
+      "namedRegex": "^/screens/registers/Screen2(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/registers/Screen1.tsx",
+      "page": "/screens/registers/Screen1",
+      "namedRegex": "^/screens/registers/Screen1(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./components/FloatingButton.tsx",
+      "page": "/components/FloatingButton",
+      "namedRegex": "^/components/FloatingButton(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./components/NavigationCards.tsx",
+      "page": "/components/NavigationCards",
+      "namedRegex": "^/components/NavigationCards(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/settings/SettingsUtils.tsx",
+      "page": "/screens/settings/SettingsUtils",
+      "namedRegex": "^/screens/settings/SettingsUtils(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./screens/registers/FinishScreen.tsx",
+      "page": "/screens/registers/FinishScreen",
+      "namedRegex": "^/screens/registers/FinishScreen(?:/)?$",
+      "routeKeys": {}
+    },
+    {
+      "file": "./app/(tabs)/profile/[id].tsx",
+      "page": "/app/(tabs)/profile/[id]",
+      "namedRegex": "^/app(?:/\\(tabs\\))?/profile/(?<id>[^/]+?)(?:/)?$",
+      "routeKeys": {
+        "id": "id"
+      }
+    }
+  ],
+  "notFoundRoutes": [
+    {
+      "file": "expo-router/build/views/Unmatched.js",
+      "page": "/+not-found",
+      "namedRegex": "^(?:/(?<notfound>.+?))?(?:/)?$",
+      "routeKeys": {
+        "notfound": "not-found"
+      },
+      "generated": true
+    }
+  ]
+}
