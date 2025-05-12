@@ -9,6 +9,7 @@ import { signOut } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import { SettingActionItem, SettingLinkItem, SettingsSection, SettingToggleItem } from "./SettingsUtils"
+import HeaderLayout from "@/app/utils/HeaderLayout"
 
 export default function Settings() {
   const { toggleTheme, isDarkTheme, colors } = useThemeContext()
@@ -72,6 +73,9 @@ export default function Settings() {
           paddingHorizontal: isWeb ? '20%' : 24
         }}
       >
+        <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+          <HeaderLayout title="Configurações" />
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{
             backgroundColor: 'rgba(255,255,255,0.2)',

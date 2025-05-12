@@ -7,19 +7,23 @@ import { EvaIconsPack } from '@ui-kitten/eva-icons';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PaperProvider } from "react-native-paper";
 import { ThemeProvider, useThemeContext } from "./utils/ThemeContext";
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const Main = () => {
     const { paperTheme, evaTheme } = useThemeContext();
 
     return (
-        <PaperProvider theme={paperTheme}>
-            <IconRegistry icons={EvaIconsPack} />
-            <ApplicationProvider {...eva} theme={evaTheme}>
-                <SafeAreaProvider>
-                    <RouterLayout />
-                </SafeAreaProvider>
-            </ApplicationProvider>
-        </PaperProvider>
+        <GestureHandlerRootView>
+            <PaperProvider theme={paperTheme}>
+                <IconRegistry icons={EvaIconsPack} />
+                <ApplicationProvider {...eva} theme={evaTheme}>
+                    <SafeAreaProvider>
+                        <RouterLayout />
+                    </SafeAreaProvider>
+                </ApplicationProvider>
+            </PaperProvider>
+        </GestureHandlerRootView>
     );
 };
 

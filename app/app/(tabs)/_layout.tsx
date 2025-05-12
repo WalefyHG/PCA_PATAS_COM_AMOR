@@ -154,7 +154,7 @@ const TabLayout = () => {
                 options={{ title: t("Profile") }}
             />
             <Tab.Screen name="About" component={About} options={{ title: t("About") }} />
-            <Tab.Screen name="Settings" component={Settings} options={{ title: t("Settings") }} />
+            <Tab.Screen name="Settings" component={Settings} options={{ title: t("Settings"), headerShown: false }} />
             <Tab.Screen name="News" component={News} options={{ title: t("News") }} />
         </Tab.Navigator>
     )
