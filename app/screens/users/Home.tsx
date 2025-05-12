@@ -8,6 +8,8 @@ import { getDoc, doc } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { useThemeContext } from "../../utils/ThemeContext"
 import NavigationCard from "../../components/NavigationCards"
+import { LinearGradient } from "expo-linear-gradient"
+import HeaderLayout from "@/app/utils/HeaderLayout"
 
 interface User {
   uid: string
@@ -59,7 +61,51 @@ export default function Home() {
         barStyle={isDarkTheme ? "light-content" : "dark-content"}
         backgroundColor={isDarkTheme ? colors.background.dark : colors.background.light}
       />
-      <ScrollView style={{ flex: 1, backgroundColor: isDarkTheme ? '#1a202c' : '#f8fafc' }}>
+      <LinearGradient
+        colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{
+          paddingTop: Platform.select({ ios: 64, android: 40, web: 80 }),
+          paddingBottom: 32,
+          paddingHorizontal: 16
+        }}
+      >
+        <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+          <HeaderLayout title="Profile" />
+        </View>
+        <Text
+          style={{
+            textAlign: 'center',
+            fontSize: isWeb ? 36 : 30,
+            fontWeight: 'bold',
+            marginBottom: 12,
+            color: "#FFFFFF",
+            ...Platform.select({
+              ios: { fontFamily: "San Francisco" },
+              android: { fontFamily: "Roboto" },
+            }),
+          }}
+        >
+          {user ? `Olá, ${user.first_name || user.displayName || "Usuário"}!` : "Bem-vindo ao Patas com Amor"}
+        </Text>
+        <Text
+          style={{
+            fontSize: 16,
+            marginBottom: 24,
+            textAlign: 'center',
+            color: '#FFFFFF',
+            ...Platform.select({
+              ios: { fontFamily: "San Francisco" },
+              android: { fontFamily: "Roboto" },
+            }),
+          }}
+        >
+          O que você deseja fazer hoje?
+        </Text>
+      </LinearGradient>
+
+      <ScrollView style={{ flex: 1, backgroundColor: isDarkTheme ? '#1a202c' : '#f8fafc' }} showsVerticalScrollIndicator={false}>
         <Animated.View style={{
           opacity: fadeAnim,
           flex: 1,
@@ -70,40 +116,6 @@ export default function Home() {
             web: 32
           })
         }}>
-          <View style={{
-            marginTop: Platform.select({ ios: 0, default: 16 }),
-            marginBottom: 32,
-            alignItems: 'center'
-          }}>
-            <Text
-              style={{
-                fontSize: isWeb ? 36 : 30,
-                fontWeight: 'bold',
-                marginBottom: 12,
-                color: colors.primary,
-                ...Platform.select({
-                  ios: { fontFamily: "San Francisco" },
-                  android: { fontFamily: "Roboto" },
-                }),
-              }}
-            >
-              {user ? `Olá, ${user.first_name || user.displayName || "Usuário"}!` : "Bem-vindo ao Patas com Amor"}
-            </Text>
-            <Text
-              style={{
-                fontSize: 16,
-                marginBottom: 24,
-                color: isDarkTheme ? '#d1d5db' : '#4b5563',
-                ...Platform.select({
-                  ios: { fontFamily: "San Francisco" },
-                  android: { fontFamily: "Roboto" },
-                }),
-              }}
-            >
-              O que você deseja fazer hoje?
-            </Text>
-          </View>
-
           <View style={{
             flexDirection: isWeb ? 'row' : 'column',
             flexWrap: isWeb ? 'wrap' : 'nowrap',
@@ -137,6 +149,6 @@ export default function Home() {
           </View>
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   )
 }

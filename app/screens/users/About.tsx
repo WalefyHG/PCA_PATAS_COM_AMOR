@@ -7,6 +7,7 @@ import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { StatCard } from "../../components/AboutUtils"
 import { LinearGradient } from "expo-linear-gradient"
+import HeaderLayout from "@/app/utils/HeaderLayout"
 
 export interface TeamMember {
   id: string
@@ -74,6 +75,9 @@ export default function AboutUs() {
           paddingHorizontal: isWeb ? '20%' : 24
         }}
       >
+        <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+          <HeaderLayout title="Sobre" />
+        </View>
         <View style={{ alignItems: 'center' }}>
           <View style={{
             backgroundColor: 'rgba(255,255,255,0.2)',
@@ -116,8 +120,9 @@ export default function AboutUs() {
         contentContainerStyle={{
           padding: isWeb ? 24 : 16,
           paddingHorizontal: isWeb ? '20%' : 16,
-          paddingBottom: 40
+          paddingBottom: 40,
         }}
+        showsVerticalScrollIndicator={false}
       >
         <Animated.View
           style={{

@@ -121,6 +121,7 @@ export default function Settings() {
           paddingHorizontal: isWeb ? '20%' : 16,
           paddingBottom: 40
         }}
+        showsVerticalScrollIndicator={false}
       >
         <Animated.View
           style={{

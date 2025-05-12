@@ -8,6 +8,7 @@ import { db, auth } from "../../config/firebase"
 import { getDoc, doc } from "firebase/firestore"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
+import HeaderLayout from "@/app/utils/HeaderLayout"
 
 interface User {
   uid: string
@@ -127,13 +128,16 @@ export default function Profile() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={{
-          paddingTop: Platform.select({ ios: 60, android: 40, web: 80 }),
+          paddingTop: Platform.select({ ios: 60, android: 40, web: 20 }),
           paddingBottom: 80,
           paddingHorizontal: isWeb ? '20%' : 0,
           borderBottomLeftRadius: 24,
           borderBottomRightRadius: 24
         }}
       >
+        <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+          <HeaderLayout title="Profile" />
+        </View>
         <Animated.View
           style={{
             opacity: fadeAnim,
@@ -163,6 +167,7 @@ export default function Profile() {
           paddingHorizontal: isWeb ? '20%' : 16,
           paddingBottom: 40
         }}
+        showsVerticalScrollIndicator={false}
       >
         <Animated.View
           style={{
@@ -365,7 +370,7 @@ const styles = StyleSheet.create({
   },
   profileImageWrapper: {
     alignItems: 'center',
-    marginTop: -54
+    marginTop: 20
   },
   profileImageContainer: {
     padding: 4,

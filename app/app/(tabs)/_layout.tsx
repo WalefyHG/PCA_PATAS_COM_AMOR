@@ -146,16 +146,16 @@ const TabLayout = () => {
             screenOptions={screenOptions}
             tabBar={(props) => <CustomTabBar {...props} />}
         >
-            <Tab.Screen name="User" component={User} options={{ title: t("Users") }} />
+            <Tab.Screen name="User" component={User} options={{ title: t("Users"), headerShown: false }} />
             <Tab.Screen
                 name="Profile"
                 component={Profile}
                 initialParams={{ id: route.params?.id ?? null }}
-                options={{ title: t("Profile") }}
+                options={{ title: t("Profile"), headerShown: false }}
             />
-            <Tab.Screen name="About" component={About} options={{ title: t("About") }} />
+            <Tab.Screen name="About" component={About} options={{ title: t("About"), headerShown: false }} />
             <Tab.Screen name="Settings" component={Settings} options={{ title: t("Settings"), headerShown: false }} />
-            <Tab.Screen name="News" component={News} options={{ title: t("News") }} />
+            <Tab.Screen name="News" component={News} options={{ title: t("News"), headerShown: false }} />
         </Tab.Navigator>
     )
 }
@@ -181,7 +181,7 @@ const AppLayout = () => {
     return (
         <Stack.Navigator screenOptions={screenOptions}>
             <Stack.Screen name="(tabs)" component={TabLayout} options={{ headerShown: false }} />
-            <Stack.Screen name="Adopt" component={Adopt} options={{ title: t("Adopt") }} />
+            <Stack.Screen name="Adopt" component={Adopt} options={{ title: t("Adopt"), headerShown: false }} />
             <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{ title: t("Add Blog Post") }} />
             <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console") }} />
         </Stack.Navigator>

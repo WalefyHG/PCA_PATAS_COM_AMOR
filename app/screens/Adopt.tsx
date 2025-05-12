@@ -7,6 +7,7 @@ import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import { isWeb } from "@gluestack-ui/nativewind-utils/IsWeb"
+import HeaderLayout from "../utils/HeaderLayout"
 
 interface Pet {
     id: string
@@ -121,6 +122,9 @@ export default function Adopt() {
                     paddingHorizontal: 16
                 }}
             >
+                <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+                    <HeaderLayout title="Profile" />
+                </View>
                 <View style={{ alignItems: 'center' }}>
                     <Feather name="heart" size={40} color="white" />
                     <Text style={{

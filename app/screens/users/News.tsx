@@ -6,6 +6,7 @@ import { useThemeContext } from "../../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
+import HeaderLayout from "@/app/utils/HeaderLayout"
 
 interface BlogPost {
   id: string
@@ -162,6 +163,9 @@ export default function Blog() {
             paddingHorizontal: isWeb ? '20%' : 16
           }}
         >
+          <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+            <HeaderLayout title="Configurações" />
+          </View>
           <View style={{ alignItems: 'center' }}>
             <View style={{
               backgroundColor: 'rgba(255,255,255,0.2)',
