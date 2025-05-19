@@ -304,6 +304,8 @@ interface BlogPostCardProps {
 function BlogPostCard({ post, index, isDark, colors, onPress }: BlogPostCardProps) {
   const [fadeAnim] = useState(new Animated.Value(0))
   const [scaleAnim] = useState(new Animated.Value(0.95))
+  const router = useNavigation<any>()
+
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -324,6 +326,10 @@ function BlogPostCard({ post, index, isDark, colors, onPress }: BlogPostCardProp
     return () => clearTimeout(timeout)
   }, [])
 
+  const handlePress = () => {
+    router.navigate("NewsDetails", { postId: post.id })
+  }
+
   return (
     <Animated.View
       style={{
@@ -333,7 +339,7 @@ function BlogPostCard({ post, index, isDark, colors, onPress }: BlogPostCardProp
       }}
     >
       <TouchableOpacity
-        onPress={onPress}
+        onPress={handlePress}
         style={[
           styles.postCard,
           { backgroundColor: isDark ? '#1f2937' : 'white' }

@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
 
 export default function Adopt() {
     const { isDarkTheme, colors } = useThemeContext()
-    const navigation = useNavigation()
+    const router = useNavigation();
     const isWeb = Platform.OS === "web"
 
     // Animated values
@@ -200,6 +200,7 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
     const [fadeAnim] = useState(new Animated.Value(0))
     const [scaleAnim] = useState(new Animated.Value(0.95))
     const [heartAnim] = useState(new Animated.Value(1))
+    const router = useNavigation<any>();
     const [liked, setLiked] = useState(false)
 
     useEffect(() => {
@@ -221,8 +222,8 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
         return () => clearTimeout(timeout)
     }, [])
 
-    const handleAdopt = () => {
-        // Handle adoption logic
+    const handleAdopt = (pet: any) => {
+        router.navigate("AdoptDetails", { pet })
     }
 
     const handleLike = () => {
