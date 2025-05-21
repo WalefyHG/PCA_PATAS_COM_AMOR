@@ -17,7 +17,7 @@ function getInitials(name: string) {
 }
 
 export default function HeaderUserMenu() {
-    const router = useNavigation<any>()
+    const router = useNavigation();
     const [user, setUser] = useState<User | null>(null)
     const [isVisible, setIsVisible] = useState(false)
     const avatarRef = useRef<any>(null)
@@ -42,7 +42,7 @@ export default function HeaderUserMenu() {
     const handleLogout = async () => {
         setIsVisible(false)
         await signOut(auth)
-        router.replace("Home")
+        router.goBack()
     }
 
     const handlePressIn = () => {
@@ -128,7 +128,7 @@ export default function HeaderUserMenu() {
                 ]}
                 animationConfig={{
                     duration: 200,
-                    useNativeDriver: true,
+                    useNativeDriver: false,
                 }}
             >
                 <View>
@@ -163,7 +163,7 @@ export default function HeaderUserMenu() {
                         style={styles.menuItem}
                         onPress={() => {
                             setIsVisible(false)
-                            router.navigate("Profile", { id: user?.uid })
+                            router.navigate({ name: "Profile", params: { id: user?.uid } } as never)
                         }}
                     >
                         <View
@@ -181,7 +181,7 @@ export default function HeaderUserMenu() {
                         style={styles.menuItem}
                         onPress={() => {
                             setIsVisible(false)
-                            router.navigate("Settings")
+                            router.navigate({ name: "Settings" } as never)
                         }}
                     >
                         <View

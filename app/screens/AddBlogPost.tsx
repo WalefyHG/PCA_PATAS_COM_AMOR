@@ -13,22 +13,33 @@ import {
     KeyboardAvoidingView,
     Platform,
     Animated,
+    ActivityIndicator,
 } from "react-native"
 import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, useRoute } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
 import { LinearGradient } from "expo-linear-gradient"
+import { createBlogPost, updateBlogPost, getBlogPostById, uploadImage, isUserAdmin, BlogPost } from "../config/firebase"
+import { auth } from "../config/firebase"
 
 export default function AddBlogPost() {
     const { isDarkTheme, colors } = useThemeContext()
-    const navigation = useNavigation()
+    const navigation = useNavigation<any>()
+    const route = useRoute<any>()
+    const { postId } = route.params || {}
+    const isEditing = !!postId
 
     const [title, setTitle] = useState("")
     const [content, setContent] = useState("")
+    const [excerpt, setExcerpt] = useState("")
     const [category, setCategory] = useState("")
     const [image, setImage] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isLoading, setIsLoading] = useState(isEditing)
+    const [uploadProgress, setUploadProgress] = useState(0)
+    const [isAdmin, setIsAdmin] = useState(false)
+    const [status, setStatus] = useState<"published" | "draft">("draft")
 
     // Animated values
     const [fadeAnim] = useState(new Animated.Value(0))
@@ -40,6 +51,57 @@ export default function AddBlogPost() {
     const categories = ["Cuidados", "Alimentação", "Adoção", "Comportamento", "Saúde", "Dicas"]
 
     useEffect(() => {
+        // Verificar se o usuário é admin
+        const checkAdminStatus = async () => {
+            if (auth.currentUser) {
+                const adminStatus = await isUserAdmin(auth.currentUser.uid)
+                setIsAdmin(adminStatus)
+
+                if (!adminStatus) {
+                    Alert.alert(
+                        "Acesso Restrito",
+                        "Apenas administradores podem criar ou editar posts.",
+                        [{ text: "OK", onPress: () => navigation.goBack() }]
+                    )
+                }
+            } else {
+                Alert.alert(
+                    "Não Autenticado",
+                    "Você precisa estar logado para acessar esta página.",
+                    [{ text: "OK", onPress: () => navigation.goBack() }]
+                )
+            }
+        }
+
+        checkAdminStatus()
+
+        // Se estiver editando, carregar dados do post
+        if (isEditing) {
+            const fetchPost = async () => {
+                try {
+                    const post = await getBlogPostById(postId)
+                    if (post) {
+                        setTitle(post.title)
+                        setContent(post.content)
+                        setExcerpt(post.excerpt)
+                        setCategory(post.category || "")
+                        setImage(post.image)
+                        setStatus(post.status)
+                    } else {
+                        Alert.alert("Erro", "Post não encontrado.")
+                        navigation.goBack()
+                    }
+                } catch (error) {
+                    console.error("Error fetching post:", error)
+                    Alert.alert("Erro", "Não foi possível carregar o post.")
+                } finally {
+                    setIsLoading(false)
+                }
+            }
+
+            fetchPost()
+        }
+
         // Start animations when component mounts
         Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -54,7 +116,7 @@ export default function AddBlogPost() {
                 useNativeDriver: true,
             }),
         ]).start()
-    }, [])
+    }, [postId, navigation])
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -87,6 +149,16 @@ export default function AddBlogPost() {
             return
         }
 
+        if (!excerpt.trim()) {
+            Alert.alert("Erro", "Por favor, adicione um resumo para o post.")
+            return
+        }
+
+        if (!category) {
+            Alert.alert("Erro", "Por favor, selecione uma categoria para o post.")
+            return
+        }
+
         if (!image) {
             Alert.alert("Erro", "Por favor, adicione uma imagem para o post.")
             return
@@ -95,29 +167,71 @@ export default function AddBlogPost() {
         try {
             setIsSubmitting(true)
 
-            // Aqui você adicionaria a lógica para salvar o post no Firebase
-            // Por exemplo:
-            // const newPost = {
-            //   title,
-            //   content,
-            //   image,
-            //   author: auth.currentUser?.displayName || "Usuário",
-            //   date: new Date().toISOString(),
-            //   likes: 0,
-            //   comments: 0,
-            // }
-            // await addDoc(collection(db, "posts"), newPost)
+            // Verificar se o usuário está autenticado
+            if (!auth.currentUser) {
+                Alert.alert("Erro", "Você precisa estar logado para publicar um post.")
+                return
+            }
 
-            // Simulando um atraso para demonstração
-            await new Promise((resolve) => setTimeout(resolve, 1000))
+            // Calcular tempo de leitura (aproximadamente 200 palavras por minuto)
+            const wordCount = content.split(/\s+/).length
+            const readTime = Math.max(1, Math.ceil(wordCount / 200))
 
-            Alert.alert("Sucesso", "Post adicionado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
+            let imageUrl = image
+
+            // Se a imagem for local (não começa com http), fazer upload
+            if (image && !image.startsWith('http')) {
+                const imagePath = `blog_posts/${Date.now()}_${auth.currentUser.uid}`
+                imageUrl = await uploadImage(image, imagePath, setUploadProgress)
+            }
+
+            const postData: BlogPost = {
+                title,
+                content,
+                excerpt,
+                category,
+                image: imageUrl,
+                author: auth.currentUser.displayName || "Usuário",
+                authorId: auth.currentUser.uid,
+                authorAvatar: auth.currentUser.photoURL || "",
+                status,
+                readTime: `${readTime} min`,
+            }
+
+            if (isEditing) {
+                await updateBlogPost(postId, postData)
+                Alert.alert("Sucesso", "Post atualizado com sucesso!", [
+                    { text: "OK", onPress: () => navigation.goBack() }
+                ])
+            } else {
+                await createBlogPost(postData)
+                Alert.alert("Sucesso", "Post criado com sucesso!", [
+                    { text: "OK", onPress: () => navigation.goBack() }
+                ])
+            }
         } catch (error) {
-            console.error("Erro ao adicionar post:", error)
-            Alert.alert("Erro", "Ocorreu um erro ao adicionar o post. Tente novamente.")
+            console.error("Erro ao salvar post:", error)
+            Alert.alert("Erro", "Ocorreu um erro ao salvar o post. Tente novamente.")
         } finally {
             setIsSubmitting(false)
         }
+    }
+
+    if (isLoading) {
+        return (
+            <View className={`flex-1 items-center justify-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text
+                    className={`mt-4 text-lg ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                    style={Platform.select({
+                        ios: { fontFamily: "San Francisco" },
+                        android: { fontFamily: "Roboto" },
+                    })}
+                >
+                    Carregando post...
+                </Text>
+            </View>
+        )
     }
 
     return (
@@ -141,7 +255,7 @@ export default function AddBlogPost() {
                         >
                             <Feather name="arrow-left" size={20} color="white" />
                         </TouchableOpacity>
-                        <Text className="text-white text-xl font-bold">Novo Post</Text>
+                        <Text className="text-white text-xl font-bold">{isEditing ? "Editar Post" : "Novo Post"}</Text>
                         <View className="w-10" />
                     </View>
                 </LinearGradient>
@@ -181,6 +295,16 @@ export default function AddBlogPost() {
                                     </Text>
                                 </View>
                             )}
+
+                            {uploadProgress > 0 && uploadProgress < 100 && (
+                                <View className="absolute bottom-0 left-0 right-0 bg-black/50 py-2">
+                                    <View
+                                        className="h-2 bg-primary-500 rounded-full"
+                                        style={{ width: `${uploadProgress}%`, backgroundColor: colors.primary }}
+                                    />
+                                    <Text className="text-white text-xs text-center mt-1">{Math.round(uploadProgress)}%</Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
 
                         <View className="mb-6">
@@ -199,15 +323,16 @@ export default function AddBlogPost() {
                                         key={cat}
                                         onPress={() => setCategory(cat)}
                                         className={`px-4 py-2 mr-2 rounded-full ${category === cat
-                                                ? isDarkTheme
-                                                    ? "bg-primary-700"
-                                                    : "bg-primary-500"
-                                                : isDarkTheme
-                                                    ? "bg-gray-800"
-                                                    : "bg-white"
+                                            ? isDarkTheme
+                                                ? "bg-primary-700"
+                                                : "bg-primary-500"
+                                            : isDarkTheme
+                                                ? "bg-gray-800"
+                                                : "bg-white"
                                             }`}
                                         style={
-                                            category !== cat && (isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow)
+                                            category !== cat &&
+                                            (isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow)
                                         }
                                     >
                                         <Text
@@ -248,7 +373,37 @@ export default function AddBlogPost() {
                             />
                         </View>
 
-                        <View className="mb-8">
+                        <View className="mb-6">
+                            <Text
+                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                Resumo
+                            </Text>
+                            <TextInput
+                                className={`p-4 rounded-xl ${isDarkTheme ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
+                                style={[
+                                    { minHeight: 80, textAlignVertical: "top" },
+                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow,
+                                    Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    }),
+                                ]}
+                                placeholder="Digite um breve resumo do post"
+                                placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                value={excerpt}
+                                onChangeText={setExcerpt}
+                                multiline
+                                numberOfLines={3}
+                                maxLength={200}
+                            />
+                        </View>
+
+                        <View className="mb-6">
                             <Text
                                 className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
                                 style={Platform.select({
@@ -275,6 +430,80 @@ export default function AddBlogPost() {
                                 multiline
                                 numberOfLines={10}
                             />
+                            <Text className={`text-xs mt-1 ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}>
+                                Dica: Você pode usar formatação markdown como ## Título para cabeçalhos e - Item para listas.
+                            </Text>
+                        </View>
+
+                        <View className="mb-6">
+                            <Text
+                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                Status
+                            </Text>
+                            <View className="flex-row">
+                                <TouchableOpacity
+                                    onPress={() => setStatus("draft")}
+                                    className={`flex-row items-center px-4 py-2 mr-4 rounded-full ${status === "draft"
+                                        ? isDarkTheme
+                                            ? "bg-gray-700"
+                                            : "bg-gray-200"
+                                        : "bg-transparent"
+                                        }`}
+                                >
+                                    <Feather
+                                        name="edit-3"
+                                        size={16}
+                                        color={status === "draft" ? colors.primary : isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                        className="mr-2"
+                                    />
+                                    <Text
+                                        className={`${status === "draft"
+                                            ? isDarkTheme
+                                                ? "text-white"
+                                                : "text-gray-800"
+                                            : isDarkTheme
+                                                ? "text-gray-400"
+                                                : "text-gray-500"
+                                            }`}
+                                    >
+                                        Rascunho
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    onPress={() => setStatus("published")}
+                                    className={`flex-row items-center px-4 py-2 rounded-full ${status === "published"
+                                        ? isDarkTheme
+                                            ? "bg-primary-700"
+                                            : "bg-primary-100"
+                                        : "bg-transparent"
+                                        }`}
+                                >
+                                    <Feather
+                                        name="check-circle"
+                                        size={16}
+                                        color={status === "published" ? colors.primary : isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                        className="mr-2"
+                                    />
+                                    <Text
+                                        className={`${status === "published"
+                                            ? isDarkTheme
+                                                ? "text-white"
+                                                : "text-primary-700"
+                                            : isDarkTheme
+                                                ? "text-gray-400"
+                                                : "text-gray-500"
+                                            }`}
+                                    >
+                                        Publicado
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <TouchableOpacity
@@ -289,26 +518,17 @@ export default function AddBlogPost() {
                         >
                             {isSubmitting ? (
                                 <View className="flex-row items-center">
-                                    <Animated.View
-                                        style={{
-                                            transform: [
-                                                {
-                                                    rotate: fadeAnim.interpolate({
-                                                        inputRange: [0, 1],
-                                                        outputRange: ["0deg", "360deg"],
-                                                    }),
-                                                },
-                                            ],
-                                        }}
-                                    >
-                                        <Feather name="loader" size={20} color="white" />
-                                    </Animated.View>
-                                    <Text className="ml-2 text-white font-semibold">Publicando...</Text>
+                                    <ActivityIndicator size="small" color="white" />
+                                    <Text className="ml-2 text-white font-semibold">
+                                        {isEditing ? "Atualizando..." : "Publicando..."}
+                                    </Text>
                                 </View>
                             ) : (
                                 <View className="flex-row items-center">
                                     <Feather name="send" size={20} color="white" />
-                                    <Text className="ml-2 text-white font-semibold">Publicar Post</Text>
+                                    <Text className="ml-2 text-white font-semibold">
+                                        {isEditing ? "Atualizar Post" : "Publicar Post"}
+                                    </Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -340,4 +560,3 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
 })
-

@@ -1,8 +1,31 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { Platform } from "react-native";
+import { initializeApp } from "firebase/app"
+import { getAuth, onAuthStateChanged, signOut, type User } from "firebase/auth"
+import {
+    getFirestore,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    query,
+    where,
+    orderBy,
+    limit,
+    serverTimestamp,
+    Timestamp,
+} from "firebase/firestore"
+import {
+    getStorage,
+    ref,
+    uploadBytesResumable,
+    getDownloadURL,
+    deleteObject,
+} from "firebase/storage"
+import { Alert } from "react-native"
 
+// Configuração do Firebase (substitua com suas credenciais)
 const firebaseConfig = {
     apiKey: process.env.EXPO_PUBLIC_APPKEY,
     authDomain: process.env.EXPO_PUBLIC_AUTHDOMAIN,
@@ -10,18 +33,509 @@ const firebaseConfig = {
     storageBucket: process.env.EXPO_PUBLIC_STORAGEBUCKET,
     messagingSenderId: process.env.EXPO_PUBLIC_MESSAGINGSENDERID,
     appId: process.env.EXPO_PUBLIC_APPID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// Somente para Web
-if (Platform.OS === "web") {
-    import("firebase/auth").then(({ browserLocalPersistence, setPersistence }) => {
-        setPersistence(auth, browserLocalPersistence);
-    });
 }
 
-const db = getFirestore(app);
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig)
+export const auth = getAuth(app)
+export const db = getFirestore(app)
+export const storage = getStorage(app)
 
-export { auth, db };
+// Tipos
+export interface BlogPost {
+    id?: string
+    title: string
+    content: string
+    excerpt: string
+    author: string
+    authorId: string
+    authorAvatar?: string
+    date?: Timestamp | Date
+    image: string
+    likes?: number
+    comments?: number
+    category?: string
+    status: "published" | "draft"
+    readTime?: string
+}
+
+export interface Pet {
+    id?: string
+    name: string
+    age: string
+    type: string
+    breed: string
+    gender: string
+    size: string
+    color: string
+    description: string
+    history: string
+    images: string[]
+    requirements: string[]
+    location: string
+    contactPhone?: string
+    contactEmail?: string
+    vaccinated: boolean
+    neutered: boolean
+    specialNeeds: boolean
+    specialNeedsDescription?: string
+    status: "available" | "adopted" | "pending"
+    createdAt?: Timestamp | Date
+    updatedAt?: Timestamp | Date
+    createdBy?: string
+}
+
+export interface Comment {
+    id?: string
+    postId: string
+    author: string
+    authorId: string
+    authorAvatar?: string
+    date?: Timestamp | Date
+    content: string
+    likes?: number
+}
+
+export interface UserProfile {
+    uid: string
+    email: string
+    displayName?: string
+    first_name?: string
+    last_name?: string
+    photoURL?: string
+    phone?: string
+    bio?: string
+    role: "admin" | "user"
+    status: "active" | "inactive"
+    createdAt?: Timestamp | Date
+}
+
+// Serviço de Autenticação
+export const getCurrentUser = (): Promise<User | null> => {
+    return new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            unsubscribe()
+            resolve(user)
+        })
+    })
+}
+
+export const signOutUser = async (): Promise<void> => {
+    try {
+        await signOut(auth)
+    } catch (error) {
+        console.error("Error signing out:", error)
+        throw error
+    }
+}
+
+// Verificar se o usuário é administrador
+export const isUserAdmin = async (userId: string): Promise<boolean> => {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId))
+        if (userDoc.exists()) {
+            const userData = userDoc.data() as UserProfile
+            return userData.role === "admin"
+        }
+        return false
+    } catch (error) {
+        console.error("Error checking admin status:", error)
+        return false
+    }
+}
+
+// Serviço de Blog Posts
+export const getBlogPosts = async (
+    category?: string,
+    limit_count: number = 10,
+    onlyPublished: boolean = true
+): Promise<BlogPost[]> => {
+    try {
+        let q = collection(db, "blog_posts")
+
+        // Construir a query com base nos parâmetros
+        let constraints = []
+
+        if (onlyPublished) {
+            constraints.push(where("status", "==", "published"))
+        }
+
+        if (category && category !== "Todos") {
+            constraints.push(where("category", "==", category))
+        }
+
+        constraints.push(orderBy("date", "desc"))
+        constraints.push(limit(limit_count))
+
+        const querySnapshot = await getDocs(query(q, ...constraints))
+
+        return querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data() as BlogPost,
+        }))
+    } catch (error) {
+        console.error("Error fetching blog posts:", error)
+        throw error
+    }
+}
+
+export const getBlogPostById = async (postId: string): Promise<BlogPost | null> => {
+    try {
+        const docRef = doc(db, "blog_posts", postId)
+        const docSnap = await getDoc(docRef)
+
+        if (docSnap.exists()) {
+            return {
+                id: docSnap.id,
+                ...docSnap.data() as BlogPost,
+            }
+        }
+
+        return null
+    } catch (error) {
+        console.error("Error fetching blog post:", error)
+        throw error
+    }
+}
+
+export const createBlogPost = async (post: BlogPost): Promise<string> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Verificar se o usuário é admin
+        const isAdmin = await isUserAdmin(currentUser.uid)
+        if (!isAdmin) throw new Error("Unauthorized: Only admins can create blog posts")
+
+        // Adicionar metadados
+        const postWithMetadata = {
+            ...post,
+            authorId: currentUser.uid,
+            date: serverTimestamp(),
+            likes: 0,
+            comments: 0,
+        }
+
+        const docRef = await addDoc(collection(db, "blog_posts"), postWithMetadata)
+        return docRef.id
+    } catch (error) {
+        console.error("Error creating blog post:", error)
+        throw error
+    }
+}
+
+export const updateBlogPost = async (postId: string, post: Partial<BlogPost>): Promise<void> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Verificar se o usuário é admin
+        const isAdmin = await isUserAdmin(currentUser.uid)
+        if (!isAdmin) throw new Error("Unauthorized: Only admins can update blog posts")
+
+        const docRef = doc(db, "blog_posts", postId)
+        await updateDoc(docRef, {
+            ...post,
+            updatedAt: serverTimestamp(),
+        })
+    } catch (error) {
+        console.error("Error updating blog post:", error)
+        throw error
+    }
+}
+
+export const deleteBlogPost = async (postId: string): Promise<void> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Verificar se o usuário é admin
+        const isAdmin = await isUserAdmin(currentUser.uid)
+        if (!isAdmin) throw new Error("Unauthorized: Only admins can delete blog posts")
+
+        // Excluir o post
+        const docRef = doc(db, "blog_posts", postId)
+        await deleteDoc(docRef)
+
+        // Também excluir comentários relacionados
+        const commentsQuery = query(collection(db, "comments"), where("postId", "==", postId))
+        const commentsSnapshot = await getDocs(commentsQuery)
+
+        const deletePromises = commentsSnapshot.docs.map((commentDoc) =>
+            deleteDoc(doc(db, "comments", commentDoc.id))
+        )
+
+        await Promise.all(deletePromises)
+    } catch (error) {
+        console.error("Error deleting blog post:", error)
+        throw error
+    }
+}
+
+// Serviço de Comentários
+export const getCommentsByPostId = async (postId: string): Promise<Comment[]> => {
+    try {
+        const q = query(
+            collection(db, "comments"),
+            where("postId", "==", postId),
+            orderBy("date", "desc")
+        )
+
+        const querySnapshot = await getDocs(q)
+
+        return querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data() as Comment,
+        }))
+    } catch (error) {
+        console.error("Error fetching comments:", error)
+        throw error
+    }
+}
+
+export const addComment = async (comment: Comment): Promise<string> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Adicionar metadados
+        const commentWithMetadata = {
+            ...comment,
+            authorId: currentUser.uid,
+            date: serverTimestamp(),
+            likes: 0,
+        }
+
+        const docRef = await addDoc(collection(db, "comments"), commentWithMetadata)
+
+        // Atualizar contador de comentários no post
+        const postRef = doc(db, "blog_posts", comment.postId)
+        const postDoc = await getDoc(postRef)
+
+        if (postDoc.exists()) {
+            const postData = postDoc.data() as BlogPost
+            await updateDoc(postRef, {
+                comments: (postData.comments || 0) + 1,
+            })
+        }
+
+        return docRef.id
+    } catch (error) {
+        console.error("Error adding comment:", error)
+        throw error
+    }
+}
+
+// Serviço de Pets
+export const getPets = async (
+    type?: string,
+    status: string = "available",
+    limit_count: number = 10
+): Promise<Pet[]> => {
+    try {
+        let q = collection(db, "pets")
+
+        // Construir a query com base nos parâmetros
+        let constraints = []
+
+        if (status) {
+            constraints.push(where("status", "==", status))
+        }
+
+        if (type && type !== "Todos") {
+            constraints.push(where("type", "==", type))
+        }
+
+        constraints.push(orderBy("createdAt", "desc"))
+        constraints.push(limit(limit_count))
+
+        const querySnapshot = await getDocs(query(q, ...constraints))
+
+        return querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data() as Pet,
+        }))
+    } catch (error) {
+        console.error("Error fetching pets:", error)
+        throw error
+    }
+}
+
+export const getPetById = async (petId: string): Promise<Pet | null> => {
+    try {
+        const docRef = doc(db, "pets", petId)
+        const docSnap = await getDoc(docRef)
+
+        if (docSnap.exists()) {
+            return {
+                id: docSnap.id,
+                ...docSnap.data() as Pet,
+            }
+        }
+
+        return null
+    } catch (error) {
+        console.error("Error fetching pet:", error)
+        throw error
+    }
+}
+
+export const createPet = async (pet: Pet): Promise<string> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Verificar se o usuário é admin
+        const isAdmin = await isUserAdmin(currentUser.uid)
+        if (!isAdmin) throw new Error("Unauthorized: Only admins can create pets")
+
+        // Adicionar metadados
+        const petWithMetadata = {
+            ...pet,
+            createdBy: currentUser.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        }
+
+        const docRef = await addDoc(collection(db, "pets"), petWithMetadata)
+        return docRef.id
+    } catch (error) {
+        console.error("Error creating pet:", error)
+        throw error
+    }
+}
+
+export const updatePet = async (petId: string, pet: Partial<Pet>): Promise<void> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Verificar se o usuário é admin
+        const isAdmin = await isUserAdmin(currentUser.uid)
+        if (!isAdmin) throw new Error("Unauthorized: Only admins can update pets")
+
+        const docRef = doc(db, "pets", petId)
+        await updateDoc(docRef, {
+            ...pet,
+            updatedAt: serverTimestamp(),
+        })
+    } catch (error) {
+        console.error("Error updating pet:", error)
+        throw error
+    }
+}
+
+export const deletePet = async (petId: string): Promise<void> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Verificar se o usuário é admin
+        const isAdmin = await isUserAdmin(currentUser.uid)
+        if (!isAdmin) throw new Error("Unauthorized: Only admins can delete pets")
+
+        const docRef = doc(db, "pets", petId)
+        await deleteDoc(docRef)
+    } catch (error) {
+        console.error("Error deleting pet:", error)
+        throw error
+    }
+}
+
+// Serviço de Upload de Imagens
+export const uploadImage = async (
+    uri: string,
+    path: string,
+    onProgress?: (progress: number) => void
+): Promise<string> => {
+    try {
+        const response = await fetch(uri)
+        const blob = await response.blob()
+
+        const storageRef = ref(storage, path)
+        const uploadTask = uploadBytesResumable(storageRef, blob)
+
+        return new Promise((resolve, reject) => {
+            uploadTask.on(
+                "state_changed",
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+                    if (onProgress) onProgress(progress)
+                },
+                (error) => {
+                    console.error("Error uploading image:", error)
+                    reject(error)
+                },
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+                    resolve(downloadURL)
+                }
+            )
+        })
+    } catch (error) {
+        console.error("Error in upload process:", error)
+        throw error
+    }
+}
+
+export const deleteImage = async (path: string): Promise<void> => {
+    try {
+        const storageRef = ref(storage, path)
+        await deleteObject(storageRef)
+    } catch (error) {
+        console.error("Error deleting image:", error)
+        throw error
+    }
+}
+
+// Serviço de Usuários
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    try {
+        const docRef = doc(db, "users", userId)
+        const docSnap = await getDoc(docRef)
+
+        if (docSnap.exists()) {
+            return {
+                ...(docSnap.data() as UserProfile),
+                uid: docSnap.id,
+            }
+        }
+
+        return null
+    } catch (error) {
+        console.error("Error fetching user profile:", error)
+        throw error
+    }
+}
+
+export const updateUserProfile = async (userId: string, data: Partial<UserProfile>): Promise<void> => {
+    try {
+        const docRef = doc(db, "users", userId)
+        await updateDoc(docRef, data)
+    } catch (error) {
+        console.error("Error updating user profile:", error)
+        throw error
+    }
+}
+
+// Função para verificar e criar coleções necessárias
+export const initializeFirestore = async (): Promise<void> => {
+    try {
+        // Verificar se as coleções existem e criar documentos de exemplo se necessário
+        const collections = ["blog_posts", "pets", "comments", "users"]
+
+        for (const collectionName of collections) {
+            const collectionRef = collection(db, collectionName)
+            const snapshot = await getDocs(query(collectionRef, limit(1)))
+
+            if (snapshot.empty) {
+                console.log(`Collection ${collectionName} is empty or doesn't exist. Creating...`)
+                // Aqui você poderia criar documentos de exemplo se necessário
+            }
+        }
+
+        console.log("Firestore initialized successfully")
+    } catch (error) {
+        console.error("Error initializing Firestore:", error)
+    }
+}

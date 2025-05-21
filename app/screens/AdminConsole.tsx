@@ -13,11 +13,22 @@ import {
     RefreshControl,
     Platform,
     Animated,
+    ActivityIndicator,
 } from "react-native"
 import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
+import {
+    getBlogPosts,
+    getPets,
+    deleteBlogPost,
+    deletePet,
+    isUserAdmin,
+    type BlogPost,
+    type Pet,
+} from "../config/firebase"
+import { auth } from "../config/firebase"
 
 // Tipos para os dados
 interface AdminTab {
@@ -26,39 +37,13 @@ interface AdminTab {
     icon: keyof typeof Feather.glyphMap
 }
 
-interface BlogPost {
-    id: string
-    title: string
-    author: string
-    date: string
-    image: string
-    status: "published" | "draft"
-}
-
-interface Pet {
-    id: string
-    name: string
-    type: string
-    breed: string
-    age: string
-    image: string
-    status: "available" | "adopted" | "pending"
-}
-
-interface User {
-    id: string
-    name: string
-    email: string
-    role: "admin" | "user"
-    status: "active" | "inactive"
-    avatar?: string
-}
-
 export default function AdminConsole() {
     const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation<any>()
     const [activeTab, setActiveTab] = useState<string>("blog")
     const [refreshing, setRefreshing] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [isAdmin, setIsAdmin] = useState(false)
 
     // Animated values
     const [fadeAnim] = useState(new Animated.Value(0))
@@ -67,7 +52,34 @@ export default function AdminConsole() {
     const isIOS = Platform.OS === "ios"
     const isAndroid = Platform.OS === "android"
 
+    // Dados
+    const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+    const [pets, setPets] = useState<Pet[]>([])
+
     useEffect(() => {
+        // Verificar se o usuário é admin
+        const checkAdminStatus = async () => {
+            if (auth.currentUser) {
+                const adminStatus = await isUserAdmin(auth.currentUser.uid)
+                setIsAdmin(adminStatus)
+
+                if (!adminStatus) {
+                    Alert.alert("Acesso Restrito", "Apenas administradores podem acessar esta página.", [
+                        { text: "OK", onPress: () => navigation.goBack() },
+                    ])
+                } else {
+                    // Carregar dados iniciais
+                    fetchData()
+                }
+            } else {
+                Alert.alert("Não Autenticado", "Você precisa estar logado para acessar esta página.", [
+                    { text: "OK", onPress: () => navigation.goBack() },
+                ])
+            }
+        }
+
+        checkAdminStatus()
+
         // Start animations when component mounts
         Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -82,136 +94,69 @@ export default function AdminConsole() {
                 useNativeDriver: true,
             }),
         ]).start()
-    }, [])
+    }, [navigation])
 
-    // Dados de exemplo
-    const [blogPosts] = useState<BlogPost[]>([
-        {
-            id: "1",
-            title: "Como cuidar de filhotes recém-nascidos",
-            author: "Dra. Ana Silva",
-            date: "15/04/2023",
-            image:
-                "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            status: "published",
-        },
-        {
-            id: "2",
-            title: "Alimentação saudável para pets idosos",
-            author: "Dr. Carlos Mendes",
-            date: "03/05/2023",
-            image:
-                "https://images.unsplash.com/photo-1450778869180-41d0601e046e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            status: "published",
-        },
-        {
-            id: "3",
-            title: "Benefícios da adoção responsável",
-            author: "Patrícia Oliveira",
-            date: "22/05/2023",
-            image: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            status: "draft",
-        },
-    ])
+    const fetchData = async () => {
+        setIsLoading(true)
 
-    const [pets] = useState<Pet[]>([
-        {
-            id: "1",
-            name: "Max",
-            type: "Cachorro",
-            breed: "Labrador",
-            age: "2 anos",
-            image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            status: "available",
-        },
-        {
-            id: "2",
-            name: "Luna",
-            type: "Gato",
-            breed: "Siamês",
-            age: "1 ano",
-            image:
-                "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            status: "pending",
-        },
-        {
-            id: "3",
-            name: "Bob",
-            type: "Cachorro",
-            breed: "Vira-lata",
-            age: "3 anos",
-            image: "https://images.unsplash.com/photo-1561037404-61cd46aa615b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            status: "adopted",
-        },
-    ])
-
-    const [users] = useState<User[]>([
-        {
-            id: "1",
-            name: "João Silva",
-            email: "joao@example.com",
-            role: "admin",
-            status: "active",
-            avatar: "https://ui-avatars.com/api/?name=João+Silva&background=random",
-        },
-        {
-            id: "2",
-            name: "Maria Oliveira",
-            email: "maria@example.com",
-            role: "user",
-            status: "active",
-            avatar: "https://ui-avatars.com/api/?name=Maria+Oliveira&background=random",
-        },
-        {
-            id: "3",
-            name: "Pedro Santos",
-            email: "pedro@example.com",
-            role: "user",
-            status: "inactive",
-            avatar: "https://ui-avatars.com/api/?name=Pedro+Santos&background=random",
-        },
-    ])
-
-    // Abas do Admin Console
-    const tabs: AdminTab[] = [
-        { id: "blog", title: "Blog", icon: "book-open" },
-        { id: "pets", title: "Pets", icon: "heart" },
-        { id: "users", title: "Usuários", icon: "users" },
-        { id: "settings", title: "Configurações", icon: "settings" },
-    ]
+        try {
+            if (activeTab === "blog") {
+                // Buscar todos os posts (publicados e rascunhos)
+                const posts = await getBlogPosts("", 20, false)
+                setBlogPosts(posts)
+            } else if (activeTab === "pets") {
+                // Buscar todos os pets (disponíveis, pendentes e adotados)
+                const allPets = await getPets("", "", 20)
+                setPets(allPets)
+            }
+        } catch (error) {
+            console.error(`Error fetching ${activeTab} data:`, error)
+            Alert.alert("Erro", `Ocorreu um erro ao carregar os dados de ${activeTab}.`)
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     const onRefresh = async () => {
         setRefreshing(true)
-        // Aqui você implementaria a lógica para recarregar os dados
-        // Por exemplo: await fetchBlogPosts();
+        await fetchData()
+        setRefreshing(false)
+    }
 
-        // Simulando um atraso para demonstração
-        setTimeout(() => {
-            setRefreshing(false)
-        }, 1000)
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId)
+        fetchData()
     }
 
     const handleEdit = (id: string, type: string) => {
         if (type === "blog") {
-            navigation.navigate("AddBlogPost", { id })
+            navigation.navigate("AddBlogPost", { postId: id })
         } else if (type === "pet") {
             // Navegar para a tela de edição de pet
             Alert.alert("Editar Pet", `Editar pet com ID: ${id}`)
-        } else if (type === "user") {
-            // Navegar para a tela de edição de usuário
-            Alert.alert("Editar Usuário", `Editar usuário com ID: ${id}`)
         }
     }
 
     const handleDelete = (id: string, type: string) => {
-        Alert.alert("Confirmar exclusão", `Tem certeza que deseja excluir este item?`, [
+        Alert.alert("Confirmar exclusão", `Tem certeza que deseja excluir este ${type === "blog" ? "post" : "pet"}?`, [
             { text: "Cancelar", style: "cancel" },
             {
                 text: "Excluir",
                 style: "destructive",
-                onPress: () => {
-                    // Aqui você implementaria a lógica para excluir o item
-                    Alert.alert("Sucesso", `Item excluído com sucesso!`)
+                onPress: async () => {
+                    try {
+                        if (type === "blog") {
+                            await deleteBlogPost(id)
+                            setBlogPosts(blogPosts.filter((post) => post.id !== id))
+                        } else if (type === "pet") {
+                            await deletePet(id)
+                            setPets(pets.filter((pet) => pet.id !== id))
+                        }
+                        Alert.alert("Sucesso", `${type === "blog" ? "Post" : "Pet"} excluído com sucesso!`)
+                    } catch (error) {
+                        console.error(`Error deleting ${type}:`, error)
+                        Alert.alert("Erro", `Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`)
+                    }
                 },
             },
         ])
@@ -223,10 +168,31 @@ export default function AdminConsole() {
         } else if (activeTab === "pets") {
             // Navegar para a tela de adição de pet
             Alert.alert("Adicionar Pet", "Funcionalidade em desenvolvimento")
-        } else if (activeTab === "users") {
-            // Navegar para a tela de adição de usuário
-            Alert.alert("Adicionar Usuário", "Funcionalidade em desenvolvimento")
         }
+    }
+
+    // Abas do Admin Console
+    const tabs: AdminTab[] = [
+        { id: "blog", title: "Blog", icon: "book-open" },
+        { id: "pets", title: "Pets", icon: "heart" },
+        { id: "settings", title: "Configurações", icon: "settings" },
+    ]
+
+    if (!isAdmin) {
+        return (
+            <View className={`flex-1 items-center justify-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text
+                    className={`mt-4 text-lg ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                    style={Platform.select({
+                        ios: { fontFamily: "San Francisco" },
+                        android: { fontFamily: "Roboto" },
+                    })}
+                >
+                    Verificando permissões...
+                </Text>
+            </View>
+        )
     }
 
     return (
@@ -238,7 +204,13 @@ export default function AdminConsole() {
                 end={{ x: 1, y: 0 }}
                 className="pt-16 pb-4 px-4"
             >
-                <View className="flex-row items-center justify-center">
+                <View className="flex-row items-center justify-between">
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+                    >
+                        <Feather name="arrow-left" size={20} color="white" />
+                    </TouchableOpacity>
                     <Text className="text-white text-xl font-bold">Admin Console</Text>
                     <View className="w-10" />
                 </View>
@@ -253,7 +225,7 @@ export default function AdminConsole() {
                     {tabs.map((tab) => (
                         <TouchableOpacity
                             key={tab.id}
-                            onPress={() => setActiveTab(tab.id)}
+                            onPress={() => handleTabChange(tab.id)}
                             className={`flex-row items-center mx-2 px-4 py-2 rounded-full ${activeTab === tab.id ? (isDarkTheme ? "bg-gray-700" : "bg-gray-100") : "bg-transparent"
                                 }`}
                         >
@@ -293,127 +265,104 @@ export default function AdminConsole() {
                     transform: [{ translateY: slideAnim }],
                 }}
             >
-                {activeTab === "blog" && (
-                    <FlatList
-                        data={blogPosts}
-                        keyExtractor={(item) => item.id}
-                        contentContainerStyle={{ padding: 16 }}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[colors.primary]}
-                                tintColor={colors.primary}
-                            />
-                        }
-                        renderItem={({ item, index }) => (
-                            <BlogPostItem
-                                post={item}
-                                index={index}
-                                isDark={isDarkTheme}
-                                colors={colors}
-                                onEdit={() => handleEdit(item.id, "blog")}
-                                onDelete={() => handleDelete(item.id, "blog")}
-                            />
-                        )}
-                        ListEmptyComponent={
-                            <View className="flex-1 items-center justify-center py-20">
-                                <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
-                                <Text
-                                    className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
-                                    style={Platform.select({
-                                        ios: { fontFamily: "San Francisco" },
-                                        android: { fontFamily: "Roboto" },
-                                    })}
-                                >
-                                    Nenhum post encontrado
-                                </Text>
-                            </View>
-                        }
-                    />
-                )}
-
-                {activeTab === "pets" && (
-                    <FlatList
-                        data={pets}
-                        keyExtractor={(item) => item.id}
-                        contentContainerStyle={{ padding: 16 }}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[colors.primary]}
-                                tintColor={colors.primary}
-                            />
-                        }
-                        renderItem={({ item, index }) => (
-                            <PetItem
-                                pet={item}
-                                index={index}
-                                isDark={isDarkTheme}
-                                colors={colors}
-                                onEdit={() => handleEdit(item.id, "pet")}
-                                onDelete={() => handleDelete(item.id, "pet")}
+                {isLoading ? (
+                    <View className="flex-1 items-center justify-center">
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text
+                            className={`mt-4 ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            Carregando dados...
+                        </Text>
+                    </View>
+                ) : (
+                    <>
+                        {activeTab === "blog" && (
+                            <FlatList
+                                data={blogPosts}
+                                keyExtractor={(item) => item.id || ""}
+                                contentContainerStyle={{ padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <BlogPostItem
+                                        post={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onEdit={() => handleEdit(item.id || "", "blog")}
+                                        onDelete={() => handleDelete(item.id || "", "blog")}
+                                    />
+                                )}
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhum post encontrado
+                                        </Text>
+                                    </View>
+                                }
                             />
                         )}
-                        ListEmptyComponent={
-                            <View className="flex-1 items-center justify-center py-20">
-                                <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
-                                <Text
-                                    className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
-                                    style={Platform.select({
-                                        ios: { fontFamily: "San Francisco" },
-                                        android: { fontFamily: "Roboto" },
-                                    })}
-                                >
-                                    Nenhum pet encontrado
-                                </Text>
-                            </View>
-                        }
-                    />
-                )}
 
-                {activeTab === "users" && (
-                    <FlatList
-                        data={users}
-                        keyExtractor={(item) => item.id}
-                        contentContainerStyle={{ padding: 16 }}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[colors.primary]}
-                                tintColor={colors.primary}
-                            />
-                        }
-                        renderItem={({ item, index }) => (
-                            <UserItem
-                                user={item}
-                                index={index}
-                                isDark={isDarkTheme}
-                                colors={colors}
-                                onEdit={() => handleEdit(item.id, "user")}
-                                onDelete={() => handleDelete(item.id, "user")}
+                        {activeTab === "pets" && (
+                            <FlatList
+                                data={pets}
+                                keyExtractor={(item) => item.id || ""}
+                                contentContainerStyle={{ padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <PetItem
+                                        pet={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onEdit={() => handleEdit(item.id || "", "pet")}
+                                        onDelete={() => handleDelete(item.id || "", "pet")}
+                                    />
+                                )}
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhum pet encontrado
+                                        </Text>
+                                    </View>
+                                }
                             />
                         )}
-                        ListEmptyComponent={
-                            <View className="flex-1 items-center justify-center py-20">
-                                <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
-                                <Text
-                                    className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
-                                    style={Platform.select({
-                                        ios: { fontFamily: "San Francisco" },
-                                        android: { fontFamily: "Roboto" },
-                                    })}
-                                >
-                                    Nenhum usuário encontrado
-                                </Text>
-                            </View>
-                        }
-                    />
-                )}
 
-                {activeTab === "settings" && <SettingsPanel isDark={isDarkTheme} colors={colors} />}
+                        {activeTab === "settings" && <SettingsPanel isDark={isDarkTheme} colors={colors} />}
+                    </>
+                )}
             </Animated.View>
 
             {/* Floating Action Button */}
@@ -480,7 +429,7 @@ function BlogPostItem({ post, index, isDark, colors, onEdit, onDelete }: BlogPos
             className="mb-4"
         >
             <View
-                className={`mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
                 style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
             >
                 <View className="flex-row">
@@ -505,7 +454,10 @@ function BlogPostItem({ post, index, isDark, colors, onEdit, onDelete }: BlogPos
                                 android: { fontFamily: "Roboto" },
                             })}
                         >
-                            {post.author} • {post.date}
+                            {post.author} •{" "}
+                            {post.date instanceof Date
+                                ? post.date.toLocaleDateString()
+                                : post.date?.toDate?.()?.toLocaleDateString() || "Data não disponível"}
                         </Text>
                         <View className="flex-row items-center mt-2">
                             <View
@@ -622,11 +574,11 @@ function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps)
             className="mb-4"
         >
             <View
-                className={`mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
                 style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
             >
                 <View className="flex-row">
-                    <Image source={{ uri: pet.image }} className="w-24 h-24 object-cover" />
+                    <Image source={{ uri: pet.images[0] }} className="w-24 h-24 object-cover" />
                     <View className="flex-1 p-3 justify-center">
                         <View className="flex-row items-center justify-between">
                             <Text
@@ -663,140 +615,6 @@ function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps)
                                     }}
                                 >
                                     {getStatusText()}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-                    <View className="p-3 justify-center">
-                        <TouchableOpacity onPress={onEdit} className="mb-3">
-                            <View
-                                className="w-8 h-8 rounded-full items-center justify-center"
-                                style={{ backgroundColor: `${colors.primary}15` }}
-                            >
-                                <Feather name="edit-2" size={16} color={colors.primary} />
-                            </View>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={onDelete}>
-                            <View
-                                className="w-8 h-8 rounded-full items-center justify-center"
-                                style={{ backgroundColor: `${colors.error}15` }}
-                            >
-                                <Feather name="trash-2" size={16} color={colors.error} />
-                            </View>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-        </Animated.View>
-    )
-}
-
-// User Item Component
-interface UserItemProps {
-    user: User
-    index: number
-    isDark: boolean
-    colors: any
-    onEdit: () => void
-    onDelete: () => void
-}
-
-function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemProps) {
-    const [fadeAnim] = useState(new Animated.Value(0))
-    const [slideAnim] = useState(new Animated.Value(50))
-
-    const isIOS = Platform.OS === "ios"
-    const isAndroid = Platform.OS === "android"
-
-    useEffect(() => {
-        // Staggered animation for each item
-        const timeout = setTimeout(() => {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 400,
-                    useNativeDriver: true,
-                }),
-                Animated.spring(slideAnim, {
-                    toValue: 0,
-                    speed: 12,
-                    bounciness: 6,
-                    useNativeDriver: true,
-                }),
-            ]).start()
-        }, index * 100)
-
-        return () => clearTimeout(timeout)
-    }, [])
-
-    return (
-        <Animated.View
-            style={{
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-            }}
-            className="mb-4"
-        >
-            <View
-                className={` mb-5 rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
-                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
-            >
-                <View className="flex-row">
-                    <Image
-                        source={{ uri: user.avatar || `https://ui-avatars.com/api/?name=${user.name}&background=random` }}
-                        className="w-16 h-16 rounded-full m-4"
-                    />
-                    <View className="flex-1 py-3 justify-center">
-                        <View className="flex-row items-center justify-between">
-                            <Text
-                                className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
-                                style={Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                })}
-                                numberOfLines={1}
-                            >
-                                {user.name}
-                            </Text>
-                        </View>
-                        <Text
-                            className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-                            style={Platform.select({
-                                ios: { fontFamily: "San Francisco" },
-                                android: { fontFamily: "Roboto" },
-                            })}
-                        >
-                            {user.email}
-                        </Text>
-                        <View className="flex-row items-center mt-2">
-                            <View
-                                className="px-2 py-1 rounded-full mr-2"
-                                style={{
-                                    backgroundColor: user.role === "admin" ? `${colors.secondary}20` : `${colors.primary}20`,
-                                }}
-                            >
-                                <Text
-                                    className="text-xs font-medium"
-                                    style={{
-                                        color: user.role === "admin" ? colors.secondary : colors.primary,
-                                    }}
-                                >
-                                    {user.role === "admin" ? "Admin" : "Usuário"}
-                                </Text>
-                            </View>
-                            <View
-                                className="px-2 py-1 rounded-full"
-                                style={{
-                                    backgroundColor: user.status === "active" ? `${colors.success || "#10B981"}20` : `${colors.error}20`,
-                                }}
-                            >
-                                <Text
-                                    className="text-xs font-medium"
-                                    style={{
-                                        color: user.status === "active" ? colors.success || "#10B981" : colors.error,
-                                    }}
-                                >
-                                    {user.status === "active" ? "Ativo" : "Inativo"}
                                 </Text>
                             </View>
                         </View>

@@ -15,7 +15,6 @@ const ToastableWrapper = ({
 
     return (
         <Toastable
-            offset={top || offset}
             statusMap={statusMap}
             containerStyle={{
                 position: "absolute",
