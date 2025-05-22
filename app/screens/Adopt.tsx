@@ -122,6 +122,15 @@ export default function Adopt() {
                     paddingHorizontal: 16
                 }}
             >
+                <View className="flex-row items-center justify-between">
+                    <TouchableOpacity
+                        onPress={() => router.goBack()}
+                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+                    >
+                        <Feather name="arrow-left" size={20} color="white" />
+                    </TouchableOpacity>
+                    <View className="w-10" />
+                </View>
                 <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
                     <HeaderLayout title="Profile" />
                 </View>

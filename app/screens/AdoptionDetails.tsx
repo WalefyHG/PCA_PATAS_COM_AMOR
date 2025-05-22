@@ -167,20 +167,24 @@ export default function PetAdoptionDetail() {
         if (!pet) return
 
         if (!userPhone) {
-            // Show phone modal if user doesn't have a phone number
             setIsPhoneModalVisible(true)
         } else {
-            // Initiate contact with the pet's contact phone
-            const phoneNumber = pet.contactPhone || userPhone
+
+            const rawNumber = pet.contactPhone || userPhone
+
+            const phoneNumber = rawNumber.replace(/\D/g, '')
+
             if (phoneNumber) {
+                const message = 'Olá! Tenho interesse na adoção.'
+                const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
                 try {
-                    await Linking.openURL(`tel:${phoneNumber.replace(/\D/g, "")}`)
+                    await Linking.openURL(url)
                 } catch (error) {
-                    console.error("Error opening phone:", error)
-                    Alert.alert("Erro", "Não foi possível iniciar a chamada. Tente novamente.")
+                    console.error('Erro ao abrir WhatsApp:', error)
+                    Alert.alert('Erro', 'Não foi possível abrir o WhatsApp. Verifique se o app está instalado.')
                 }
             } else {
-                Alert.alert("Erro", "Número de telefone não disponível. Entre em contato por email.")
+                Alert.alert('Erro', 'Número de telefone não disponível. Entre em contato por email.')
             }
         }
     }

@@ -23,7 +23,7 @@ import {
     getDownloadURL,
     deleteObject,
 } from "firebase/storage"
-import { Alert } from "react-native"
+import { Alert, Platform } from "react-native"
 
 // Configuração do Firebase (substitua com suas credenciais)
 const firebaseConfig = {
@@ -449,34 +449,61 @@ export const uploadImage = async (
     onProgress?: (progress: number) => void
 ): Promise<string> => {
     try {
-        const response = await fetch(uri)
-        const blob = await response.blob()
+        // Adicionar verificação de URI
+        if (!uri) {
+            throw new Error("URI da imagem não fornecida");
+        }
 
-        const storageRef = ref(storage, path)
-        const uploadTask = uploadBytesResumable(storageRef, blob)
+        // Obter o blob da imagem com tratamento de erros
+        let blob: Blob;
+        try {
+            const response = await fetch(uri);
+            if (!response.ok) {
+                throw new Error(`Falha ao buscar imagem: ${response.status}`);
+            }
+            blob = await response.blob();
+        } catch (error) {
+            console.error("Erro ao converter imagem para blob:", error);
+            throw new Error("Não foi possível processar a imagem");
+        }
+
+        // Criar referência no Storage com metadados
+        const storageRef = ref(storage, path);
+        const metadata = {
+            contentType: blob.type || 'image/jpeg', // Tipo padrão se não detectado
+            cacheControl: 'public, max-age=31536000', // Cache por 1 ano
+        };
+
+        // Iniciar upload com metadados
+        const uploadTask = uploadBytesResumable(storageRef, blob, metadata);
 
         return new Promise((resolve, reject) => {
             uploadTask.on(
                 "state_changed",
                 (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                    if (onProgress) onProgress(progress)
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    if (onProgress) onProgress(Math.round(progress));
                 },
                 (error) => {
-                    console.error("Error uploading image:", error)
-                    reject(error)
+                    console.error("Erro no upload:", error);
+                    reject(new Error("Falha no upload da imagem"));
                 },
                 async () => {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
-                    resolve(downloadURL)
+                    try {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        resolve(downloadURL);
+                    } catch (error) {
+                        console.error("Erro ao obter URL de download:", error);
+                        reject(new Error("Falha ao obter URL da imagem"));
+                    }
                 }
-            )
-        })
+            );
+        });
     } catch (error) {
-        console.error("Error in upload process:", error)
-        throw error
+        console.error("Erro no processo de upload:", error);
+        throw error;
     }
-}
+};
 
 export const deleteImage = async (path: string): Promise<void> => {
     try {
@@ -539,3 +566,48 @@ export const initializeFirestore = async (): Promise<void> => {
         console.error("Error initializing Firestore:", error)
     }
 }
+
+
+export const uploadToCloudinary = async (uri: string | File): Promise<string> => {
+    try {
+        const formData = new FormData();
+
+        if (Platform.OS === 'web') {
+            // `uri` deve ser um objeto File no ambiente web
+            if (!(uri instanceof File)) {
+                throw new Error('Na web, o arquivo precisa ser do tipo File.');
+            }
+            formData.append('file', uri);
+        } else {
+            // Para mobile, `uri` é uma string de caminho local (por exemplo, file://...)
+            formData.append('file', {
+                uri,
+                type: 'image/jpeg',
+                name: `upload_${Date.now()}.jpg`,
+            } as any);
+        }
+
+        formData.append('upload_preset', 'pca_fixed'); // seu preset
+
+        const response = await fetch('https://api.cloudinary.com/v1_1/drwe1wtnk/image/upload', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const text = await response.text();
+
+        if (!response.ok) {
+            throw new Error(`Cloudinary upload failed: ${response.status} ${response.statusText}\n${text}`);
+        }
+
+        const data = JSON.parse(text);
+        console.log('Resposta da API do Cloudinary:', data);
+
+        if (data.secure_url) return data.secure_url;
+        throw new Error('Falha no upload para Cloudinary: URL não encontrada na resposta');
+    } catch (err: any) {
+        console.error('Erro uploading image to Cloudinary:', err);
+        Alert.alert('Erro', `Falha no upload da imagem: ${err.message}`);
+        throw err;
+    }
+};

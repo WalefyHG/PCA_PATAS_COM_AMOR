@@ -20,7 +20,7 @@ import { Feather } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
 import { LinearGradient } from "expo-linear-gradient"
-import { createBlogPost, updateBlogPost, getBlogPostById, uploadImage, isUserAdmin, BlogPost } from "../config/firebase"
+import { createBlogPost, updateBlogPost, getBlogPostById, uploadImage, isUserAdmin, BlogPost, uploadToCloudinary } from "../config/firebase"
 import { auth } from "../config/firebase"
 
 export default function AddBlogPost() {
@@ -118,6 +118,7 @@ export default function AddBlogPost() {
         ]).start()
     }, [postId, navigation])
 
+
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
 
@@ -126,17 +127,27 @@ export default function AddBlogPost() {
             return
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [16, 9],
-            quality: 0.8,
-        })
+        if (Platform.OS === 'web') {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (event: any) => {
+                const file = event.target.files[0];
+                if (file) setImage(file);
+            };
+            input.click();
+        } else {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.7,
+            });
 
-        if (!result.canceled) {
-            setImage(result.assets[0].uri)
+            if (!result.canceled) {
+                setImage(result.assets[0].uri);
+            }
         }
-    }
+    };
 
     const handleSubmit = async () => {
         if (!title.trim()) {
@@ -180,9 +191,8 @@ export default function AddBlogPost() {
             let imageUrl = image
 
             // Se a imagem for local (não começa com http), fazer upload
-            if (image && !image.startsWith('http')) {
-                const imagePath = `blog_posts/${Date.now()}_${auth.currentUser.uid}`
-                imageUrl = await uploadImage(image, imagePath, setUploadProgress)
+            if (image) {
+                imageUrl = await uploadToCloudinary(image)
             }
 
             const postData: BlogPost = {
@@ -275,7 +285,17 @@ export default function AddBlogPost() {
                             onPress={pickImage}
                         >
                             {image ? (
-                                <Image source={{ uri: image }} className="w-full h-full" />
+                                <Image
+                                    source={{
+                                        uri:
+                                            Platform.OS === 'web'
+                                                ? (typeof image === "string"
+                                                    ? image
+                                                    : URL.createObjectURL(image))
+                                                : image
+                                    }}
+                                    className="w-full h-full"
+                                />
                             ) : (
                                 <View className="items-center">
                                     <View
