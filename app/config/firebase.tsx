@@ -15,6 +15,7 @@ import {
     limit,
     serverTimestamp,
     Timestamp,
+    QueryConstraint,
 } from "firebase/firestore"
 import {
     getStorage,
@@ -145,37 +146,49 @@ export const isUserAdmin = async (userId: string): Promise<boolean> => {
 }
 
 // Serviço de Blog Posts
+const ALL_CATEGORIES = "Todos"
+
 export const getBlogPosts = async (
     category?: string,
     limit_count: number = 10,
     onlyPublished: boolean = true
 ): Promise<BlogPost[]> => {
     try {
-        let q = collection(db, "blog_posts")
+        const snapshot = await getDocs(collection(db, "blog_posts"))
 
-        // Construir a query com base nos parâmetros
-        let constraints = []
-
-        if (onlyPublished) {
-            constraints.push(where("status", "==", "published"))
-        }
-
-        if (category && category !== "Todos") {
-            constraints.push(where("category", "==", category))
-        }
-
-        constraints.push(orderBy("date", "desc"))
-        constraints.push(limit(limit_count))
-
-        const querySnapshot = await getDocs(query(q, ...constraints))
-
-        return querySnapshot.docs.map((doc) => ({
+        let posts = snapshot.docs.map((doc) => ({
             id: doc.id,
-            ...doc.data() as BlogPost,
-        }))
-    } catch (error) {
-        console.error("Error fetching blog posts:", error)
-        throw error
+            ...doc.data(),
+        })) as BlogPost[]
+
+        // Filtrar por categoria
+        if (category && category !== "Todos") {
+            posts = posts.filter((post) => post.category === category)
+        }
+
+        // Ordenar por data (do mais recente pro mais antigo)
+        posts = posts.sort((a, b) => {
+            const getTime = (date: Timestamp | Date | undefined) => {
+                if (!date) return 0;
+                if (typeof (date as any).toDate === "function") {
+                    // Firestore Timestamp
+                    return (date as Timestamp).toDate().getTime();
+                }
+                if (date instanceof Date) {
+                    return date.getTime();
+                }
+                return 0;
+            };
+            const dateA = getTime(a.date);
+            const dateB = getTime(b.date);
+            return dateB - dateA;
+        })
+
+        // Limitar a quantidade de posts
+        return posts.slice(0, limit_count)
+    } catch (error: any) {
+        console.error("Erro ao buscar posts:", error.message)
+        throw new Error("Não foi possível carregar os posts do blog.")
     }
 }
 

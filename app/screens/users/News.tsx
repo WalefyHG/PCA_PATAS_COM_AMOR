@@ -7,6 +7,7 @@ import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import HeaderLayout from "@/app/utils/HeaderLayout"
+import { getBlogPosts } from "@/app/config/firebase"
 
 interface BlogPost {
   id: string
@@ -47,81 +48,26 @@ export default function Blog() {
   const categories = ["Todos", "Cuidados", "Alimentação", "Adoção", "Comportamento"]
   const [activeCategory, setActiveCategory] = useState("Todos")
 
-  const [posts] = useState<BlogPost[]>([
-    {
-      id: "1",
-      title: "Como cuidar de filhotes recém-nascidos",
-      excerpt: "Aprenda os cuidados essenciais para filhotes de cães e gatos nas primeiras semanas de vida.",
-      author: "Dra. Ana Silva",
-      date: "15/04/2023",
-      image:
-        "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      likes: 124,
-      comments: 32,
-      category: "Cuidados",
-    },
-    {
-      id: "2",
-      title: "Alimentação saudável para pets idosos",
-      excerpt: "Descubra como adaptar a dieta do seu animal de estimação conforme ele envelhece.",
-      author: "Dr. Carlos Mendes",
-      date: "03/05/2023",
-      image:
-        "https://images.unsplash.com/photo-1450778869180-41d0601e046e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      likes: 98,
-      comments: 17,
-      category: "Alimentação",
-    },
-    {
-      id: "3",
-      title: "Benefícios da adoção responsável",
-      excerpt: "Entenda por que adotar um animal abandonado pode transformar não só a vida dele, mas também a sua.",
-      author: "Patrícia Oliveira",
-      date: "22/05/2023",
-      image: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      likes: 215,
-      comments: 45,
-      category: "Adoção",
-    },
-    {
-      id: "4",
-      title: "Dicas para socializar seu pet",
-      excerpt: "Aprenda técnicas para ajudar seu animal a se relacionar melhor com outros pets e pessoas.",
-      author: "João Pereira",
-      date: "10/06/2023",
-      image:
-        "https://images.unsplash.com/photo-1534361960057-19889db9621e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      likes: 87,
-      comments: 23,
-      category: "Comportamento",
-    },
-    {
-      id: "5",
-      title: "Sinais de que seu pet precisa ir ao veterinário",
-      excerpt: "Aprenda a identificar comportamentos que podem indicar problemas de saúde no seu animal.",
-      author: "Dra. Mariana Costa",
-      date: "28/06/2023",
-      image:
-        "https://images.unsplash.com/photo-1576201836106-db1758fd1c97?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      likes: 142,
-      comments: 38,
-      category: "Cuidados",
-    },
-    {
-      id: "6",
-      title: "Brincadeiras que estimulam a inteligência do seu pet",
-      excerpt: "Descubra jogos e atividades que ajudam no desenvolvimento cognitivo de cães e gatos.",
-      author: "Ricardo Alves",
-      date: "15/07/2023",
-      image:
-        "https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      likes: 95,
-      comments: 27,
-      category: "Comportamento",
-    },
-  ])
+  const [posts, setPosts] = useState<BlogPost[]>()
 
-  const filteredPosts = activeCategory === "Todos" ? posts : posts.filter(post => post.category === activeCategory)
+  useEffect(() => {
+    // Simulate fetching posts from an API
+    const fetchPosts = async () => {
+      const response = await getBlogPosts(activeCategory)
+      console.log("Fetched posts:", response)
+      const mapped = (response as any[]).map(post => ({
+        ...post,
+        date: post.date?.toDate?.().toLocaleDateString?.("pt-BR") || "Data inválida"
+      }))
+      setPosts(mapped)
+    }
+
+    fetchPosts()
+  }, [activeCategory])
+
+  const filteredPosts = activeCategory === "Todos"
+    ? (posts ?? [])
+    : (posts ?? []).filter(post => post.category === activeCategory)
 
   useEffect(() => {
     Animated.parallel([
@@ -166,7 +112,7 @@ export default function Blog() {
           <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
             <HeaderLayout title="Configurações" />
           </View>
-          <View style={{ alignItems: 'center' }}>
+          <View style={{ display: "flex", flexDirection: "row", alignItems: "center", marginBottom: 16, gap: 8 }}>
             <View style={{
               backgroundColor: 'rgba(255,255,255,0.2)',
               width: 60,
@@ -189,18 +135,6 @@ export default function Blog() {
             }}>
               Blog Pet
             </Text>
-            <Text style={{
-              color: 'rgba(255,255,255,0.8)',
-              fontSize: 16,
-              marginTop: 8,
-              textAlign: 'center',
-              ...Platform.select({
-                ios: { fontFamily: "San Francisco" },
-                android: { fontFamily: "Roboto" },
-              }),
-            }}>
-              Dicas e informações para o bem-estar do seu pet
-            </Text>
           </View>
 
           {/* Categories */}
@@ -208,8 +142,9 @@ export default function Blog() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{
+              alignContent: 'center',
               paddingHorizontal: 8,
-              marginTop: 24
+              marginTop: 24,
             }}
           >
             {categories.map((category) => (

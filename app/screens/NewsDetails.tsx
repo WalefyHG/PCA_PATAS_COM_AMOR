@@ -18,6 +18,7 @@ import { Feather } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import HeaderLayout from "../utils/HeaderLayout"
+import { getBlogPostById } from "../config/firebase"
 
 interface BlogPostDetail {
     id: string
@@ -89,99 +90,29 @@ export default function BlogPostDetail() {
         // Fetch post data based on postId
         // This is a mock implementation
         const fetchPost = async () => {
-            // In a real app, you would fetch from an API or database
-            const mockPost: BlogPostDetail = {
-                id: postId || "1",
-                title: "Como cuidar de filhotes recém-nascidos",
-                content: `
-Os primeiros dias de vida de um filhote são cruciais para seu desenvolvimento saudável. Neste artigo, vamos abordar os cuidados essenciais que você deve ter com filhotes recém-nascidos, seja de cães ou gatos.
-
-## Alimentação adequada
-
-Os filhotes recém-nascidos dependem exclusivamente do leite materno nas primeiras semanas de vida. O leite materno contém todos os nutrientes necessários para o desenvolvimento saudável, além de anticorpos que fortalecem o sistema imunológico.
-
-Caso a mãe não possa amamentar, é necessário utilizar substitutos de leite específicos para filhotes, disponíveis em pet shops e clínicas veterinárias. Nunca ofereça leite de vaca, pois ele não contém os nutrientes adequados e pode causar problemas digestivos.
-
-## Ambiente adequado
-
-O ambiente onde os filhotes ficam deve ser:
-
-- Limpo e higienizado diariamente
-- Aquecido (temperatura entre 28°C e 30°C na primeira semana)
-- Calmo e sem muito barulho
-- Protegido de outros animais
-
-## Higiene e cuidados básicos
-
-Nas primeiras semanas, a mãe cuida da higiene dos filhotes lambendo-os. Caso seja necessário intervir:
-
-- Limpe delicadamente com um pano úmido e morno
-- Estimule a micção e defecação com um algodão úmido
-- Verifique diariamente se há sinais de desidratação ou problemas de saúde
-
-## Socialização
-
-A partir da terceira semana, os filhotes começam a interagir mais com o ambiente. É importante proporcionar:
-
-- Contato gentil e positivo com humanos
-- Exposição gradual a diferentes estímulos
-- Interação com outros animais (quando vacinados)
-
-## Acompanhamento veterinário
-
-É fundamental levar os filhotes ao veterinário para:
-
-- Verificar se estão se desenvolvendo adequadamente
-- Iniciar o protocolo de vacinação
-- Realizar a vermifugação
-- Receber orientações específicas para a raça
-
-Seguindo esses cuidados básicos, você estará proporcionando um início de vida saudável para os filhotes, contribuindo para que se tornem adultos equilibrados e saudáveis.
-        `,
-                excerpt: "Aprenda os cuidados essenciais para filhotes de cães e gatos nas primeiras semanas de vida.",
-                author: "Dra. Ana Silva",
-                authorAvatar: "https://ui-avatars.com/api/?name=Ana+Silva&background=random",
-                date: "15/04/2023",
-                image:
-                    "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80",
-                likes: 124,
-                comments: 32,
-                category: "Cuidados",
-                readTime: "5 min",
+            const response = await getBlogPostById(postId)
+            if (response && typeof response.id === "string") {
+                setPost({
+                    ...response,
+                    id: response.id ?? "",
+                    authorAvatar: response.authorAvatar ?? "https://ui-avatars.com/api/?name=Autor&background=random",
+                    date: response.date
+                        ? typeof response.date === "string"
+                            ? response.date
+                            : response.date instanceof Date
+                                ? response.date.toLocaleDateString()
+                                : response.date.toDate
+                                    ? response.date.toDate().toLocaleDateString()
+                                    : ""
+                        : "",
+                    likes: typeof response.likes === "number" ? response.likes : 0,
+                    comments: typeof response.comments === "number" ? response.comments : 0,
+                })
+                setComments(Array.isArray(response.comments) ? response.comments : [])
+            } else {
+                console.error("Post not found or invalid id")
             }
 
-            setPost(mockPost)
-
-            // Mock comments
-            const mockComments: Comment[] = [
-                {
-                    id: "1",
-                    author: "Carlos Mendes",
-                    authorAvatar: "https://ui-avatars.com/api/?name=Carlos+Mendes&background=random",
-                    date: "16/04/2023",
-                    content: "Excelente artigo! Estou cuidando de filhotes pela primeira vez e essas dicas foram muito úteis.",
-                    likes: 8,
-                },
-                {
-                    id: "2",
-                    author: "Mariana Costa",
-                    authorAvatar: "https://ui-avatars.com/api/?name=Mariana+Costa&background=random",
-                    date: "17/04/2023",
-                    content:
-                        "Gostaria de adicionar que é importante também ficar atento à temperatura do ambiente. Filhotes não conseguem regular bem a temperatura corporal nas primeiras semanas.",
-                    likes: 12,
-                },
-                {
-                    id: "3",
-                    author: "Pedro Alves",
-                    authorAvatar: "https://ui-avatars.com/api/?name=Pedro+Alves&background=random",
-                    date: "18/04/2023",
-                    content: "Vocês recomendam alguma marca específica de substituto de leite para gatos?",
-                    likes: 3,
-                },
-            ]
-
-            setComments(mockComments)
         }
 
         fetchPost()
