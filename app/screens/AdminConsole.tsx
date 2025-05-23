@@ -40,7 +40,7 @@ interface AdminTab {
 export default function AdminConsole() {
     const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation<any>()
-    const [activeTab, setActiveTab] = useState<string>("blog")
+    const [activeTab, setActiveTab] = useState<string>()
     const [refreshing, setRefreshing] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
@@ -133,7 +133,7 @@ export default function AdminConsole() {
             navigation.navigate("AddBlogPost", { postId: id })
         } else if (type === "pet") {
             // Navegar para a tela de edição de pet
-            Alert.alert("Editar Pet", `Editar pet com ID: ${id}`)
+            navigation.navigate("AddPet", { petId: id })
         }
     }
 
@@ -167,7 +167,7 @@ export default function AdminConsole() {
             navigation.navigate("AddBlogPost")
         } else if (activeTab === "pets") {
             // Navegar para a tela de adição de pet
-            Alert.alert("Adicionar Pet", "Funcionalidade em desenvolvimento")
+            navigation.navigate("AddPet")
         }
     }
 

@@ -16,6 +16,7 @@ import {
     serverTimestamp,
     Timestamp,
     QueryConstraint,
+    setDoc,
 } from "firebase/firestore"
 import {
     getStorage,
@@ -230,6 +231,11 @@ export const createBlogPost = async (post: BlogPost): Promise<string> => {
         }
 
         const docRef = await addDoc(collection(db, "blog_posts"), postWithMetadata)
+
+        await updateDoc(doc(db, "blog_posts", docRef.id), {
+            id: docRef.id,
+        })
+
         return docRef.id
     } catch (error) {
         console.error("Error creating blog post:", error)
@@ -346,28 +352,38 @@ export const getPets = async (
     limit_count: number = 10
 ): Promise<Pet[]> => {
     try {
-        let q = collection(db, "pets")
+        const snapshot = await getDocs(collection(db, "pets"))
 
-        // Construir a query com base nos parâmetros
-        let constraints = []
-
-        if (status) {
-            constraints.push(where("status", "==", status))
-        }
-
-        if (type && type !== "Todos") {
-            constraints.push(where("type", "==", type))
-        }
-
-        constraints.push(orderBy("createdAt", "desc"))
-        constraints.push(limit(limit_count))
-
-        const querySnapshot = await getDocs(query(q, ...constraints))
-
-        return querySnapshot.docs.map((doc) => ({
+        let pets = snapshot.docs.map((doc) => ({
             id: doc.id,
-            ...doc.data() as Pet,
-        }))
+            ...doc.data(),
+        })) as Pet[]
+
+        // Filtrar por categoria
+        if (status && status !== "available") {
+            pets = pets.filter((pet) => pet.status === status)
+        }
+
+        // Ordenar por data (do mais recente pro mais antigo)
+        pets = pets.sort((a, b) => {
+            const getTime = (date: Timestamp | Date | undefined) => {
+                if (!date) return 0;
+                if (typeof (date as any).toDate === "function") {
+                    // Firestore Timestamp
+                    return (date as Timestamp).toDate().getTime();
+                }
+                if (date instanceof Date) {
+                    return date.getTime();
+                }
+                return 0;
+            };
+            const dateA = getTime(a.createdAt);
+            const dateB = getTime(b.createdAt);
+            return dateB - dateA;
+        })
+
+        // Limitar a quantidade de posts
+        return pets.slice(0, limit_count)
     } catch (error) {
         console.error("Error fetching pets:", error)
         throw error
@@ -398,11 +414,9 @@ export const createPet = async (pet: Pet): Promise<string> => {
         const currentUser = auth.currentUser
         if (!currentUser) throw new Error("User not authenticated")
 
-        // Verificar se o usuário é admin
         const isAdmin = await isUserAdmin(currentUser.uid)
         if (!isAdmin) throw new Error("Unauthorized: Only admins can create pets")
 
-        // Adicionar metadados
         const petWithMetadata = {
             ...pet,
             createdBy: currentUser.uid,
@@ -411,6 +425,11 @@ export const createPet = async (pet: Pet): Promise<string> => {
         }
 
         const docRef = await addDoc(collection(db, "pets"), petWithMetadata)
+
+        await updateDoc(doc(db, "pets", docRef.id), {
+            id: docRef.id,
+        })
+
         return docRef.id
     } catch (error) {
         console.error("Error creating pet:", error)
