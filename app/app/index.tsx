@@ -85,6 +85,7 @@ export default function HomeScreen() {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
+            role: 'user',
           });
         }
         router.navigate('Tabs');
