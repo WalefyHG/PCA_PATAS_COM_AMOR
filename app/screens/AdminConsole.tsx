@@ -19,6 +19,7 @@ import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
+import { useTranslation } from "react-i18next"
 import {
     getBlogPosts,
     getPets,
@@ -29,6 +30,7 @@ import {
     type Pet,
 } from "../config/firebase"
 import { auth } from "../config/firebase"
+import HeaderLayout from "../utils/HeaderLayout"
 
 // Tipos para os dados
 interface AdminTab {
@@ -40,10 +42,12 @@ interface AdminTab {
 export default function AdminConsole() {
     const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation<any>()
-    const [activeTab, setActiveTab] = useState<string>()
+    const [activeTab, setActiveTab] = useState<string>("blog")
     const [refreshing, setRefreshing] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
+
+    const { t } = useTranslation()
 
     // Animated values
     const [fadeAnim] = useState(new Animated.Value(0))
@@ -96,6 +100,12 @@ export default function AdminConsole() {
         ]).start()
     }, [navigation])
 
+    useEffect(() => {
+        if (isAdmin) {
+            fetchData()
+        }
+    }, [activeTab, isAdmin])
+
     const fetchData = async () => {
         setIsLoading(true)
 
@@ -107,6 +117,7 @@ export default function AdminConsole() {
             } else if (activeTab === "pets") {
                 // Buscar todos os pets (disponíveis, pendentes e adotados)
                 const allPets = await getPets("", "", 20)
+                console.log("Fetched pets:", allPets)
                 setPets(allPets)
             }
         } catch (error) {
@@ -211,8 +222,11 @@ export default function AdminConsole() {
                     >
                         <Feather name="arrow-left" size={20} color="white" />
                     </TouchableOpacity>
-                    <Text className="text-white text-xl font-bold">Admin Console</Text>
+                    <Text className="text-white text-xl font-bold">{t("Admin Console")}</Text>
                     <View className="w-10" />
+                </View>
+                <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+                    <HeaderLayout title="Profile" />
                 </View>
             </LinearGradient>
 

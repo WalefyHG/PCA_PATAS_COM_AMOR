@@ -186,7 +186,7 @@ const AppLayout = () => {
             <Stack.Screen name="(tabs)" component={TabLayout} options={{ headerShown: false }} />
             <Stack.Screen name="Adopt" component={Adopt} options={{ title: t("Adopt"), headerShown: false }} />
             <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{ title: t("Add Blog Post") }} />
-            <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console") }} />
+            <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console"), headerShown: false }} />
             <Stack.Screen name="NewsDetails" component={BlogPostDetail} options={{ title: t("News Details"), headerShown: false }} />
             <Stack.Screen name="AdoptDetails" component={PetAdoptionDetail} options={{ title: t("Adopt Details"), headerShown: false }} />
             <Stack.Screen name="AddPet" component={AddPet} options={{ title: t("Add Pet") }} />

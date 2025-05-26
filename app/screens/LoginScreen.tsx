@@ -11,15 +11,17 @@ import { useThemeContext } from "../utils/ThemeContext"
 import { useAuth } from "../utils/AuthContext"
 import { LinearGradient } from "expo-linear-gradient"
 import { Feather } from "@expo/vector-icons"
+import { GoogleSignin, isSuccessResponse } from "@react-native-google-signin/google-signin"
 
-// Importação condicional para Google SignIn
-let GoogleSignin: any, isSuccessResponse: any
 
 if (Platform.OS !== "web") {
   try {
-    const GoogleModule = require("@react-native-google-signin/google-signin")
-    GoogleSignin = GoogleModule.GoogleSignin
-    isSuccessResponse = GoogleModule.isSuccessResponse
+
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_WEBCLIENTID,
+      offlineAccess: true,
+    })
+
   } catch (error) {
     console.log("Google SignIn não disponível nesta plataforma")
   }
@@ -170,7 +172,9 @@ export default function LoginScreen() {
         const response = await GoogleSignin.signIn()
 
         if (isSuccessResponse(response)) {
-          const googleCredential = GoogleAuthProvider.credential(response.idToken)
+          console.log("Google SignIn response:", response.data.idToken)
+
+          const googleCredential = GoogleAuthProvider.credential(response.data.idToken)
           const userCredential = await signInWithCredential(auth, googleCredential)
           user = userCredential.user
         }
