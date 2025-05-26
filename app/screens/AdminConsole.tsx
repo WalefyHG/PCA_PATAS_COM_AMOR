@@ -31,6 +31,7 @@ import {
 } from "../config/firebase"
 import { auth } from "../config/firebase"
 import HeaderLayout from "../utils/HeaderLayout"
+import { ConfirmModal } from "../utils/ConfirmModal"
 
 // Tipos para os dados
 interface AdminTab {
@@ -46,6 +47,8 @@ export default function AdminConsole() {
     const [refreshing, setRefreshing] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [modalVisible, setModalVisible] = useState(false)
+    const [itemToDelete, setItemToDelete] = useState<{ id: string; type: string } | null>(null)
 
     const { t } = useTranslation()
 
@@ -147,31 +150,39 @@ export default function AdminConsole() {
             navigation.navigate("AddPet", { petId: id })
         }
     }
+    const openDeleteModal = (id: string, type: string) => {
+        setItemToDelete({ id, type });
+        setModalVisible(true);
+    };
 
-    const handleDelete = (id: string, type: string) => {
-        Alert.alert("Confirmar exclusão", `Tem certeza que deseja excluir este ${type === "blog" ? "post" : "pet"}?`, [
-            { text: "Cancelar", style: "cancel" },
-            {
-                text: "Excluir",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        if (type === "blog") {
-                            await deleteBlogPost(id)
-                            setBlogPosts(blogPosts.filter((post) => post.id !== id))
-                        } else if (type === "pet") {
-                            await deletePet(id)
-                            setPets(pets.filter((pet) => pet.id !== id))
-                        }
-                        Alert.alert("Sucesso", `${type === "blog" ? "Post" : "Pet"} excluído com sucesso!`)
-                    } catch (error) {
-                        console.error(`Error deleting ${type}:`, error)
-                        Alert.alert("Erro", `Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`)
-                    }
-                },
-            },
-        ])
-    }
+    // Função que executa a exclusão
+    const handleDelete = async (id: string, type: string) => {
+        try {
+            if (type === "blog") {
+                await deleteBlogPost(id);
+                setBlogPosts((prev) => prev.filter((post) => post.id !== id));
+            } else if (type === "pet") {
+                await deletePet(id);
+                setPets((prev) => prev.filter((pet) => pet.id !== id));
+            }
+
+            if (Platform.OS === "web") {
+                window.alert(`${type === "blog" ? "Post" : "Pet"} excluído com sucesso!`);
+            } else {
+                Alert.alert("Sucesso", `${type === "blog" ? "Post" : "Pet"} excluído com sucesso!`);
+            }
+        } catch (error) {
+            console.error("Erro ao excluir:", error);
+            if (Platform.OS === "web") {
+                window.alert(`Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`);
+            } else {
+                Alert.alert("Erro", `Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`);
+            }
+        } finally {
+            setModalVisible(false);
+            setItemToDelete(null);
+        }
+    };
 
     const handleAdd = () => {
         if (activeTab === "blog") {
@@ -314,7 +325,7 @@ export default function AdminConsole() {
                                         isDark={isDarkTheme}
                                         colors={colors}
                                         onEdit={() => handleEdit(item.id || "", "blog")}
-                                        onDelete={() => handleDelete(item.id || "", "blog")}
+                                        onDelete={() => openDeleteModal(item.id || "", "blog")}
                                     />
                                 )}
                                 ListEmptyComponent={
@@ -354,7 +365,7 @@ export default function AdminConsole() {
                                         isDark={isDarkTheme}
                                         colors={colors}
                                         onEdit={() => handleEdit(item.id || "", "pet")}
-                                        onDelete={() => handleDelete(item.id || "", "pet")}
+                                        onDelete={() => openDeleteModal(item.id || "", "pet")}
                                     />
                                 )}
                                 ListEmptyComponent={
@@ -375,6 +386,12 @@ export default function AdminConsole() {
                         )}
 
                         {activeTab === "settings" && <SettingsPanel isDark={isDarkTheme} colors={colors} />}
+                        <ConfirmModal
+                            visible={modalVisible}
+                            message={`Tem certeza que deseja excluir este ${itemToDelete?.type === "blog" ? "post" : "pet"}?`}
+                            onConfirm={() => handleDelete(itemToDelete?.id || "", itemToDelete?.type || "")}
+                            onCancel={() => setModalVisible(false)}
+                        />
                     </>
                 )}
             </Animated.View>

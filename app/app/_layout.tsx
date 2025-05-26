@@ -62,7 +62,7 @@ function NavigationContent() {
                 headerShown: false,
                 contentStyle: {
                     flex: 1,
-                    overflow: "scroll",
+                    overflow: "hidden",
                     backgroundColor: isDarkTheme ? "#111827" : "#fff",
                 },
             }}

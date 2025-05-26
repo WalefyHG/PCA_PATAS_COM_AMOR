@@ -30,8 +30,6 @@ export default function AddPet() {
     const { petId } = route.params || {};
     const isEditing = !!petId;
 
-    console.log("Pet ID:", petId);
-
     // Pet state with all required fields
     const [pet, setPet] = useState<Pet>({
         name: "",
@@ -166,7 +164,7 @@ export default function AddPet() {
     };
 
     const handleSubmit = async () => {
-        // Validation
+        // Validação
         if (!pet.name || !pet.type || !pet.breed || !pet.description || !pet.location) {
             Alert.alert("Erro de Validação", "Por favor, preencha todos os campos obrigatórios");
             return;
@@ -180,34 +178,19 @@ export default function AddPet() {
         try {
             setIsSubmitting(true);
 
-            // Here you would implement your API call to save/update the pet
-            // For now we'll just simulate a successful save
-            setTimeout(async () => {
-                const addNewPet = await createPet(pet);
-                if (addNewPet) {
-                    Alert.alert("Sucesso", "Pet salvo com sucesso!");
-                    navigation.goBack();
-                } else {
-                    Alert.alert("Erro", "Houve um erro ao salvar o pet. Tente novamente.");
-                }
-                setIsSubmitting(false);
-            }, 1000);
-
-            if (isEditing) {
-                const dataPet = await getPetById(petId);
-                if (dataPet) {
-                    setPet(dataPet);
-                    await updatePet(dataPet.id!, dataPet);
-                    Alert.alert("Sucesso", "Pet atualizado com sucesso!");
-                    navigation.goBack();
-                } else {
-                    Alert.alert("Erro", "Houve um erro ao carregar os dados do pet. Tente novamente.");
-                }
+            if (isEditing && petId) {
+                await updatePet(petId, pet);
+                Alert.alert("Sucesso", "Pet atualizado com sucesso!");
+            } else {
+                await createPet(pet);
+                Alert.alert("Sucesso", "Pet salvo com sucesso!");
             }
 
+            navigation.goBack();
         } catch (error) {
-            console.error("Error saving pet:", error);
+            console.error("Erro ao salvar pet:", error);
             Alert.alert("Erro", "Houve um erro ao salvar o pet. Tente novamente.");
+        } finally {
             setIsSubmitting(false);
         }
     };

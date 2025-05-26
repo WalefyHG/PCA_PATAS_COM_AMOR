@@ -447,6 +447,13 @@ export const updatePet = async (petId: string, pet: Partial<Pet>): Promise<void>
         if (!isAdmin) throw new Error("Unauthorized: Only admins can update pets")
 
         const docRef = doc(db, "pets", petId)
+
+        const docSnap = await getDoc(docRef)
+
+        if (!docSnap.exists()) {
+            throw new Error(`Pet with ID "${petId}" does not exist.`)
+        }
+
         await updateDoc(docRef, {
             ...pet,
             updatedAt: serverTimestamp(),

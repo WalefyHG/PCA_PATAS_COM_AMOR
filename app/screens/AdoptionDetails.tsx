@@ -19,31 +19,9 @@ import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
-import { auth, db } from "../config/firebase"
+import { auth, db, getPetById, Pet } from "../config/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import HeaderLayout from "../utils/HeaderLayout"
-
-interface PetDetail {
-    id: string
-    name: string
-    age: string
-    type: string
-    breed: string
-    gender: string
-    size: string
-    color: string
-    description: string
-    history: string
-    images: string[]
-    requirements: string[]
-    location: string
-    contactPhone?: string
-    contactEmail?: string
-    vaccinated: boolean
-    neutered: boolean
-    specialNeeds: boolean
-    specialNeedsDescription?: string
-}
 
 export default function PetAdoptionDetail() {
     const { isDarkTheme, colors } = useThemeContext()
@@ -76,7 +54,7 @@ export default function PetAdoptionDetail() {
         extrapolate: "clamp",
     })
 
-    const [pet, setPet] = useState<PetDetail | null>(null)
+    const [pet, setPet] = useState<Pet | null>(null)
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [userPhone, setUserPhone] = useState<string | null>(null)
     const [isPhoneModalVisible, setIsPhoneModalVisible] = useState(false)
@@ -93,41 +71,13 @@ export default function PetAdoptionDetail() {
         const fetchData = async () => {
             try {
                 setIsLoading(true)
+                const pets = await getPetById(petId)
 
-                // Fetch pet data (mock implementation)
-                // In a real app, you would fetch from an API or database
-                const mockPet: PetDetail = {
-                    id: petId || "1",
-                    name: "Max",
-                    age: "2 anos",
-                    type: "Cachorro",
-                    breed: "Labrador",
-                    gender: "Macho",
-                    size: "Grande",
-                    color: "Dourado",
-                    description: "Max é um cachorro amigável e brincalhão que adora crianças.",
-                    history:
-                        "Max foi resgatado de uma situação de abandono há 3 meses. Ele estava desnutrido e com alguns problemas de saúde, mas agora está totalmente recuperado e pronto para encontrar um novo lar.",
-                    images: [
-                        "https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80",
-                        "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80",
-                        "https://images.unsplash.com/photo-1518717758536-85ae29035b6d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80",
-                    ],
-                    requirements: [
-                        "Ter espaço adequado para um cachorro de porte grande",
-                        "Disponibilidade para passeios diários",
-                        "Paciência para treinamento",
-                        "Compromisso com a saúde e bem-estar do animal",
-                    ],
-                    location: "São Paulo, SP",
-                    contactPhone: "(11) 99999-9999",
-                    contactEmail: "contato@patascomamor.org",
-                    vaccinated: true,
-                    neutered: true,
-                    specialNeeds: false,
+                if (!pets) {
+                    throw new Error("Pet not found")
+                } else {
+                    setPet(pets)
                 }
-
-                setPet(mockPet)
 
                 // Fetch user phone from Firebase
                 if (auth.currentUser) {

@@ -8,16 +8,8 @@ import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import { isWeb } from "@gluestack-ui/nativewind-utils/IsWeb"
 import HeaderLayout from "../utils/HeaderLayout"
-
-interface Pet {
-    id: string
-    name: string
-    age: string
-    type: string
-    breed: string
-    description: string
-    image: string
-}
+import { use } from "i18next"
+import { getPets, Pet } from "../config/firebase"
 
 const styles = StyleSheet.create({
     iosShadow: {
@@ -53,44 +45,7 @@ export default function Adopt() {
     const isIOS = Platform.OS === "ios"
     const isAndroid = Platform.OS === "android"
 
-    const [pets] = useState<Pet[]>([
-        {
-            id: "1",
-            name: "Max",
-            age: "2 anos",
-            type: "Cachorro",
-            breed: "Labrador",
-            description: "Max é um cachorro amigável e brincalhão que adora crianças.",
-            image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-        },
-        {
-            id: "2",
-            name: "Luna",
-            age: "1 ano",
-            type: "Gato",
-            breed: "Siamês",
-            description: "Luna é uma gata dócil e carinhosa que adora dormir no colo.",
-            image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-        },
-        {
-            id: "3",
-            name: "Bob",
-            age: "3 anos",
-            type: "Cachorro",
-            breed: "Vira-lata",
-            description: "Bob é um cachorro leal e protetor, ótimo para famílias.",
-            image: "https://images.unsplash.com/photo-1561037404-61cd46aa615b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-        },
-        {
-            id: "4",
-            name: "Mia",
-            age: "6 meses",
-            type: "Gato",
-            breed: "Persa",
-            description: "Mia é uma gatinha brincalhona e curiosa, perfeita para apartamentos.",
-            image: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-        },
-    ])
+    const [pets, setPets] = useState<Pet[]>()
 
 
     useEffect(() => {
@@ -107,6 +62,16 @@ export default function Adopt() {
                 useNativeDriver: true,
             }),
         ]).start()
+    }, [])
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const fetchPets = await getPets();
+            if (fetchPets) {
+                setPets(fetchPets);
+            }
+        };
+        fetchData();
     }, [])
 
     return (
@@ -178,7 +143,7 @@ export default function Adopt() {
                         padding: 16
                     }}
                 >
-                    {pets.map((pet, index) => (
+                    {pets?.map((pet, index) => (
                         <View
                             key={pet.id}
                             style={{
@@ -231,8 +196,8 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
         return () => clearTimeout(timeout)
     }, [])
 
-    const handleAdopt = (pet: any) => {
-        router.navigate("AdoptDetails", { pet })
+    const handleAdopt = () => {
+        router.navigate("AdoptDetails", { petId: pet?.id })
     }
 
     const handleLike = () => {
@@ -274,7 +239,7 @@ function PetCard({ pet, index, isDark, colors }: PetCardProps) {
             >
                 <View style={{ position: 'relative' }}>
                     <Image
-                        source={{ uri: pet.image }}
+                        source={{ uri: pet.images[0] }}
                         style={{ width: '100%', height: 200 }}
                         resizeMode="cover"
                     />
