@@ -116,14 +116,10 @@ export default function PetAdoptionDetail() {
     const handleAdopt = async () => {
         if (!pet) return
 
-        if (!userPhone) {
-            setIsPhoneModalVisible(true)
-        } else {
+        const rawNumber = pet.contactPhone || userPhone
 
-            const rawNumber = pet.contactPhone || userPhone
-
+        if (rawNumber) {
             const phoneNumber = rawNumber.replace(/\D/g, '')
-
             if (phoneNumber) {
                 const message = 'Olá! Tenho interesse na adoção.'
                 const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
@@ -136,39 +132,8 @@ export default function PetAdoptionDetail() {
             } else {
                 Alert.alert('Erro', 'Número de telefone não disponível. Entre em contato por email.')
             }
-        }
-    }
-
-    const handleSubmitPhone = async () => {
-        if (!phoneInput.trim()) {
-            Alert.alert("Erro", "Por favor, digite um número de telefone válido.")
-            return
-        }
-
-        setIsSubmittingPhone(true)
-
-        try {
-            if (auth.currentUser) {
-                // Update user's phone in Firebase
-                await updateDoc(doc(db, "users", auth.currentUser.uid), {
-                    phone: phoneInput,
-                })
-
-                setUserPhone(phoneInput)
-                setIsPhoneModalVisible(false)
-
-                // After saving the phone, initiate the adoption process
-                setTimeout(() => {
-                    handleAdopt()
-                }, 500)
-            } else {
-                Alert.alert("Erro", "Você precisa estar logado para adotar um pet.")
-            }
-        } catch (error) {
-            console.error("Error updating phone:", error)
-            Alert.alert("Erro", "Ocorreu um erro ao salvar o número de telefone. Tente novamente.")
-        } finally {
-            setIsSubmittingPhone(false)
+        } else {
+            Alert.alert('Erro', 'Número de telefone não disponível. Entre em contato por email.')
         }
     }
 
@@ -653,28 +618,6 @@ export default function PetAdoptionDetail() {
                                 >
                                     Cancelar
                                 </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                onPress={handleSubmitPhone}
-                                disabled={isSubmittingPhone || !phoneInput.trim()}
-                                className={`py-2 px-4 rounded-lg ${isSubmittingPhone || !phoneInput.trim() ? "opacity-50" : "opacity-100"
-                                    }`}
-                                style={{ backgroundColor: colors.primary }}
-                            >
-                                {isSubmittingPhone ? (
-                                    <Feather name="loader" size={20} color="white" className="animate-spin" />
-                                ) : (
-                                    <Text
-                                        className="text-white font-medium"
-                                        style={Platform.select({
-                                            ios: { fontFamily: "San Francisco" },
-                                            android: { fontFamily: "Roboto" },
-                                        })}
-                                    >
-                                        Salvar
-                                    </Text>
-                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { View, Text, Switch, TouchableOpacity, ScrollView, Alert, Platform, Animated, StyleSheet } from "react-native"
 import { useThemeContext } from "../../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
-import { auth } from "../../config/firebase"
+import { auth, isUserAdmin } from "../../config/firebase"
 import { signOut } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
@@ -15,6 +15,7 @@ export default function Settings() {
   const { toggleTheme, isDarkTheme, colors } = useThemeContext()
   const navigation = useNavigation<any>()
   const isWeb = Platform.OS === "web"
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const [settings, setSettings] = useState({
     notifications: true,
@@ -58,7 +59,21 @@ export default function Settings() {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const isAdmin = true // Substituir por lógica real
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const adminStatus = await isUserAdmin(auth.currentUser?.uid || "")
+        setIsAdmin(adminStatus)
+      } catch (error) {
+        console.error("Error checking admin status:", error)
+        setIsAdmin(false)
+      }
+    }
+
+    if (auth.currentUser) {
+      checkAdminStatus()
+    }
+  }, [])
 
   return (
     <View style={{ flex: 1, backgroundColor: isDarkTheme ? '#111827' : '#f3f4f6' }}>

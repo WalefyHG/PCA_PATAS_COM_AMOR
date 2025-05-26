@@ -64,7 +64,6 @@ export default function AdminConsole() {
     const [pets, setPets] = useState<Pet[]>([])
 
     useEffect(() => {
-        // Verificar se o usuário é admin
         const checkAdminStatus = async () => {
             if (auth.currentUser) {
                 const adminStatus = await isUserAdmin(auth.currentUser.uid)
@@ -108,6 +107,16 @@ export default function AdminConsole() {
             fetchData()
         }
     }, [activeTab, isAdmin])
+
+    useEffect(() => {
+        if (!isAdmin) {
+            const timer = setTimeout(() => {
+                navigation.goBack(); // ou o nome correto da sua tela inicial
+            }, 3000); // 3 segundos
+
+            return () => clearTimeout(timer); // limpa o timer se o componente desmontar antes
+        }
+    }, [isAdmin, navigation]);
 
     const fetchData = async () => {
         setIsLoading(true)
