@@ -49,7 +49,6 @@ export default function HomeScreen() {
         offlineAccess: true,
 
       });
-      console.log('Google SignIn configurado');
     }
   }, []);
 
@@ -88,8 +87,6 @@ export default function HomeScreen() {
             displayName: user.displayName,
           });
         }
-
-        console.log('Usuário logado com sucesso');
         router.navigate('Tabs');
       }
     } catch (e) {

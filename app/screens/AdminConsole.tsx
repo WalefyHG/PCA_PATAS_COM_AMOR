@@ -129,7 +129,6 @@ export default function AdminConsole() {
             } else if (activeTab === "pets") {
                 // Buscar todos os pets (disponíveis, pendentes e adotados)
                 const allPets = await getPets("", "", 20)
-                console.log("Fetched pets:", allPets)
                 setPets(allPets)
             }
         } catch (error) {
