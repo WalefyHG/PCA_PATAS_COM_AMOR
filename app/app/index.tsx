@@ -86,6 +86,8 @@ export default function HomeScreen() {
             email: user.email,
             displayName: user.displayName,
             role: 'user',
+            logginFormat: 'google',
+            createdAt: new Date().toISOString(),
           });
         }
         router.navigate('Tabs');

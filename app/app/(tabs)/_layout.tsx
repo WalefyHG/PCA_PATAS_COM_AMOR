@@ -20,6 +20,7 @@ import AdminConsole from "@/app/screens/AdminConsole";
 import BlogPostDetail from "@/app/screens/NewsDetails"
 import PetAdoptionDetail from "@/app/screens/AdoptionDetails"
 import AddPet from "@/app/screens/AddPet"
+import AddEditUserScreen from "@/app/screens/AddUsers"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -190,6 +191,7 @@ const AppLayout = () => {
             <Stack.Screen name="NewsDetails" component={BlogPostDetail} options={{ title: t("News Details"), headerShown: false }} />
             <Stack.Screen name="AdoptDetails" component={PetAdoptionDetail} options={{ title: t("Adopt Details"), headerShown: false }} />
             <Stack.Screen name="AddPet" component={AddPet} options={{ title: t("Add Pet") }} />
+            <Stack.Screen name="AddUsers" component={AddEditUserScreen} options={{ title: t("Add User") }} />
         </Stack.Navigator>
     )
 }

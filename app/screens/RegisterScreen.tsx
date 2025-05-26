@@ -119,6 +119,7 @@ export default function RegisterScreen() {
                 role: "user", // Papel padrão
                 status: "active",
                 createdAt: new Date(),
+                logginFormat: "email",
             })
 
             setIsLoading(false)

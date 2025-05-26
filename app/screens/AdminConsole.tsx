@@ -28,10 +28,13 @@ import {
     isUserAdmin,
     type BlogPost,
     type Pet,
+    getUsers,
+    UserProfile,
 } from "../config/firebase"
 import { auth } from "../config/firebase"
 import HeaderLayout from "../utils/HeaderLayout"
 import { ConfirmModal } from "../utils/ConfirmModal"
+import { User } from "firebase/auth"
 
 // Tipos para os dados
 interface AdminTab {
@@ -62,6 +65,7 @@ export default function AdminConsole() {
     // Dados
     const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
     const [pets, setPets] = useState<Pet[]>([])
+    const [users, setUsers] = useState<UserProfile[]>([])
 
     useEffect(() => {
         const checkAdminStatus = async () => {
@@ -131,6 +135,10 @@ export default function AdminConsole() {
                 const allPets = await getPets("", "", 20)
                 setPets(allPets)
             }
+            else if (activeTab === "users") {
+                const allUser = await getUsers(20);
+                setUsers(allUser);
+            }
         } catch (error) {
             console.error(`Error fetching ${activeTab} data:`, error)
             Alert.alert("Erro", `Ocorreu um erro ao carregar os dados de ${activeTab}.`)
@@ -156,6 +164,9 @@ export default function AdminConsole() {
         } else if (type === "pet") {
             // Navegar para a tela de edição de pet
             navigation.navigate("AddPet", { petId: id })
+        }
+        else if (type === "users") {
+            navigation.navigate("AddUsers", { userId: id })
         }
     }
     const openDeleteModal = (id: string, type: string) => {
@@ -205,6 +216,7 @@ export default function AdminConsole() {
     const tabs: AdminTab[] = [
         { id: "blog", title: "Blog", icon: "book-open" },
         { id: "pets", title: "Pets", icon: "heart" },
+        { id: "users", title: "Usuários", icon: "users" },
         { id: "settings", title: "Configurações", icon: "settings" },
     ]
 
@@ -317,7 +329,7 @@ export default function AdminConsole() {
                             <FlatList
                                 data={blogPosts}
                                 keyExtractor={(item) => item.id || ""}
-                                contentContainerStyle={{ padding: 16 }}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
                                 refreshControl={
                                     <RefreshControl
                                         refreshing={refreshing}
@@ -357,7 +369,7 @@ export default function AdminConsole() {
                             <FlatList
                                 data={pets}
                                 keyExtractor={(item) => item.id || ""}
-                                contentContainerStyle={{ padding: 16 }}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
                                 refreshControl={
                                     <RefreshControl
                                         refreshing={refreshing}
@@ -387,6 +399,45 @@ export default function AdminConsole() {
                                             })}
                                         >
                                             Nenhum pet encontrado
+                                        </Text>
+                                    </View>
+                                }
+                            />
+                        )}
+                        {activeTab === "users" && (
+                            <FlatList
+                                data={users}
+                                keyExtractor={(item) => item.uid || ""}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <UserItem
+                                        user={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onEdit={() => handleEdit(item.uid || "", "users")}
+                                        onDelete={() => openDeleteModal(item.uid || "", "users")}
+                                    />
+                                )}
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="user" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhum usuário encontrado
                                         </Text>
                                     </View>
                                 }
@@ -660,6 +711,98 @@ function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps)
                     </View>
                     <View className="p-3 justify-center">
                         <TouchableOpacity onPress={onEdit} className="mb-3">
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.primary}15` }}
+                            >
+                                <Feather name="edit-2" size={16} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onDelete}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.error}15` }}
+                            >
+                                <Feather name="trash-2" size={16} color={colors.error} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
+    )
+}
+
+interface UserItemProps {
+    user: UserProfile | User;
+    index: number;
+    isDark: boolean;
+    colors: any;
+    onEdit: () => void;
+    onDelete: () => void;
+}
+
+function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
+    return (
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
+        >
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={Platform.OS === "ios" ? styles.iosShadow : Platform.OS === "android" ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="flex-row items-center p-4">
+                    <Feather name="user" size={36} color={colors.primary} />
+                    <View className="flex-1 ml-4">
+                        <Text
+                            className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                            numberOfLines={1}
+                        >
+                            {user.displayName || user.email?.split("@")[0] || "Usuário sem nome"}
+                        </Text>
+                        <Text
+                            className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {user.email}
+                        </Text>
+                    </View>
+                    <View className="flex-row space-x-2">
+                        <TouchableOpacity onPress={onEdit}>
                             <View
                                 className="w-8 h-8 rounded-full items-center justify-center"
                                 style={{ backgroundColor: `${colors.primary}15` }}
