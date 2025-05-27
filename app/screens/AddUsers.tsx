@@ -77,7 +77,8 @@ export default function AddEditUserScreen() {
     }
 
     const handleSubmit = async () => {
-        if (!user.uid || !user.email || !user.displayName || !user.role || !user.status) {
+        console.log("Salvando usuário:", user);
+        if (!user.email || !user.displayName || !user.role || !user.status) {
             Alert.alert("Erro de Validação", "Preencha todos os campos obrigatórios.");
             return;
         }

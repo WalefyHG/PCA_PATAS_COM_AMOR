@@ -625,6 +625,23 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
     }
 }
 
+export const deleteUserProfile = async (userId: string): Promise<void> => {
+    try {
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error("User not authenticated")
+
+        // Verificar se o usuário é admin
+        const isAdmin = await isUserAdmin(currentUser.uid)
+        if (!isAdmin) throw new Error("Unauthorized: Only admins can delete users")
+
+        const docRef = doc(db, "users", userId)
+        await deleteDoc(docRef)
+    } catch (error) {
+        console.error("Error deleting user profile:", error)
+        throw error
+    }
+}
+
 export const getUsers = async (
     limit_count: number = 10,
     role?: "admin" | "user",
