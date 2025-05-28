@@ -21,9 +21,11 @@ export default function HomeScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useNavigation<any>();
+  const [loading, setLoading] = useState(false);
 
   // Handle Email/Password login
   const handleLogin = async () => {
+    setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -38,6 +40,8 @@ export default function HomeScreen() {
       }
     } catch (e: any) {
       showToastable({ message: e.message, status: 'danger' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -54,6 +58,7 @@ export default function HomeScreen() {
 
   // Handle Google Login (for Web and Android)
   const handleGoogleLogin = async () => {
+    setLoading(true);
     try {
       let user;
 
@@ -72,6 +77,9 @@ export default function HomeScreen() {
           const googleCredential = GoogleAuthProvider.credential(response.data.idToken);
           const userCredential = await signInWithCredential(auth, googleCredential);
           user = userCredential.user;
+        } else {
+          showToastable({ message: 'Login com Google não suportado no iOS', status: 'warning' });
+          return;
         }
       }
 
@@ -95,6 +103,8 @@ export default function HomeScreen() {
     } catch (e) {
       console.log(e);
       showToastable({ message: 'Erro ao fazer login com o Google', status: 'danger' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -133,7 +143,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.buttonContainer}>
-          <Button style={styles.enterButton} onPress={handleLogin}>
+          <Button style={styles.enterButton} onPress={handleLogin} disabled={loading}>
             <Text style={styles.enterButtonText}>Entrar</Text>
           </Button>
           <Button style={styles.createAccountButton} onPress={() => router.navigate('registers')}>
@@ -145,7 +155,7 @@ export default function HomeScreen() {
         <Text style={styles.socialText}>Entrar Com</Text>
 
         <View style={styles.socialContainer}>
-          <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin}>
+          <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin} disabled={loading}>
             <Image
               source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/2048px-Google_%22G%22_logo.svg.png' }}
               style={styles.socialIcon}

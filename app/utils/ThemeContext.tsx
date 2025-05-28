@@ -52,6 +52,7 @@ const createCustomTheme = (isDark: boolean) => {
 const ThemeContext = createContext<{
     isDarkTheme: boolean;
     toggleTheme: () => void;
+    setTheme: (isDark: boolean) => void;
     paperTheme: typeof MD3DarkTheme;
     evaTheme: typeof eva.dark;
     colors: typeof customColors;
@@ -61,13 +62,14 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     const [isDarkTheme, setIsDarkTheme] = useState(false);
 
     const toggleTheme = () => setIsDarkTheme((prev) => !prev);
-
+    const setTheme = (isDark: boolean) => setIsDarkTheme(isDark);
     const paperTheme = createCustomTheme(isDarkTheme);
     const evaTheme = isDarkTheme ? eva.dark : eva.light;
 
     const value = useMemo(() => ({
         isDarkTheme,
         toggleTheme,
+        setTheme,
         paperTheme,
         evaTheme,
         colors: customColors

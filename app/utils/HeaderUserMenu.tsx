@@ -22,7 +22,7 @@ export default function HeaderUserMenu() {
     const [isVisible, setIsVisible] = useState(false)
     const avatarRef = useRef<any>(null)
 
-    const { toggleTheme, isDarkTheme, colors } = useThemeContext()
+    const { toggleTheme, isDarkTheme, colors, setTheme } = useThemeContext()
 
     // Animation values
     const [scaleAnim] = useState(new Animated.Value(1))
@@ -42,6 +42,7 @@ export default function HeaderUserMenu() {
     const handleLogout = async () => {
         setIsVisible(false)
         await signOut(auth)
+        setTheme(false)
         router.goBack()
     }
 
