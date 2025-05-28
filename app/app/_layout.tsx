@@ -16,6 +16,9 @@ import LoginScreen from "../screens/LoginScreen"
 import RegisterScreen from "../screens/RegisterScreen"
 import AppLayout from "./(tabs)/_layout"
 import ForgotPasswordScreen from "../screens/ForgotPassword"
+import { onAuthStateChanged } from "firebase/auth"
+import { auth } from "../config/firebase"
+import { useNavigation } from "expo-router"
 
 const Stack = createNativeStackNavigator()
 
@@ -25,11 +28,17 @@ const Stack = createNativeStackNavigator()
 function NavigationContent() {
     const { user, isLoading } = useAuth()
     const { isDarkTheme, colors } = useThemeContext()
+    const router = useNavigation<any>()
 
     // Verificar se o usuário está autenticado e redirecionar adequadamente
     useEffect(() => {
-        console.log("Auth state changed:", user ? "Logged in" : "Logged out")
-    }, [user])
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                router.navigate("Tabs")
+            }
+        })
+        return () => unsubscribe()
+    }, [])
 
     // Mostrar tela de carregamento enquanto verifica autenticação
     if (isLoading) {

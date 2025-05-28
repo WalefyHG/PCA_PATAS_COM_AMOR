@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -8,6 +8,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button, Input } from '@ui-kitten/components';
 import InputPassword from '../components/InputPassword';
 import { showToastable } from 'react-native-toastable';
+
 
 let GoogleSignin: any, isSuccessResponse: any;
 
@@ -109,7 +110,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.topShape} />
       <View style={styles.content}>
         <Image source={require('../../assets/logo.png')} style={styles.logo} />
@@ -165,7 +166,7 @@ export default function HomeScreen() {
         </View>
       </View>
       <View style={styles.bottomShape} />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -182,6 +183,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         minHeight: '100%',
+        overflow: 'hidden',
       },
     }),
   },

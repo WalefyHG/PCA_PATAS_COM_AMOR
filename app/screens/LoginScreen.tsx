@@ -1,7 +1,7 @@
 "use client"
 
 import { SetStateAction, useEffect, useState } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, ActivityIndicator } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, ActivityIndicator, SafeAreaView, ScrollView } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
 import { auth, db } from "../config/firebase"
@@ -208,7 +208,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkTheme ? "#111827" : "#fff" }]}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={[{ backgroundColor: isDarkTheme ? "#111827" : "#fff" }]}>
       {/* Header Gradient */}
       <LinearGradient
         colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
@@ -344,7 +344,7 @@ export default function LoginScreen() {
         end={{ x: 1, y: 0 }}
         style={styles.bottomShape}
       />
-    </View>
+    </ScrollView>
   )
 }
 
