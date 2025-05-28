@@ -704,18 +704,20 @@ export const initializeFirestore = async (): Promise<void> => {
 }
 
 
-export const uploadToCloudinary = async (uri: string | File): Promise<string> => {
-    try {
+export const uploadToCloudinary = (
+    uri: string | File,
+    onProgress?: (progress: number) => void
+): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
         const formData = new FormData();
 
         if (Platform.OS === 'web') {
-            // `uri` deve ser um objeto File no ambiente web
             if (!(uri instanceof File)) {
-                throw new Error('Na web, o arquivo precisa ser do tipo File.');
+                return reject(new Error('Na web, o arquivo precisa ser do tipo File.'));
             }
             formData.append('file', uri);
         } else {
-            // Para mobile, `uri` é uma string de caminho local (por exemplo, file://...)
             formData.append('file', {
                 uri,
                 type: 'image/jpeg',
@@ -723,27 +725,38 @@ export const uploadToCloudinary = async (uri: string | File): Promise<string> =>
             } as any);
         }
 
-        formData.append('upload_preset', 'pca_fixed'); // seu preset
+        formData.append('upload_preset', 'pca_fixed');
 
-        const response = await fetch('https://api.cloudinary.com/v1_1/drwe1wtnk/image/upload', {
-            method: 'POST',
-            body: formData,
-        });
+        xhr.open('POST', 'https://api.cloudinary.com/v1_1/drwe1wtnk/image/upload');
 
-        const text = await response.text();
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && onProgress) {
+                const percent = Math.round((event.loaded / event.total) * 100);
+                onProgress(percent);
+            }
+        };
 
-        if (!response.ok) {
-            throw new Error(`Cloudinary upload failed: ${response.status} ${response.statusText}\n${text}`);
-        }
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.secure_url) {
+                        resolve(data.secure_url);
+                    } else {
+                        reject(new Error('URL não encontrada na resposta do Cloudinary'));
+                    }
+                } catch (err) {
+                    reject(new Error('Erro ao processar resposta do Cloudinary'));
+                }
+            } else {
+                reject(new Error(`Erro no upload: ${xhr.status} ${xhr.statusText}`));
+            }
+        };
 
-        const data = JSON.parse(text);
-        console.log('Resposta da API do Cloudinary:', data);
+        xhr.onerror = () => {
+            reject(new Error('Erro de rede no upload da imagem'));
+        };
 
-        if (data.secure_url) return data.secure_url;
-        throw new Error('Falha no upload para Cloudinary: URL não encontrada na resposta');
-    } catch (err: any) {
-        console.error('Erro uploading image to Cloudinary:', err);
-        Alert.alert('Erro', `Falha no upload da imagem: ${err.message}`);
-        throw err;
-    }
+        xhr.send(formData);
+    });
 };
