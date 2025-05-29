@@ -166,7 +166,6 @@ export default function AdminConsole() {
         if (type === "blog") {
             navigation.navigate("AddBlogPost", { postId: id })
         } else if (type === "pet") {
-            // Navegar para a tela de edição de pet
             navigation.navigate("AddPet", { petId: id })
         }
         else if (type === "users") {
@@ -216,8 +215,10 @@ export default function AdminConsole() {
         if (activeTab === "blog") {
             navigation.navigate("AddBlogPost")
         } else if (activeTab === "pets") {
-            // Navegar para a tela de adição de pet
             navigation.navigate("AddPet")
+        }
+        else if (activeTab === "users") {
+            navigation.navigate("AddUsers")
         }
     }
 

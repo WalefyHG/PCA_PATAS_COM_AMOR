@@ -186,12 +186,12 @@ const AppLayout = () => {
         <Stack.Navigator screenOptions={screenOptions}>
             <Stack.Screen name="(tabs)" component={TabLayout} options={{ headerShown: false }} />
             <Stack.Screen name="Adopt" component={Adopt} options={{ title: t("Adopt"), headerShown: false }} />
-            <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{ title: t("Add Blog Post") }} />
+            <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{ title: t("Add Blog Post"), headerShown: false }} />
             <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console"), headerShown: false }} />
             <Stack.Screen name="NewsDetails" component={BlogPostDetail} options={{ title: t("News Details"), headerShown: false }} />
             <Stack.Screen name="AdoptDetails" component={PetAdoptionDetail} options={{ title: t("Adopt Details"), headerShown: false }} />
-            <Stack.Screen name="AddPet" component={AddPet} options={{ title: t("Add Pet") }} />
-            <Stack.Screen name="AddUsers" component={AddEditUserScreen} options={{ title: t("Add User") }} />
+            <Stack.Screen name="AddPet" component={AddPet} options={{ title: t("Add Pet"), headerShown: false }} />
+            <Stack.Screen name="AddUsers" component={AddEditUserScreen} options={{ title: t("Add User"), headerShown: false }} />
         </Stack.Navigator>
     )
 }

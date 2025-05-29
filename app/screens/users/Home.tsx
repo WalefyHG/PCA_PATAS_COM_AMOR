@@ -131,7 +131,7 @@ export default function Home() {
             <NavigationCard
               title="Blog"
               icon="book-open"
-              onPress={() => navigateToScreen("Blog")}
+              onPress={() => navigateToScreen("News")}
               platform={Platform.OS}
             />
             <NavigationCard

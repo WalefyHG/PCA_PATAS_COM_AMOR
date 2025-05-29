@@ -99,7 +99,7 @@ export default function Adopt() {
                 <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
                     <HeaderLayout title="Profile" />
                 </View>
-                <View style={{ alignItems: 'center' }}>
+                <View style={{ alignItems: 'center', marginBottom: 20 }}>
                     <Feather name="heart" size={40} color="white" />
                     <Text style={{
                         color: 'white',
