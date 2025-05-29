@@ -113,6 +113,13 @@ export default function PetAdoptionDetail() {
         ]).start()
     }, [petId])
 
+    const handleScroll = Animated.event(
+        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+        {
+            useNativeDriver: true
+        }
+    );
+
     const handleAdopt = async () => {
         if (!pet) return
 
@@ -208,9 +215,9 @@ export default function PetAdoptionDetail() {
                 <HeaderLayout title="Adoção" />
             </View>
 
-            <ScrollView
+            <Animated.ScrollView
                 showsVerticalScrollIndicator={false}
-                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+                onScroll={handleScroll}
                 scrollEventThrottle={16}
             >
                 {/* Image Carousel */}
@@ -528,7 +535,7 @@ export default function PetAdoptionDetail() {
                         )}
                     </View>
                 </Animated.View>
-            </ScrollView>
+            </Animated.ScrollView>
 
             {/* Adoption Button */}
             <View

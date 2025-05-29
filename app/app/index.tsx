@@ -110,7 +110,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.topShape} />
       <View style={styles.content}>
         <Image source={require('../../assets/logo.png')} style={styles.logo} />
@@ -166,7 +166,7 @@ export default function HomeScreen() {
         </View>
       </View>
       <View style={styles.bottomShape} />
-    </ScrollView>
+    </View>
   );
 }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { SetStateAction, useEffect, useState } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, ActivityIndicator, SafeAreaView, ScrollView } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, ActivityIndicator, ScrollView } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
 import { auth, db } from "../config/firebase"
@@ -208,7 +208,10 @@ export default function LoginScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={[{ backgroundColor: isDarkTheme ? "#111827" : "#fff" }]}>
+    <ScrollView contentContainerStyle={{
+      justifyContent: "space-between",
+      alignItems: "center",
+    }} showsVerticalScrollIndicator={false} style={[{ flex: 1, backgroundColor: isDarkTheme ? "#111827" : "#fff" }]}>
       {/* Header Gradient */}
       <LinearGradient
         colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
@@ -349,20 +352,6 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "space-between",
-    alignItems: "center",
-    ...Platform.select({
-      web: {
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        alignItems: "center",
-        minHeight: "100%",
-      },
-    }),
-  },
   topShape: {
     borderBottomRightRadius: 100,
     alignSelf: "flex-start",

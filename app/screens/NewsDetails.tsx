@@ -316,7 +316,7 @@ export default function BlogPostDetail() {
                 <HeaderLayout title="Adoção" />
             </View>
 
-            <ScrollView
+            <Animated.ScrollView
                 showsVerticalScrollIndicator={false}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
                 scrollEventThrottle={16}
@@ -578,7 +578,7 @@ export default function BlogPostDetail() {
                         ))}
                     </View>
                 </Animated.View>
-            </ScrollView>
+            </Animated.ScrollView>
         </View>
     )
 }
