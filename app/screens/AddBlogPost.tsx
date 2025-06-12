@@ -14,14 +14,29 @@ import {
     Platform,
     Animated,
     ActivityIndicator,
+    Dimensions,
 } from "react-native"
 import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
 import { LinearGradient } from "expo-linear-gradient"
-import { createBlogPost, updateBlogPost, getBlogPostById, uploadImage, isUserAdmin, BlogPost, uploadToCloudinary } from "../config/firebase"
+import {
+    createBlogPost,
+    updateBlogPost,
+    getBlogPostById,
+    isUserAdmin,
+    type BlogPost,
+    uploadToCloudinary,
+} from "../config/firebase"
 import { auth } from "../config/firebase"
+
+// Get screen dimensions for responsive sizing
+const { width, height } = Dimensions.get("window")
+const isSmallScreen = width < 380
+const isMediumScreen = width >= 380 && width < 768
+const isLargeScreen = width >= 768
+const isWebPlatform = Platform.OS === "web"
 
 export default function AddBlogPost() {
     const { isDarkTheme, colors } = useThemeContext()
@@ -58,18 +73,14 @@ export default function AddBlogPost() {
                 setIsAdmin(adminStatus)
 
                 if (!adminStatus) {
-                    Alert.alert(
-                        "Acesso Restrito",
-                        "Apenas administradores podem criar ou editar posts.",
-                        [{ text: "OK", onPress: () => navigation.goBack() }]
-                    )
+                    Alert.alert("Acesso Restrito", "Apenas administradores podem criar ou editar posts.", [
+                        { text: "OK", onPress: () => navigation.goBack() },
+                    ])
                 }
             } else {
-                Alert.alert(
-                    "Não Autenticado",
-                    "Você precisa estar logado para acessar esta página.",
-                    [{ text: "OK", onPress: () => navigation.goBack() }]
-                )
+                Alert.alert("Não Autenticado", "Você precisa estar logado para acessar esta página.", [
+                    { text: "OK", onPress: () => navigation.goBack() },
+                ])
             }
         }
 
@@ -118,7 +129,6 @@ export default function AddBlogPost() {
         ]).start()
     }, [postId, navigation])
 
-
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
 
@@ -127,27 +137,27 @@ export default function AddBlogPost() {
             return
         }
 
-        if (Platform.OS === 'web') {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
+        if (Platform.OS === "web") {
+            const input = document.createElement("input")
+            input.type = "file"
+            input.accept = "image/*"
             input.onchange = (event: any) => {
-                const file = event.target.files[0];
-                if (file) setImage(file);
-            };
-            input.click();
+                const file = event.target.files[0]
+                if (file) setImage(file)
+            }
+            input.click()
         } else {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 quality: 0.7,
-            });
+            })
 
             if (!result.canceled) {
-                setImage(result.assets[0].uri);
+                setImage(result.assets[0].uri)
             }
         }
-    };
+    }
 
     const handleSubmit = async () => {
         if (!title.trim()) {
@@ -210,14 +220,10 @@ export default function AddBlogPost() {
 
             if (isEditing) {
                 await updateBlogPost(postId, postData)
-                Alert.alert("Sucesso", "Post atualizado com sucesso!", [
-                    { text: "OK", onPress: () => navigation.goBack() }
-                ])
+                Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
             } else {
                 await createBlogPost(postData)
-                Alert.alert("Sucesso", "Post criado com sucesso!", [
-                    { text: "OK", onPress: () => navigation.goBack() }
-                ])
+                Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
             }
         } catch (error) {
             console.error("Erro ao salvar post:", error)
@@ -229,17 +235,9 @@ export default function AddBlogPost() {
 
     if (isLoading) {
         return (
-            <View className={`flex-1 items-center justify-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+            <View style={[styles.loadingContainer, { backgroundColor: isDarkTheme ? "#111827" : "#F9FAFB" }]}>
                 <ActivityIndicator size="large" color={colors.primary} />
-                <Text
-                    className={`mt-4 text-lg ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-                    style={Platform.select({
-                        ios: { fontFamily: "San Francisco" },
-                        android: { fontFamily: "Roboto" },
-                    })}
-                >
-                    Carregando post...
-                </Text>
+                <Text style={[styles.loadingText, { color: isDarkTheme ? "white" : "#374151" }]}>Carregando post...</Text>
             </View>
         )
     }
@@ -250,114 +248,106 @@ export default function AddBlogPost() {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
-            <View className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+            <View style={[styles.container, { backgroundColor: isDarkTheme ? "#111827" : "#F9FAFB" }]}>
                 {/* Header with gradient */}
                 <LinearGradient
                     colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    className="pt-16 pb-8 px-4"
+                    style={styles.header}
                 >
-                    <View className="flex-row items-center justify-between">
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
-                        >
-                            <Feather name="arrow-left" size={20} color="white" />
+                    <View style={styles.headerContent}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                            <Feather name="arrow-left" size={isSmallScreen ? 18 : 20} color="white" />
                         </TouchableOpacity>
-                        <Text className="text-white text-xl font-bold">{isEditing ? "Editar Post" : "Novo Post"}</Text>
-                        <View className="w-10" />
+                        <Text style={styles.headerTitle}>{isEditing ? "Editar Post" : "Novo Post"}</Text>
+                        <View style={{ width: isSmallScreen ? 36 : 40 }} />
                     </View>
                 </LinearGradient>
 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={isWebPlatform && styles.webScrollContent}
+                >
                     <Animated.View
-                        style={{
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }],
-                        }}
-                        className="px-4 pt-4 pb-8"
+                        style={[
+                            styles.content,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{ translateY: slideAnim }],
+                            },
+                        ]}
                     >
-                        <TouchableOpacity
-                            className={`w-full h-56 rounded-xl mb-6 overflow-hidden ${isDarkTheme ? "bg-gray-800" : "bg-white"
-                                } items-center justify-center`}
-                            style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
-                            onPress={pickImage}
-                        >
-                            {image ? (
-                                <Image
-                                    source={{
-                                        uri:
-                                            Platform.OS === 'web'
-                                                ? (typeof image === "string"
-                                                    ? image
-                                                    : URL.createObjectURL(image))
-                                                : image
-                                    }}
-                                    className="w-full h-full"
-                                />
-                            ) : (
-                                <View className="items-center">
-                                    <View
-                                        className="w-16 h-16 rounded-full items-center justify-center mb-3"
-                                        style={{ backgroundColor: `${colors.primary}15` }}
-                                    >
-                                        <Feather name="image" size={32} color={colors.primary} />
-                                    </View>
-                                    <Text
-                                        className={`text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
-                                        style={Platform.select({
-                                            ios: { fontFamily: "San Francisco" },
-                                            android: { fontFamily: "Roboto" },
-                                        })}
-                                    >
-                                        Toque para adicionar uma imagem
-                                    </Text>
-                                </View>
-                            )}
-
-                            {uploadProgress > 0 && uploadProgress < 100 && (
-                                <View className="absolute bottom-0 left-0 right-0 bg-black/50 py-2">
-                                    <View
-                                        className="h-2 bg-primary-500 rounded-full"
-                                        style={{ width: `${uploadProgress}%`, backgroundColor: colors.primary }}
-                                    />
-                                    <Text className="text-white text-xs text-center mt-1">{Math.round(uploadProgress)}%</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-
-                        <View className="mb-6">
-                            <Text
-                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-                                style={Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                })}
+                        {/* Image Upload Section */}
+                        <View style={styles.imageSection}>
+                            <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>Imagem do Post *</Text>
+                            <TouchableOpacity
+                                style={[
+                                    styles.imageUploadContainer,
+                                    { backgroundColor: isDarkTheme ? "#374151" : "white" },
+                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {},
+                                ]}
+                                onPress={pickImage}
                             >
-                                Categoria
-                            </Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
+                                {image ? (
+                                    <Image
+                                        source={{
+                                            uri:
+                                                Platform.OS === "web"
+                                                    ? typeof image === "string"
+                                                        ? image
+                                                        : URL.createObjectURL(image)
+                                                    : image,
+                                        }}
+                                        style={styles.uploadedImage}
+                                    />
+                                ) : (
+                                    <View style={styles.emptyImageContainer}>
+                                        <View style={[styles.imageIcon, { backgroundColor: `${colors.primary}15` }]}>
+                                            <Feather name="image" size={isSmallScreen ? 28 : 32} color={colors.primary} />
+                                        </View>
+                                        <Text style={[styles.imageUploadText, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                            Toque para adicionar uma imagem
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {uploadProgress > 0 && uploadProgress < 100 && (
+                                    <View style={styles.progressOverlay}>
+                                        <View
+                                            style={[styles.progressBar, { width: `${uploadProgress}%`, backgroundColor: colors.primary }]}
+                                        />
+                                        <Text style={styles.progressText}>{Math.round(uploadProgress)}%</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Category Selection */}
+                        <View style={styles.categorySection}>
+                            <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>Categoria *</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScrollView}>
                                 {categories.map((cat) => (
                                     <TouchableOpacity
                                         key={cat}
                                         onPress={() => setCategory(cat)}
-                                        className={`px-4 py-2 mr-2 rounded-full ${category === cat
-                                            ? isDarkTheme
-                                                ? "bg-primary-700"
-                                                : "bg-primary-500"
-                                            : isDarkTheme
-                                                ? "bg-gray-800"
-                                                : "bg-white"
-                                            }`}
-                                        style={
-                                            category !== cat &&
-                                            (isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow)
-                                        }
+                                        style={[
+                                            styles.categoryButton,
+                                            {
+                                                backgroundColor: category === cat ? colors.primary : isDarkTheme ? "#374151" : "white",
+                                                marginRight: isSmallScreen ? 8 : 12,
+                                                borderColor: category === cat ? colors.primary : "#E5E7EB",
+                                            },
+                                            category !== cat && (isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {}),
+                                        ]}
                                     >
                                         <Text
-                                            className={`${category === cat ? "text-white" : isDarkTheme ? "text-gray-300" : "text-gray-700"
-                                                } font-medium`}
+                                            style={[
+                                                styles.categoryButtonText,
+                                                {
+                                                    color: category === cat ? "white" : isDarkTheme ? "#D1D5DB" : "#374151",
+                                                },
+                                            ]}
                                         >
                                             {cat}
                                         </Text>
@@ -366,130 +356,120 @@ export default function AddBlogPost() {
                             </ScrollView>
                         </View>
 
-                        <View className="mb-6">
-                            <Text
-                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-                                style={Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                })}
-                            >
-                                Título
+                        {/* Form Fields */}
+                        <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
+                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                Informações do Post
                             </Text>
-                            <TextInput
-                                className={`p-4 rounded-xl ${isDarkTheme ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
-                                style={[
-                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow,
-                                    Platform.select({
-                                        ios: { fontFamily: "San Francisco" },
-                                        android: { fontFamily: "Roboto" },
-                                    }),
-                                ]}
-                                placeholder="Digite o título do post"
-                                placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                value={title}
-                                onChangeText={setTitle}
-                                maxLength={100}
-                            />
+
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Título *</Text>
+                                <TextInput
+                                    style={[
+                                        styles.textInput,
+                                        {
+                                            backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
+                                    ]}
+                                    placeholder="Digite o título do post"
+                                    placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                    value={title}
+                                    onChangeText={setTitle}
+                                    maxLength={100}
+                                />
+                                <Text style={[styles.characterCount, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                    {title.length}/100
+                                </Text>
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Resumo *</Text>
+                                <TextInput
+                                    style={[
+                                        styles.textArea,
+                                        {
+                                            backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
+                                            color: isDarkTheme ? "white" : "#374151",
+                                            minHeight: isSmallScreen ? 80 : 100,
+                                        },
+                                    ]}
+                                    placeholder="Digite um breve resumo do post"
+                                    placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                    value={excerpt}
+                                    onChangeText={setExcerpt}
+                                    multiline
+                                    numberOfLines={3}
+                                    maxLength={200}
+                                    textAlignVertical="top"
+                                />
+                                <Text style={[styles.characterCount, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                    {excerpt.length}/200
+                                </Text>
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Conteúdo *</Text>
+                                <TextInput
+                                    style={[
+                                        styles.textArea,
+                                        {
+                                            backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
+                                            color: isDarkTheme ? "white" : "#374151",
+                                            minHeight: isSmallScreen ? 160 : 200,
+                                        },
+                                    ]}
+                                    placeholder="Digite o conteúdo do post"
+                                    placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                    value={content}
+                                    onChangeText={setContent}
+                                    multiline
+                                    numberOfLines={10}
+                                    textAlignVertical="top"
+                                />
+                                <Text style={[styles.helpText, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                    Dica: Você pode usar formatação markdown como ## Título para cabeçalhos e - Item para listas.
+                                </Text>
+                            </View>
                         </View>
 
-                        <View className="mb-6">
-                            <Text
-                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-                                style={Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                })}
-                            >
-                                Resumo
+                        {/* Status Selection */}
+                        <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
+                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                Status da Publicação
                             </Text>
-                            <TextInput
-                                className={`p-4 rounded-xl ${isDarkTheme ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
-                                style={[
-                                    { minHeight: 80, textAlignVertical: "top" },
-                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow,
-                                    Platform.select({
-                                        ios: { fontFamily: "San Francisco" },
-                                        android: { fontFamily: "Roboto" },
-                                    }),
-                                ]}
-                                placeholder="Digite um breve resumo do post"
-                                placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                value={excerpt}
-                                onChangeText={setExcerpt}
-                                multiline
-                                numberOfLines={3}
-                                maxLength={200}
-                            />
-                        </View>
 
-                        <View className="mb-6">
-                            <Text
-                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-                                style={Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                })}
-                            >
-                                Conteúdo
-                            </Text>
-                            <TextInput
-                                className={`p-4 rounded-xl ${isDarkTheme ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}
-                                style={[
-                                    { minHeight: 200, textAlignVertical: "top" },
-                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow,
-                                    Platform.select({
-                                        ios: { fontFamily: "San Francisco" },
-                                        android: { fontFamily: "Roboto" },
-                                    }),
-                                ]}
-                                placeholder="Digite o conteúdo do post"
-                                placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                value={content}
-                                onChangeText={setContent}
-                                multiline
-                                numberOfLines={10}
-                            />
-                            <Text className={`text-xs mt-1 ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}>
-                                Dica: Você pode usar formatação markdown como ## Título para cabeçalhos e - Item para listas.
-                            </Text>
-                        </View>
-
-                        <View className="mb-6">
-                            <Text
-                                className={`text-base font-medium mb-2 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
-                                style={Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                })}
-                            >
-                                Status
-                            </Text>
-                            <View className="flex-row">
+                            <View style={styles.statusContainer}>
                                 <TouchableOpacity
                                     onPress={() => setStatus("draft")}
-                                    className={`flex-row items-center px-4 py-2 mr-4 rounded-full ${status === "draft"
-                                        ? isDarkTheme
-                                            ? "bg-gray-700"
-                                            : "bg-gray-200"
-                                        : "bg-transparent"
-                                        }`}
+                                    style={[
+                                        styles.statusButton,
+                                        {
+                                            backgroundColor: status === "draft" ? (isDarkTheme ? "#374151" : "#F3F4F6") : "transparent",
+                                            borderColor: status === "draft" ? colors.primary : "#E5E7EB",
+                                        },
+                                    ]}
                                 >
                                     <Feather
                                         name="edit-3"
-                                        size={16}
+                                        size={isSmallScreen ? 14 : 16}
                                         color={status === "draft" ? colors.primary : isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                        className="mr-2"
+                                        style={{ marginRight: 8 }}
                                     />
                                     <Text
-                                        className={`${status === "draft"
-                                            ? isDarkTheme
-                                                ? "text-white"
-                                                : "text-gray-800"
-                                            : isDarkTheme
-                                                ? "text-gray-400"
-                                                : "text-gray-500"
-                                            }`}
+                                        style={[
+                                            styles.statusButtonText,
+                                            {
+                                                color:
+                                                    status === "draft"
+                                                        ? isDarkTheme
+                                                            ? "white"
+                                                            : "#374151"
+                                                        : isDarkTheme
+                                                            ? "#9CA3AF"
+                                                            : "#6B7280",
+                                            },
+                                        ]}
                                     >
                                         Rascunho
                                     </Text>
@@ -497,28 +477,34 @@ export default function AddBlogPost() {
 
                                 <TouchableOpacity
                                     onPress={() => setStatus("published")}
-                                    className={`flex-row items-center px-4 py-2 rounded-full ${status === "published"
-                                        ? isDarkTheme
-                                            ? "bg-primary-700"
-                                            : "bg-primary-100"
-                                        : "bg-transparent"
-                                        }`}
+                                    style={[
+                                        styles.statusButton,
+                                        {
+                                            backgroundColor: status === "published" ? (isDarkTheme ? "#374151" : "#F0FDF4") : "transparent",
+                                            borderColor: status === "published" ? colors.primary : "#E5E7EB",
+                                        },
+                                    ]}
                                 >
                                     <Feather
                                         name="check-circle"
-                                        size={16}
+                                        size={isSmallScreen ? 14 : 16}
                                         color={status === "published" ? colors.primary : isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                        className="mr-2"
+                                        style={{ marginRight: 8 }}
                                     />
                                     <Text
-                                        className={`${status === "published"
-                                            ? isDarkTheme
-                                                ? "text-white"
-                                                : "text-primary-700"
-                                            : isDarkTheme
-                                                ? "text-gray-400"
-                                                : "text-gray-500"
-                                            }`}
+                                        style={[
+                                            styles.statusButtonText,
+                                            {
+                                                color:
+                                                    status === "published"
+                                                        ? isDarkTheme
+                                                            ? "white"
+                                                            : "#374151"
+                                                        : isDarkTheme
+                                                            ? "#9CA3AF"
+                                                            : "#6B7280",
+                                            },
+                                        ]}
                                     >
                                         Publicado
                                     </Text>
@@ -526,29 +512,27 @@ export default function AddBlogPost() {
                             </View>
                         </View>
 
+                        {/* Submit Button */}
                         <TouchableOpacity
-                            className={`py-4 rounded-xl flex-row items-center justify-center mb-10 ${isSubmitting ? "opacity-70" : "opacity-100"
-                                }`}
-                            style={{
-                                backgroundColor: isSubmitting ? (isDarkTheme ? "#4B5563" : "#D1D5DB") : colors.primary,
-                                ...styles.submitButton,
-                            }}
+                            style={[
+                                styles.submitButton,
+                                {
+                                    backgroundColor: isSubmitting ? (isDarkTheme ? "#4B5563" : "#D1D5DB") : colors.primary,
+                                    opacity: isSubmitting ? 0.7 : 1,
+                                },
+                            ]}
                             onPress={handleSubmit}
                             disabled={isSubmitting}
                         >
                             {isSubmitting ? (
-                                <View className="flex-row items-center">
+                                <View style={styles.submitButtonContent}>
                                     <ActivityIndicator size="small" color="white" />
-                                    <Text className="ml-2 text-white font-semibold">
-                                        {isEditing ? "Atualizando..." : "Publicando..."}
-                                    </Text>
+                                    <Text style={styles.submitButtonText}>{isEditing ? "Atualizando..." : "Publicando..."}</Text>
                                 </View>
                             ) : (
-                                <View className="flex-row items-center">
-                                    <Feather name="send" size={20} color="white" />
-                                    <Text className="ml-2 text-white font-semibold">
-                                        {isEditing ? "Atualizar Post" : "Publicar Post"}
-                                    </Text>
+                                <View style={styles.submitButtonContent}>
+                                    <Feather name="send" size={isSmallScreen ? 18 : 20} color="white" />
+                                    <Text style={styles.submitButtonText}>{isEditing ? "Atualizar Post" : "Publicar Post"}</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -560,23 +544,225 @@ export default function AddBlogPost() {
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: isSmallScreen ? 16 : 18,
+        fontWeight: "500",
+    },
+    header: {
+        paddingTop: Platform.OS === "ios" ? 64 : Platform.OS === "android" ? 48 : 24,
+        paddingBottom: isSmallScreen ? 20 : 24,
+        paddingHorizontal: isSmallScreen ? 16 : 20,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+    },
+    headerContent: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
+    backButton: {
+        width: isSmallScreen ? 36 : 40,
+        height: isSmallScreen ? 36 : 40,
+        borderRadius: isSmallScreen ? 18 : 20,
+        backgroundColor: "rgba(255, 255, 255, 0.2)",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    headerTitle: {
+        color: "white",
+        fontSize: isSmallScreen ? 18 : 20,
+        fontWeight: "700",
+    },
+    content: {
+        paddingHorizontal: isSmallScreen ? 16 : 20,
+        paddingTop: isSmallScreen ? 16 : 20,
+        paddingBottom: 40,
+    },
+    webScrollContent: {
+        maxWidth: isLargeScreen ? 800 : 600,
+        alignSelf: "center",
+        width: "100%",
+    },
+    section: {
+        borderRadius: 16,
+        padding: isSmallScreen ? 16 : 20,
+        marginBottom: isSmallScreen ? 20 : 24,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+    },
+    sectionTitle: {
+        fontSize: isSmallScreen ? 16 : 18,
+        fontWeight: "700",
+        marginBottom: isSmallScreen ? 12 : 16,
+    },
+    label: {
+        fontSize: isSmallScreen ? 15 : 16,
+        fontWeight: "600",
+        marginBottom: 8,
+    },
+    imageSection: {
+        marginBottom: isSmallScreen ? 20 : 24,
+    },
+    imageUploadContainer: {
+        height: isSmallScreen ? 180 : 200,
+        borderRadius: 16,
+        overflow: "hidden",
+        borderWidth: 2,
+        borderStyle: "dashed",
+        borderColor: "#D1D5DB",
+        position: "relative",
+    },
+    emptyImageContainer: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+    },
+    imageIcon: {
+        width: isSmallScreen ? 56 : 64,
+        height: isSmallScreen ? 56 : 64,
+        borderRadius: isSmallScreen ? 28 : 32,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 12,
+    },
+    imageUploadText: {
+        fontSize: isSmallScreen ? 14 : 16,
+        textAlign: "center",
+    },
+    uploadedImage: {
+        width: "100%",
+        height: "100%",
+    },
+    progressOverlay: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        paddingVertical: 8,
+    },
+    progressBar: {
+        height: 4,
+        borderRadius: 2,
+    },
+    progressText: {
+        color: "white",
+        fontSize: 12,
+        textAlign: "center",
+        marginTop: 4,
+    },
+    categorySection: {
+        marginBottom: isSmallScreen ? 20 : 24,
+    },
+    categoryScrollView: {
+        marginBottom: 8,
+    },
+    categoryButton: {
+        paddingHorizontal: isSmallScreen ? 14 : 18,
+        paddingVertical: isSmallScreen ? 10 : 12,
+        borderRadius: 25,
+        borderWidth: 2,
+        minWidth: isSmallScreen ? 80 : 100,
+        alignItems: "center",
+    },
+    categoryButtonText: {
+        fontWeight: "600",
+        fontSize: isSmallScreen ? 13 : 14,
+    },
+    inputContainer: {
+        marginBottom: isSmallScreen ? 14 : 16,
+    },
+    inputLabel: {
+        fontSize: isSmallScreen ? 13 : 14,
+        fontWeight: "500",
+        marginBottom: 6,
+    },
+    textInput: {
+        borderRadius: 12,
+        paddingVertical: Platform.OS === "web" ? 14 : 12,
+        paddingHorizontal: 16,
+        fontSize: isSmallScreen ? 15 : 16,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        ...(Platform.OS === "web" && {
+            outlineStyle: "none",
+            height: 50,
+        }),
+    },
+    textArea: {
+        borderRadius: 12,
+        padding: 16,
+        fontSize: isSmallScreen ? 15 : 16,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        ...(Platform.OS === "web" && {
+            outlineStyle: "none",
+        }),
+    },
+    characterCount: {
+        fontSize: 12,
+        textAlign: "right",
+        marginTop: 4,
+    },
+    helpText: {
+        fontSize: 12,
+        marginTop: 4,
+        fontStyle: "italic",
+    },
+    statusContainer: {
+        flexDirection: isSmallScreen ? "column" : "row",
+        gap: isSmallScreen ? 12 : 16,
+    },
+    statusButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: isSmallScreen ? 14 : 16,
+        paddingVertical: isSmallScreen ? 10 : 12,
+        borderRadius: 12,
+        borderWidth: 2,
+        flex: isSmallScreen ? 0 : 1,
+    },
+    statusButtonText: {
+        fontWeight: "500",
+        fontSize: isSmallScreen ? 14 : 15,
+    },
+    submitButton: {
+        borderRadius: 16,
+        paddingVertical: isSmallScreen ? 14 : 16,
+        marginTop: isSmallScreen ? 20 : 24,
+        ...(Platform.OS === "web" && {
+            cursor: "pointer",
+            transition: "0.2s opacity",
+        }),
+    },
+    submitButtonContent: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+    },
+    submitButtonText: {
+        color: "white",
+        fontSize: isSmallScreen ? 15 : 16,
+        fontWeight: "700",
+    },
     iosShadow: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 6,
+        shadowRadius: 8,
     },
     androidShadow: {
-        elevation: 3,
-    },
-    webShadow: {
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-    },
-    submitButton: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 5,
+        elevation: 4,
     },
 })

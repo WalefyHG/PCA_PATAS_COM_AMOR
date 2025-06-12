@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+"use client"
+
+import { useState, useEffect, useRef } from "react"
 import {
     View,
     Text,
@@ -12,20 +14,26 @@ import {
     Animated,
     Switch,
     StyleSheet,
-} from "react-native";
-import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { auth, createUser, getUserProfile, updateUserProfile, UserProfile } from "../config/firebase";
-import { useRoute } from '@react-navigation/native';
-import { useThemeContext } from "../utils/ThemeContext";
-import { useNavigation } from "expo-router";
+    Dimensions,
+} from "react-native"
+import { Feather } from "@expo/vector-icons"
+import { LinearGradient } from "expo-linear-gradient"
+import { createUser, getUserProfile, updateUserProfile, type UserProfile } from "../config/firebase"
+import { useRoute } from "@react-navigation/native"
+import { useThemeContext } from "../utils/ThemeContext"
+import { useNavigation } from "expo-router"
+
+// Get screen dimensions for responsive sizing
+const { width, height } = Dimensions.get("window")
+const isSmallScreen = width < 380
+const isWebPlatform = Platform.OS === "web"
 
 export default function AddEditUserScreen() {
-    const navigate = useNavigation<any>();
-    const route = useRoute<any>();
-    const { userId } = route.params || {};
-    const isEditing = !!userId;
-    const { isDarkTheme, colors } = useThemeContext();
+    const navigate = useNavigation<any>()
+    const route = useRoute<any>()
+    const { userId } = route.params || {}
+    const isEditing = !!userId
+    const { isDarkTheme, colors } = useThemeContext()
 
     const [user, setUser] = useState<UserProfile>({
         uid: "",
@@ -34,77 +42,75 @@ export default function AddEditUserScreen() {
         role: "user",
         status: "active",
         phone: "",
-        logginFormat: ""
-    });
+        logginFormat: "",
+    })
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(20)).current;
-
+    const fadeAnim = useRef(new Animated.Value(0)).current
+    const slideAnim = useRef(new Animated.Value(20)).current
 
     useEffect(() => {
         const loadUserData = async () => {
             if (isEditing && userId) {
                 try {
-                    const dataUser = await getUserProfile(userId);
+                    const dataUser = await getUserProfile(userId)
                     if (dataUser) {
-                        setUser(dataUser);
+                        setUser(dataUser)
                     } else {
-                        Alert.alert("Erro", "Não foi possível carregar os dados do pet.");
+                        Alert.alert("Erro", "Não foi possível carregar os dados do pet.")
                     }
                 } catch (error) {
-                    console.error("Erro ao buscar pet:", error);
-                    Alert.alert("Erro", "Erro ao carregar os dados do pet.");
+                    console.error("Erro ao buscar pet:", error)
+                    Alert.alert("Erro", "Erro ao carregar os dados do pet.")
                 }
             }
-        };
+        }
 
-        loadUserData();
-    }, [isEditing, userId]);
-
+        loadUserData()
+    }, [isEditing, userId])
 
     useEffect(() => {
         // Animar a entrada do conteúdo
         Animated.parallel([
             Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
             Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-        ]).start();
-    }, []);
+        ]).start()
+    }, [])
 
     function handleInputChange(field: keyof UserProfile, value: any) {
-        setUser((prev) => ({ ...prev, [field]: value }));
+        setUser((prev) => ({ ...prev, [field]: value }))
     }
 
     const handleSubmit = async () => {
-        console.log("Salvando usuário:", user);
+        console.log("Salvando usuário:", user)
         if (!user.email || !user.displayName || !user.role || !user.status) {
-            Alert.alert("Erro de Validação", "Preencha todos os campos obrigatórios.");
-            return;
+            Alert.alert("Erro de Validação", "Preencha todos os campos obrigatórios.")
+            return
         }
 
         try {
-            setIsSubmitting(true);
+            setIsSubmitting(true)
 
             if (isEditing && userId) {
-                await updateUserProfile(userId, user);
-                Alert.alert("Sucesso", "Usuário atualizado com sucesso!");
+                await updateUserProfile(userId, user)
+                Alert.alert("Sucesso", "Usuário atualizado com sucesso!")
             } else {
-                await createUser(user);
-                Alert.alert("Sucesso", "Usuário criado com sucesso!");
+                await createUser(user)
+                Alert.alert("Sucesso", "Usuário criado com sucesso!")
             }
 
-            navigate.goBack();
+            navigate.goBack()
         } catch (error) {
-            console.error(error);
-            Alert.alert("Erro", "Erro ao salvar usuário, tente novamente.");
+            console.error(error)
+            Alert.alert("Erro", "Erro ao salvar usuário, tente novamente.")
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false)
         }
-    };
+    }
 
     function renderStatusBadge() {
-        const isActive = user.status === "active";
+        const isActive = user.status === "active"
         return (
             <View
                 style={[
@@ -119,7 +125,7 @@ export default function AddEditUserScreen() {
                     {isActive ? "Ativo" : "Inativo"}
                 </Text>
             </View>
-        );
+        )
     }
 
     return (
@@ -137,14 +143,17 @@ export default function AddEditUserScreen() {
                 >
                     <View style={styles.headerContent}>
                         <TouchableOpacity onPress={() => navigate.goBack()} style={styles.backButton}>
-                            <Feather name="arrow-left" size={20} color="white" />
+                            <Feather name="arrow-left" size={isSmallScreen ? 18 : 20} color="white" />
                         </TouchableOpacity>
                         <Text style={styles.headerTitle}>{isEditing ? "Editar Usuário" : "Adicionar Usuário"}</Text>
-                        <View style={{ width: 40 }} />
+                        <View style={{ width: isSmallScreen ? 36 : 40 }} />
                     </View>
                 </LinearGradient>
 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={isWebPlatform && styles.webScrollContent}
+                >
                     <Animated.View
                         style={[
                             styles.content,
@@ -269,7 +278,7 @@ export default function AddEditUserScreen() {
                                 </View>
                             ) : (
                                 <View style={styles.submitButtonContent}>
-                                    <Feather name="save" size={20} color="white" />
+                                    <Feather name="save" size={isSmallScreen ? 18 : 20} color="white" />
                                     <Text style={styles.submitButtonText}>{isEditing ? "Atualizar Usuário" : "Salvar Usuário"}</Text>
                                 </View>
                             )}
@@ -278,13 +287,15 @@ export default function AddEditUserScreen() {
                 </ScrollView>
             </View>
         </KeyboardAvoidingView>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: {
+        flex: 1,
+    },
     header: {
-        paddingTop: 64,
+        paddingTop: Platform.OS === "ios" ? 64 : Platform.OS === "android" ? 48 : 24,
         paddingBottom: 16,
         paddingHorizontal: 16,
         borderBottomLeftRadius: 16,
@@ -296,36 +307,45 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     backButton: {
-        width: 40,
-        height: 40,
+        width: isSmallScreen ? 36 : 40,
+        height: isSmallScreen ? 36 : 40,
         justifyContent: "center",
         alignItems: "center",
     },
     headerTitle: {
         color: "white",
-        fontSize: 20,
+        fontSize: isSmallScreen ? 18 : 20,
         fontWeight: "700",
     },
     content: {
-        paddingHorizontal: 20,
+        paddingHorizontal: isSmallScreen ? 16 : 20,
         paddingTop: 20,
         paddingBottom: 40,
     },
+    webScrollContent: {
+        maxWidth: 600,
+        alignSelf: "center",
+        width: "100%",
+    },
     inputContainer: {
-        marginBottom: 20,
+        marginBottom: isSmallScreen ? 16 : 20,
     },
     inputLabel: {
         fontWeight: "600",
         marginBottom: 6,
-        fontSize: 14,
+        fontSize: isSmallScreen ? 13 : 14,
     },
     textInput: {
         borderRadius: 8,
-        paddingVertical: 10,
+        paddingVertical: Platform.OS === "web" ? 12 : 10,
         paddingHorizontal: 14,
-        fontSize: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         borderWidth: 1,
         borderColor: "#D1D5DB",
+        ...(Platform.OS === "web" && {
+            outlineStyle: "none",
+            height: 46,
+        }),
     },
     switchContainer: {
         flexDirection: "row",
@@ -334,18 +354,18 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     switchLabel: {
-        fontSize: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         fontWeight: "600",
     },
     section: {
         borderRadius: 12,
-        padding: 12,
+        padding: isSmallScreen ? 10 : 12,
         borderWidth: 1,
         borderColor: "#D1D5DB",
     },
     sectionTitle: {
         fontWeight: "700",
-        fontSize: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         marginBottom: 10,
     },
     statusBadge: {
@@ -359,10 +379,17 @@ const styles = StyleSheet.create({
     submitButton: {
         marginTop: 30,
         borderRadius: 12,
-        paddingVertical: 14,
+        paddingVertical: isSmallScreen ? 12 : 14,
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "row",
+        ...(Platform.OS === "web" && {
+            cursor: "pointer",
+            transition: "0.2s opacity",
+            ":hover": {
+                opacity: 0.9,
+            },
+        }),
     },
     submitButtonContent: {
         flexDirection: "row",
@@ -372,6 +399,6 @@ const styles = StyleSheet.create({
     submitButtonText: {
         color: "white",
         fontWeight: "700",
-        fontSize: 16,
+        fontSize: isSmallScreen ? 15 : 16,
     },
-});
+})

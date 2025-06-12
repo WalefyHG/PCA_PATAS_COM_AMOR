@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+"use client"
+
+import { useState, useEffect } from "react"
 import {
     View,
     Text,
@@ -13,22 +15,28 @@ import {
     Animated,
     ActivityIndicator,
     Switch,
-} from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
-import { Feather } from "@expo/vector-icons";
-import { useThemeContext } from "../utils/ThemeContext";
-import { createPet, getPetById, Pet, updatePet } from "@/app/config/firebase"
+    Dimensions,
+} from "react-native"
+import { useNavigation, useRoute } from "@react-navigation/native"
+import * as ImagePicker from "expo-image-picker"
+import { LinearGradient } from "expo-linear-gradient"
+import { Feather } from "@expo/vector-icons"
+import { useThemeContext } from "../utils/ThemeContext"
+import { createPet, getPetById, type Pet, updatePet } from "@/app/config/firebase"
 
-// Mock theme context - you can replace with your actual theme
+// Get screen dimensions for responsive sizing
+const { width, height } = Dimensions.get("window")
+const isSmallScreen = width < 380
+const isMediumScreen = width >= 380 && width < 768
+const isLargeScreen = width >= 768
+const isWebPlatform = Platform.OS === "web"
 
 export default function AddPet() {
-    const { isDarkTheme, colors } = useThemeContext();
-    const navigation = useNavigation<any>();
-    const route = useRoute<any>();
-    const { petId } = route.params || {};
-    const isEditing = !!petId;
+    const { isDarkTheme, colors } = useThemeContext()
+    const navigation = useNavigation<any>()
+    const route = useRoute<any>()
+    const { petId } = route.params || {}
+    const isEditing = !!petId
 
     // Pet state with all required fields
     const [pet, setPet] = useState<Pet>({
@@ -52,40 +60,40 @@ export default function AddPet() {
         contactEmail: "",
         status: "available",
         createdBy: "",
-    });
+    })
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentRequirement, setCurrentRequirement] = useState("");
-    const [fadeAnim] = useState(new Animated.Value(0));
-    const [slideAnim] = useState(new Animated.Value(30));
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [currentRequirement, setCurrentRequirement] = useState("")
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(30))
 
-    const isIOS = Platform.OS === "ios";
-    const isAndroid = Platform.OS === "android";
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
 
-    const petTypes = ["dog", "cat", "bird", "rabbit", "other"];
-    const genders = ["male", "female", "unknown"];
-    const sizes = ["small", "medium", "large", "extra-large"];
-    const statuses = ["available", "pending", "adopted"];
+    const petTypes = ["dog", "cat", "bird", "rabbit", "other"]
+    const genders = ["male", "female", "unknown"]
+    const sizes = ["small", "medium", "large", "extra-large"]
+    const statuses = ["available", "pending", "adopted"]
 
     useEffect(() => {
         const loadPetData = async () => {
             if (isEditing && petId) {
                 try {
-                    const dataPet = await getPetById(petId);
+                    const dataPet = await getPetById(petId)
                     if (dataPet) {
-                        setPet(dataPet);
+                        setPet(dataPet)
                     } else {
-                        Alert.alert("Erro", "Não foi possível carregar os dados do pet.");
+                        Alert.alert("Erro", "Não foi possível carregar os dados do pet.")
                     }
                 } catch (error) {
-                    console.error("Erro ao buscar pet:", error);
-                    Alert.alert("Erro", "Erro ao carregar os dados do pet.");
+                    console.error("Erro ao buscar pet:", error)
+                    Alert.alert("Erro", "Erro ao carregar os dados do pet.")
                 }
             }
-        };
+        }
 
-        loadPetData();
-    }, [isEditing, petId]);
+        loadPetData()
+    }, [isEditing, petId])
 
     useEffect(() => {
         // Start animations when component mounts
@@ -101,22 +109,22 @@ export default function AddPet() {
                 bounciness: 6,
                 useNativeDriver: true,
             }),
-        ]).start();
-    }, []);
+        ]).start()
+    }, [])
 
     const handleInputChange = (field: keyof Pet, value: string | boolean | string[]) => {
         setPet((prevPet) => ({
             ...prevPet,
             [field]: value,
-        }));
-    };
+        }))
+    }
 
     const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
 
         if (status !== "granted") {
-            Alert.alert("Permissão necessária", "Precisamos de permissão para acessar sua galeria de fotos.");
-            return;
+            Alert.alert("Permissão necessária", "Precisamos de permissão para acessar sua galeria de fotos.")
+            return
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -124,88 +132,86 @@ export default function AddPet() {
             allowsEditing: true,
             quality: 0.7,
             allowsMultipleSelection: true,
-        });
+        })
 
         if (!result.canceled) {
-            const newImages = result.assets.map(asset => asset.uri);
-            setPet(prevPet => ({
+            const newImages = result.assets.map((asset) => asset.uri)
+            setPet((prevPet) => ({
                 ...prevPet,
-                images: [...prevPet.images, ...newImages].slice(0, 5) // Limit to 5 images
-            }));
+                images: [...prevPet.images, ...newImages].slice(0, 5), // Limit to 5 images
+            }))
         }
-    };
+    }
 
     const removeImage = (index: number) => {
-        const newImages = [...pet.images];
-        newImages.splice(index, 1);
-        setPet(prevPet => ({
+        const newImages = [...pet.images]
+        newImages.splice(index, 1)
+        setPet((prevPet) => ({
             ...prevPet,
-            images: newImages
-        }));
-    };
+            images: newImages,
+        }))
+    }
 
     const handleAddRequirement = () => {
         if (currentRequirement.trim()) {
-            const updatedRequirements = [...pet.requirements, currentRequirement.trim()];
+            const updatedRequirements = [...pet.requirements, currentRequirement.trim()]
             setPet((prevPet) => ({
                 ...prevPet,
                 requirements: updatedRequirements,
-            }));
-            setCurrentRequirement("");
+            }))
+            setCurrentRequirement("")
         }
-    };
+    }
 
     const handleRemoveRequirement = (index: number) => {
-        const updatedRequirements = pet.requirements.filter((_, i) => i !== index);
+        const updatedRequirements = pet.requirements.filter((_, i) => i !== index)
         setPet((prevPet) => ({
             ...prevPet,
             requirements: updatedRequirements,
-        }));
-    };
+        }))
+    }
 
     const handleSubmit = async () => {
         // Validação
         if (!pet.name || !pet.type || !pet.breed || !pet.description || !pet.location) {
-            Alert.alert("Erro de Validação", "Por favor, preencha todos os campos obrigatórios");
-            return;
+            Alert.alert("Erro de Validação", "Por favor, preencha todos os campos obrigatórios")
+            return
         }
 
         if (pet.images.length === 0) {
-            Alert.alert("Imagem Obrigatória", "Por favor, adicione pelo menos uma imagem do pet");
-            return;
+            Alert.alert("Imagem Obrigatória", "Por favor, adicione pelo menos uma imagem do pet")
+            return
         }
 
         try {
-            setIsSubmitting(true);
+            setIsSubmitting(true)
 
             if (isEditing && petId) {
-                await updatePet(petId, pet);
-                Alert.alert("Sucesso", "Pet atualizado com sucesso!");
+                await updatePet(petId, pet)
+                Alert.alert("Sucesso", "Pet atualizado com sucesso!")
             } else {
-                await createPet(pet);
-                Alert.alert("Sucesso", "Pet salvo com sucesso!");
+                await createPet(pet)
+                Alert.alert("Sucesso", "Pet salvo com sucesso!")
             }
 
-            navigation.goBack();
+            navigation.goBack()
         } catch (error) {
-            console.error("Erro ao salvar pet:", error);
-            Alert.alert("Erro", "Houve um erro ao salvar o pet. Tente novamente.");
+            console.error("Erro ao salvar pet:", error)
+            Alert.alert("Erro", "Houve um erro ao salvar o pet. Tente novamente.")
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false)
         }
-    };
+    }
 
-    const renderSelectButton = (options: string[], currentValue: string, onSelect: (value: string) => void, label: string) => (
-        <View style={{ marginBottom: 24 }}>
-            <Text
-                style={[
-                    styles.label,
-                    { color: isDarkTheme ? "white" : "#374151" }
-                ]}
-            >
-                {label}
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+    const renderSelectButton = (
+        options: string[],
+        currentValue: string,
+        onSelect: (value: string) => void,
+        label: string,
+    ) => (
+        <View style={styles.selectSection}>
+            <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>{label}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectScrollView}>
                 {options.map((option) => (
                     <TouchableOpacity
                         key={option}
@@ -213,20 +219,20 @@ export default function AddPet() {
                         style={[
                             styles.selectButton,
                             {
-                                backgroundColor: currentValue === option
-                                    ? colors.primary
-                                    : isDarkTheme ? "#374151" : "white",
-                                marginRight: 8,
+                                backgroundColor: currentValue === option ? colors.primary : isDarkTheme ? "#374151" : "white",
+                                marginRight: isSmallScreen ? 8 : 12,
+                                borderColor: currentValue === option ? colors.primary : "#E5E7EB",
                             },
-                            isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {}
+                            isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {},
                         ]}
                     >
                         <Text
-                            style={{
-                                color: currentValue === option ? "white" : isDarkTheme ? "#D1D5DB" : "#374151",
-                                fontWeight: "600",
-                                textTransform: "capitalize"
-                            }}
+                            style={[
+                                styles.selectButtonText,
+                                {
+                                    color: currentValue === option ? "white" : isDarkTheme ? "#D1D5DB" : "#374151",
+                                },
+                            ]}
                         >
                             {option}
                         </Text>
@@ -234,19 +240,12 @@ export default function AddPet() {
                 ))}
             </ScrollView>
         </View>
-    );
+    )
 
     const renderStatusBadges = () => (
-        <View style={{ marginBottom: 24 }}>
-            <Text
-                style={[
-                    styles.label,
-                    { color: isDarkTheme ? "white" : "#374151" }
-                ]}
-            >
-                Status de Adoção
-            </Text>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <View style={styles.statusSection}>
+            <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>Status de Adoção</Text>
+            <View style={styles.statusContainer}>
                 {statuses.map((status) => (
                     <TouchableOpacity
                         key={status}
@@ -254,27 +253,27 @@ export default function AddPet() {
                         style={[
                             styles.statusBadge,
                             {
-                                backgroundColor: pet.status === status
-                                    ? colors.primary
-                                    : isDarkTheme ? "#374151" : "white",
+                                backgroundColor: pet.status === status ? colors.primary : isDarkTheme ? "#374151" : "white",
                                 flex: 1,
-                                marginHorizontal: 4,
+                                marginHorizontal: isSmallScreen ? 2 : 4,
+                                borderColor: pet.status === status ? colors.primary : "#E5E7EB",
                             },
-                            isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {}
+                            isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {},
                         ]}
                     >
                         <Feather
                             name={status === "available" ? "check" : status === "pending" ? "clock" : "heart"}
-                            size={16}
+                            size={isSmallScreen ? 14 : 16}
                             color={pet.status === status ? "white" : colors.primary}
                             style={{ marginRight: 4 }}
                         />
                         <Text
-                            style={{
-                                color: pet.status === status ? "white" : isDarkTheme ? "#D1D5DB" : "#374151",
-                                fontWeight: "600",
-                                textTransform: "capitalize"
-                            }}
+                            style={[
+                                styles.statusBadgeText,
+                                {
+                                    color: pet.status === status ? "white" : isDarkTheme ? "#D1D5DB" : "#374151",
+                                },
+                            ]}
                         >
                             {status === "available" ? "Disponível" : status === "pending" ? "Pendente" : "Adotado"}
                         </Text>
@@ -282,7 +281,7 @@ export default function AddPet() {
                 ))}
             </View>
         </View>
-    );
+    )
 
     return (
         <KeyboardAvoidingView
@@ -299,40 +298,36 @@ export default function AddPet() {
                     style={styles.header}
                 >
                     <View style={styles.headerContent}>
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={styles.backButton}
-                        >
-                            <Feather name="arrow-left" size={20} color="white" />
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                            <Feather name="arrow-left" size={isSmallScreen ? 18 : 20} color="white" />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>
-                            {isEditing ? "Editar Pet" : "Adicionar Pet"}
-                        </Text>
-                        <View style={{ width: 40 }} />
+                        <Text style={styles.headerTitle}>{isEditing ? "Editar Pet" : "Adicionar Pet"}</Text>
+                        <View style={{ width: isSmallScreen ? 36 : 40 }} />
                     </View>
                 </LinearGradient>
 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={isWebPlatform && styles.webScrollContent}
+                >
                     <Animated.View
                         style={[
                             styles.content,
                             {
                                 opacity: fadeAnim,
                                 transform: [{ translateY: slideAnim }],
-                            }
+                            },
                         ]}
                     >
                         {/* Image Upload Section */}
-                        <View style={{ marginBottom: 24 }}>
-                            <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                Imagens do Pet
-                            </Text>
+                        <View style={styles.imageSection}>
+                            <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>Imagens do Pet *</Text>
 
                             <TouchableOpacity
                                 style={[
                                     styles.imageUploadContainer,
                                     { backgroundColor: isDarkTheme ? "#374151" : "white" },
-                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {}
+                                    isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {},
                                 ]}
                                 onPress={pickImage}
                             >
@@ -341,24 +336,21 @@ export default function AddPet() {
                                         {pet.images.map((image, index) => (
                                             <View key={index} style={styles.imageContainer}>
                                                 <Image source={{ uri: image }} style={styles.image} />
-                                                <TouchableOpacity
-                                                    style={styles.removeImageButton}
-                                                    onPress={() => removeImage(index)}
-                                                >
-                                                    <Feather name="x" size={16} color="white" />
+                                                <TouchableOpacity style={styles.removeImageButton} onPress={() => removeImage(index)}>
+                                                    <Feather name="x" size={isSmallScreen ? 14 : 16} color="white" />
                                                 </TouchableOpacity>
                                             </View>
                                         ))}
                                         {pet.images.length < 5 && (
                                             <TouchableOpacity style={styles.addMoreImagesButton}>
-                                                <Feather name="plus" size={32} color={colors.primary} />
+                                                <Feather name="plus" size={isSmallScreen ? 28 : 32} color={colors.primary} />
                                             </TouchableOpacity>
                                         )}
                                     </ScrollView>
                                 ) : (
                                     <View style={styles.emptyImageContainer}>
                                         <View style={[styles.imageIcon, { backgroundColor: `${colors.primary}15` }]}>
-                                            <Feather name="image" size={32} color={colors.primary} />
+                                            <Feather name="image" size={isSmallScreen ? 28 : 32} color={colors.primary} />
                                         </View>
                                         <Text style={[styles.imageUploadText, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
                                             Toque para adicionar imagens
@@ -375,16 +367,14 @@ export default function AddPet() {
                             </Text>
 
                             <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Nome do Pet *
-                                </Text>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Nome do Pet *</Text>
                                 <TextInput
                                     style={[
                                         styles.textInput,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="Digite o nome do pet"
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -393,36 +383,51 @@ export default function AddPet() {
                                 />
                             </View>
 
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Idade *
-                                </Text>
-                                <TextInput
-                                    style={[
-                                        styles.textInput,
-                                        {
-                                            backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
-                                    ]}
-                                    placeholder="ex: 2 anos"
-                                    placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                    value={pet.age}
-                                    onChangeText={(value) => handleInputChange("age", value)}
-                                />
+                            <View style={styles.inputRow}>
+                                <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+                                    <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Idade *</Text>
+                                    <TextInput
+                                        style={[
+                                            styles.textInput,
+                                            {
+                                                backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
+                                                color: isDarkTheme ? "white" : "#374151",
+                                            },
+                                        ]}
+                                        placeholder="ex: 2 anos"
+                                        placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                        value={pet.age}
+                                        onChangeText={(value) => handleInputChange("age", value)}
+                                    />
+                                </View>
+
+                                <View style={[styles.inputContainer, { flex: 1, marginLeft: 8 }]}>
+                                    <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Cor</Text>
+                                    <TextInput
+                                        style={[
+                                            styles.textInput,
+                                            {
+                                                backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
+                                                color: isDarkTheme ? "white" : "#374151",
+                                            },
+                                        ]}
+                                        placeholder="ex: Marrom"
+                                        placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                        value={pet.color}
+                                        onChangeText={(value) => handleInputChange("color", value)}
+                                    />
+                                </View>
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Raça *
-                                </Text>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Raça *</Text>
                                 <TextInput
                                     style={[
                                         styles.textInput,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="ex: Labrador Retriever"
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -432,35 +437,14 @@ export default function AddPet() {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Cor
-                                </Text>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Localização *</Text>
                                 <TextInput
                                     style={[
                                         styles.textInput,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
-                                    ]}
-                                    placeholder="ex: Marrom e Branco"
-                                    placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                    value={pet.color}
-                                    onChangeText={(value) => handleInputChange("color", value)}
-                                />
-                            </View>
-
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Localização *
-                                </Text>
-                                <TextInput
-                                    style={[
-                                        styles.textInput,
-                                        {
-                                            backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="Digite a localização atual do pet"
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -477,21 +461,17 @@ export default function AddPet() {
 
                         {/* Description */}
                         <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
-                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                Descrição
-                            </Text>
+                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Descrição</Text>
 
                             <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Descrição *
-                                </Text>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Descrição *</Text>
                                 <TextInput
                                     style={[
                                         styles.textArea,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="Descreva a personalidade, comportamento, gostos do pet, etc."
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -504,16 +484,14 @@ export default function AddPet() {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    História
-                                </Text>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>História</Text>
                                 <TextInput
                                     style={[
                                         styles.textArea,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="Informações sobre o histórico do pet e lares anteriores."
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -538,8 +516,8 @@ export default function AddPet() {
                                         styles.requirementInput,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="Adicionar requisito"
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -550,21 +528,22 @@ export default function AddPet() {
                                     style={[styles.addRequirementButton, { backgroundColor: colors.primary }]}
                                     onPress={handleAddRequirement}
                                 >
-                                    <Feather name="plus" size={20} color="white" />
+                                    <Feather name="plus" size={isSmallScreen ? 18 : 20} color="white" />
                                 </TouchableOpacity>
                             </View>
 
                             {pet.requirements.length > 0 ? (
                                 <View style={styles.requirementsList}>
                                     {pet.requirements.map((requirement, index) => (
-                                        <View key={index} style={[styles.requirementItem, { backgroundColor: isDarkTheme ? "#374151" : "#F3F4F6" }]}>
+                                        <View
+                                            key={index}
+                                            style={[styles.requirementItem, { backgroundColor: isDarkTheme ? "#374151" : "#F3F4F6" }]}
+                                        >
                                             <Text style={[styles.requirementText, { color: isDarkTheme ? "white" : "#374151" }]}>
                                                 {requirement}
                                             </Text>
-                                            <TouchableOpacity
-                                                onPress={() => handleRemoveRequirement(index)}
-                                            >
-                                                <Feather name="trash-2" size={16} color="#EF4444" />
+                                            <TouchableOpacity onPress={() => handleRemoveRequirement(index)}>
+                                                <Feather name="trash-2" size={isSmallScreen ? 14 : 16} color="#EF4444" />
                                             </TouchableOpacity>
                                         </View>
                                     ))}
@@ -578,14 +557,10 @@ export default function AddPet() {
 
                         {/* Health & Medical */}
                         <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
-                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                Saúde e Medicina
-                            </Text>
+                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Saúde e Medicina</Text>
 
                             <View style={styles.switchContainer}>
-                                <Text style={[styles.switchLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Vacinado
-                                </Text>
+                                <Text style={[styles.switchLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Vacinado</Text>
                                 <Switch
                                     value={pet.vaccinated}
                                     onValueChange={(value) => handleInputChange("vaccinated", value)}
@@ -628,8 +603,8 @@ export default function AddPet() {
                                             styles.textArea,
                                             {
                                                 backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                                color: isDarkTheme ? "white" : "#374151"
-                                            }
+                                                color: isDarkTheme ? "white" : "#374151",
+                                            },
                                         ]}
                                         placeholder="Descreva as necessidades especiais ou condições médicas do pet"
                                         placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -658,8 +633,8 @@ export default function AddPet() {
                                         styles.textInput,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="Número de telefone"
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -670,16 +645,14 @@ export default function AddPet() {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                    Email de Contato
-                                </Text>
+                                <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Email de Contato</Text>
                                 <TextInput
                                     style={[
                                         styles.textInput,
                                         {
                                             backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151"
-                                        }
+                                            color: isDarkTheme ? "white" : "#374151",
+                                        },
                                     ]}
                                     placeholder="Endereço de email"
                                     placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
@@ -700,8 +673,8 @@ export default function AddPet() {
                                 styles.submitButton,
                                 {
                                     backgroundColor: isSubmitting ? (isDarkTheme ? "#4B5563" : "#D1D5DB") : colors.primary,
-                                    opacity: isSubmitting ? 0.7 : 1
-                                }
+                                    opacity: isSubmitting ? 0.7 : 1,
+                                },
                             ]}
                             onPress={handleSubmit}
                             disabled={isSubmitting}
@@ -709,16 +682,12 @@ export default function AddPet() {
                             {isSubmitting ? (
                                 <View style={styles.submitButtonContent}>
                                     <ActivityIndicator size="small" color="white" />
-                                    <Text style={styles.submitButtonText}>
-                                        {isEditing ? "Atualizando..." : "Salvando..."}
-                                    </Text>
+                                    <Text style={styles.submitButtonText}>{isEditing ? "Atualizando..." : "Salvando..."}</Text>
                                 </View>
                             ) : (
                                 <View style={styles.submitButtonContent}>
-                                    <Feather name="save" size={20} color="white" />
-                                    <Text style={styles.submitButtonText}>
-                                        {isEditing ? "Atualizar Pet" : "Salvar Pet"}
-                                    </Text>
+                                    <Feather name="save" size={isSmallScreen ? 18 : 20} color="white" />
+                                    <Text style={styles.submitButtonText}>{isEditing ? "Atualizar Pet" : "Salvar Pet"}</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -726,7 +695,7 @@ export default function AddPet() {
                 </ScrollView>
             </View>
         </KeyboardAvoidingView>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
@@ -734,9 +703,11 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingTop: 64,
-        paddingBottom: 32,
-        paddingHorizontal: 16,
+        paddingTop: Platform.OS === "ios" ? 64 : Platform.OS === "android" ? 48 : 24,
+        paddingBottom: isSmallScreen ? 20 : 24,
+        paddingHorizontal: isSmallScreen ? 16 : 20,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
     },
     headerContent: {
         flexDirection: "row",
@@ -744,155 +715,207 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: isSmallScreen ? 36 : 40,
+        height: isSmallScreen ? 36 : 40,
+        borderRadius: isSmallScreen ? 18 : 20,
         backgroundColor: "rgba(255, 255, 255, 0.2)",
         alignItems: "center",
         justifyContent: "center",
     },
     headerTitle: {
         color: "white",
-        fontSize: 20,
-        fontWeight: "bold",
+        fontSize: isSmallScreen ? 18 : 20,
+        fontWeight: "700",
     },
     content: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 32,
+        paddingHorizontal: isSmallScreen ? 16 : 20,
+        paddingTop: isSmallScreen ? 16 : 20,
+        paddingBottom: 40,
+    },
+    webScrollContent: {
+        maxWidth: isLargeScreen ? 800 : 600,
+        alignSelf: "center",
+        width: "100%",
     },
     section: {
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 24,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 3,
+        borderRadius: 16,
+        padding: isSmallScreen ? 16 : 20,
+        marginBottom: isSmallScreen ? 20 : 24,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
     },
     sectionTitle: {
-        fontSize: 18,
-        fontWeight: "bold",
-        marginBottom: 16,
+        fontSize: isSmallScreen ? 16 : 18,
+        fontWeight: "700",
+        marginBottom: isSmallScreen ? 12 : 16,
     },
     label: {
-        fontSize: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         fontWeight: "600",
         marginBottom: 8,
     },
     inputContainer: {
-        marginBottom: 16,
+        marginBottom: isSmallScreen ? 14 : 16,
+    },
+    inputRow: {
+        flexDirection: isSmallScreen ? "column" : "row",
+        marginBottom: isSmallScreen ? 0 : 16,
     },
     inputLabel: {
-        fontSize: 14,
+        fontSize: isSmallScreen ? 13 : 14,
         fontWeight: "500",
-        marginBottom: 8,
+        marginBottom: 6,
     },
     textInput: {
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
+        borderRadius: 12,
+        paddingVertical: Platform.OS === "web" ? 14 : 12,
+        paddingHorizontal: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         borderWidth: 1,
         borderColor: "#E5E7EB",
+        ...(Platform.OS === "web" && {
+            outlineStyle: "none",
+            height: 50,
+        }),
     },
     textArea: {
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
+        borderRadius: 12,
+        padding: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         borderWidth: 1,
         borderColor: "#E5E7EB",
-        minHeight: 100,
+        minHeight: isSmallScreen ? 80 : 100,
+        ...(Platform.OS === "web" && {
+            outlineStyle: "none",
+        }),
+    },
+    selectSection: {
+        marginBottom: isSmallScreen ? 20 : 24,
+    },
+    selectScrollView: {
+        marginBottom: 8,
     },
     selectButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: "#E5E7EB",
+        paddingHorizontal: isSmallScreen ? 14 : 18,
+        paddingVertical: isSmallScreen ? 10 : 12,
+        borderRadius: 25,
+        borderWidth: 2,
+        minWidth: isSmallScreen ? 80 : 100,
+        alignItems: "center",
+    },
+    selectButtonText: {
+        fontWeight: "600",
+        textTransform: "capitalize",
+        fontSize: isSmallScreen ? 13 : 14,
+    },
+    statusSection: {
+        marginBottom: isSmallScreen ? 20 : 24,
+    },
+    statusContainer: {
+        flexDirection: isSmallScreen ? "column" : "row",
+        gap: isSmallScreen ? 8 : 0,
     },
     statusBadge: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        paddingVertical: 12,
+        paddingVertical: isSmallScreen ? 10 : 12,
         paddingHorizontal: 8,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: "#E5E7EB",
+        borderRadius: 12,
+        borderWidth: 2,
+        ...(isSmallScreen && { marginBottom: 8 }),
+    },
+    statusBadgeText: {
+        fontWeight: "600",
+        fontSize: isSmallScreen ? 12 : 14,
+    },
+    imageSection: {
+        marginBottom: isSmallScreen ? 20 : 24,
     },
     imageUploadContainer: {
-        height: 224,
-        borderRadius: 12,
+        height: isSmallScreen ? 180 : 200,
+        borderRadius: 16,
         overflow: "hidden",
-        borderWidth: 1,
-        borderColor: "#E5E7EB",
+        borderWidth: 2,
+        borderStyle: "dashed",
+        borderColor: "#D1D5DB",
     },
     emptyImageContainer: {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
+        padding: 20,
     },
     imageIcon: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: isSmallScreen ? 56 : 64,
+        height: isSmallScreen ? 56 : 64,
+        borderRadius: isSmallScreen ? 28 : 32,
         alignItems: "center",
         justifyContent: "center",
         marginBottom: 12,
     },
     imageUploadText: {
-        fontSize: 16,
+        fontSize: isSmallScreen ? 14 : 16,
+        textAlign: "center",
     },
     imageContainer: {
         position: "relative",
-        marginRight: 8,
+        marginRight: 12,
+        marginVertical: 8,
     },
     image: {
-        width: 120,
-        height: 120,
-        borderRadius: 8,
+        width: isSmallScreen ? 100 : 120,
+        height: isSmallScreen ? 100 : 120,
+        borderRadius: 12,
     },
     removeImageButton: {
         position: "absolute",
         top: 4,
         right: 4,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
         borderRadius: 12,
-        width: 24,
-        height: 24,
+        width: isSmallScreen ? 20 : 24,
+        height: isSmallScreen ? 20 : 24,
         alignItems: "center",
         justifyContent: "center",
     },
     addMoreImagesButton: {
-        width: 120,
-        height: 120,
-        borderRadius: 8,
+        width: isSmallScreen ? 100 : 120,
+        height: isSmallScreen ? 100 : 120,
+        borderRadius: 12,
         borderWidth: 2,
         borderStyle: "dashed",
         borderColor: "#D1D5DB",
         alignItems: "center",
         justifyContent: "center",
+        marginVertical: 8,
     },
     requirementInputContainer: {
         flexDirection: "row",
         marginBottom: 16,
+        gap: 8,
     },
     requirementInput: {
         flex: 1,
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         borderWidth: 1,
         borderColor: "#E5E7EB",
-        marginRight: 8,
+        ...(Platform.OS === "web" && {
+            outlineStyle: "none",
+        }),
     },
     addRequirementButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: isSmallScreen ? 44 : 48,
+        height: isSmallScreen ? 44 : 48,
+        borderRadius: isSmallScreen ? 22 : 24,
         alignItems: "center",
         justifyContent: "center",
+        ...(Platform.OS === "web" && {
+            cursor: "pointer",
+        }),
     },
     requirementsList: {
         marginTop: 8,
@@ -902,57 +925,60 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
         padding: 12,
-        borderRadius: 8,
+        borderRadius: 10,
         marginBottom: 8,
     },
     requirementText: {
         flex: 1,
-        fontSize: 14,
+        fontSize: isSmallScreen ? 13 : 14,
+        marginRight: 8,
     },
     noRequirementsText: {
-        fontSize: 14,
+        fontSize: isSmallScreen ? 13 : 14,
         fontStyle: "italic",
         textAlign: "center",
         marginTop: 8,
+        padding: 16,
     },
     switchContainer: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
         marginBottom: 16,
+        paddingVertical: 4,
     },
     switchLabel: {
-        fontSize: 16,
+        fontSize: isSmallScreen ? 15 : 16,
         fontWeight: "500",
+        flex: 1,
     },
     submitButton: {
-        borderRadius: 12,
-        paddingVertical: 16,
-        marginTop: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 5,
+        borderRadius: 16,
+        paddingVertical: isSmallScreen ? 14 : 16,
+        marginTop: isSmallScreen ? 20 : 24,
+        ...(Platform.OS === "web" && {
+            cursor: "pointer",
+            transition: "0.2s opacity",
+        }),
     },
     submitButtonContent: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
+        gap: 8,
     },
     submitButtonText: {
         color: "white",
-        fontSize: 16,
-        fontWeight: "600",
-        marginLeft: 8,
+        fontSize: isSmallScreen ? 15 : 16,
+        fontWeight: "700",
     },
     iosShadow: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 6,
+        shadowRadius: 8,
     },
     androidShadow: {
-        elevation: 3,
+        elevation: 4,
     },
-});
+})
