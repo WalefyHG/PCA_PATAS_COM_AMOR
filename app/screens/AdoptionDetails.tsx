@@ -127,9 +127,17 @@ export default function PetAdoptionDetail() {
         ]).start()
     }, [petId])
 
-    const handleScroll = Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-        useNativeDriver: true,
-    })
+    const handleScroll = (event: any) => {
+        // Para Android, atualizamos manualmente o valor animado
+        if (Platform.OS === "android") {
+            scrollY.setValue(event.nativeEvent.contentOffset.y)
+        } else {
+            // Para iOS, usamos o Animated.event
+            Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+                useNativeDriver: true,
+            })(event)
+        }
+    }
 
     const handleAdopt = async () => {
         if (!pet) return

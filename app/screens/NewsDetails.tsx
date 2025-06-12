@@ -170,6 +170,18 @@ export default function BlogPostDetail() {
         }
     }
 
+    const handleScroll = (event: any) => {
+        // Para Android, atualizamos manualmente o valor animado
+        if (Platform.OS === "android") {
+            scrollY.setValue(event.nativeEvent.contentOffset.y)
+        } else {
+            // Para iOS, usamos o Animated.event
+            Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+                useNativeDriver: true,
+            })(event)
+        }
+    }
+
     const handleSubmitComment = async () => {
         if (!commentText.trim()) return
 
@@ -386,7 +398,7 @@ export default function BlogPostDetail() {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+                onScroll={handleScroll}
                 scrollEventThrottle={16}
                 contentContainerStyle={{
                     maxWidth: isWeb ? 1200 : "100%",
