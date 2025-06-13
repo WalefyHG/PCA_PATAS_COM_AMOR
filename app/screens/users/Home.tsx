@@ -117,8 +117,8 @@ export default function Home() {
           })
         }}>
           <View style={{
-            flexDirection: isWeb ? 'row' : 'column',
-            flexWrap: isWeb ? 'wrap' : 'nowrap',
+            flexDirection: isWeb ? 'row' : 'row',
+            flexWrap: isWeb ? 'wrap' : 'wrap',
             justifyContent: isWeb ? 'center' : 'space-between',
             paddingHorizontal: 8
           }}>
