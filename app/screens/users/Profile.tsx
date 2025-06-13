@@ -268,7 +268,7 @@ export default function Profile() {
               styles.editButton,
               { backgroundColor: colors.primary }
             ]}
-            onPress={() => navigation.navigate("EditProfile")}
+            onPress={() => navigation.navigate("AddUsers", { userId: user.uid })}
           >
             <Feather name="edit-2" size={20} color="white" />
             <Text style={styles.editButtonText}>

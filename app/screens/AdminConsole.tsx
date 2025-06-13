@@ -833,7 +833,7 @@ function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemPro
                         </Text>
                         <View className="flex-row items-center mt-2 space-x-2">
                             {getLoginIcon()}
-                            <Text className="text-s text-muted-foreground">
+                            <Text className="text-s ml-2 text-muted-foreground">
                                 {"logginFormat" in user && user.logginFormat === 'google' ? 'Login com Google' : 'Login com Email'}
                             </Text>
                             {"role" in user && user.role === "admin" && (

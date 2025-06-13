@@ -80,22 +80,6 @@ export default function HeaderUserMenu() {
 
     return (
         <View style={styles.container}>
-            {/* Theme Toggle Button */}
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                <TouchableOpacity
-                    onPress={handleThemeToggle}
-                    style={[
-                        styles.themeButton,
-                        { backgroundColor: isDarkTheme ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.05)" },
-                    ]}
-                >
-                    <Feather
-                        name={isDarkTheme ? "sun" : "moon"}
-                        size={20}
-                        color={isDarkTheme ? "#fff" : colors.secondaryLight}
-                    />
-                </TouchableOpacity>
-            </Animated.View>
 
             {/* Avatar Button */}
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -196,6 +180,28 @@ export default function HeaderUserMenu() {
                         <Text style={[styles.menuText, { color: isDarkTheme ? "#FFFFFF" : "#1F2937" }]}>Configurações</Text>
                     </TouchableOpacity>
 
+                    {/* Theme toogle button */}
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={handleThemeToggle}
+                    >
+                        <View
+                            style={[
+                                styles.menuIconContainer,
+                                { backgroundColor: isDarkTheme ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.05)" },
+                            ]}
+                        >
+                            <Feather
+                                name={isDarkTheme ? "sun" : "moon"}
+                                size={16}
+                                color={isDarkTheme ? "#FFFFFF" : colors.secondaryLight}
+                            />
+                        </View>
+                        <Text style={[styles.menuText, { color: isDarkTheme ? "#FFFFFF" : "#1F2937" }]}>
+                            {isDarkTheme ? "Modo Claro" : "Modo Escuro"}
+                        </Text>
+                    </TouchableOpacity>
+
                     <View style={[styles.separator, { backgroundColor: isDarkTheme ? "#374151" : "#E5E7EB" }]} />
 
                     <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
@@ -209,6 +215,7 @@ export default function HeaderUserMenu() {
                         </View>
                         <Text style={[styles.menuText, { color: "#EF4444" }]}>Sair</Text>
                     </TouchableOpacity>
+
                 </View>
             </Popover>
         </View>

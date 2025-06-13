@@ -231,18 +231,20 @@ export default function AddEditUserScreen() {
                         )}
 
                         {/* Role */}
-                        <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
-                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Função</Text>
-                            <View style={styles.switchContainer}>
-                                <Text style={[styles.switchLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Administrador</Text>
-                                <Switch
-                                    value={user.role === "admin"}
-                                    onValueChange={(value) => handleInputChange("role", value ? "admin" : "user")}
-                                    trackColor={{ false: "#D1D5DB", true: colors.primary }}
-                                    thumbColor={user.role === "admin" ? "white" : "#F3F4F6"}
-                                />
+                        {user.role === "admin" && (
+                            <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
+                                <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Função</Text>
+                                <View style={styles.switchContainer}>
+                                    <Text style={[styles.switchLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Administrador</Text>
+                                    <Switch
+                                        value={user.role === "admin"}
+                                        onValueChange={(value) => handleInputChange("role", value ? "admin" : "user")}
+                                        trackColor={{ false: "#D1D5DB", true: colors.primary }}
+                                        thumbColor={user.role === "admin" ? "white" : "#F3F4F6"}
+                                    />
+                                </View>
                             </View>
-                        </View>
+                        )}
 
                         {/* Status */}
                         <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white", marginTop: 16 }]}>
