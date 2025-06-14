@@ -530,9 +530,20 @@ export default function PetAdoptionDetail() {
                             }
                             style={styles.sectionGradient}
                         >
-                            <View style={styles.sectionHeader}>
-                                <Feather name="phone" size={20} color={colors.primary} />
-                                <Text style={[styles.sectionTitle, { color: isDarkTheme ? "#F9FAFB" : "#111827" }]}>Contato</Text>
+                            <View style={styles.sectionHeaderContact}>
+                                <View style={styles.contactIconContainer}>
+                                    <Feather name="phone" size={20} color={colors.primary} />
+                                    <Text style={[styles.sectionTitle, { color: isDarkTheme ? "#F9FAFB" : "#111827" }]}>Contato</Text>
+                                </View>
+                                {userPhone && (
+                                    <TouchableOpacity
+                                        onPress={() => Linking.openURL(`tel:${userPhone?.replace(/\D/g, "")}`)}
+                                    >
+                                        <Text style={[styles.contactText, { color: isDarkTheme ? "#F9FAFB" : "#111827" }]}>
+                                            {userPhone}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
 
                             {pet.contactPhone && (
@@ -920,6 +931,16 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginBottom: isSmallScreen ? 16 : 20,
     },
+    sectionHeaderContact: {
+        flexDirection: "column",
+        marginBottom: isSmallScreen ? 12 : 16,
+        height: isSmallScreen ? 40 : 44,
+    },
+    contactIconContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: isSmallScreen ? 8 : 10,
+    },
     sectionTitle: {
         fontSize: isSmallScreen ? 18 : 20,
         fontWeight: "700",
@@ -1076,9 +1097,9 @@ const styles = StyleSheet.create({
         marginRight: 16,
     },
     contactText: {
-        flex: 1,
         fontSize: isSmallScreen ? 14 : 16,
         fontWeight: "500",
+        marginRight: 8,
     },
     adoptionButtonContainer: {
         position: "absolute",
