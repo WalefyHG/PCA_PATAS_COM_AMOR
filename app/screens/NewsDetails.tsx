@@ -171,9 +171,14 @@ export default function BlogPostDetail() {
     }
 
     const handleScroll = (event: any) => {
-        // Para Android, atualizamos manualmente o valor animado
+        // Atualiza o valor do scrollY para Android
+        if (Platform.OS === "web") {
+            const offsetY = event.nativeEvent.target.scrollTop
+            scrollY.setValue(offsetY)
+        }
         if (Platform.OS === "android") {
-            scrollY.setValue(event.nativeEvent.contentOffset.y)
+            const offsetY = event.nativeEvent.contentOffset.y
+            scrollY.setValue(offsetY)
         } else {
             // Para iOS, usamos o Animated.event
             Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {

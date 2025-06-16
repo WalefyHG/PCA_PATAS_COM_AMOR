@@ -543,7 +543,6 @@ export default function PetAdoptionDetail() {
                                         <Text style={[styles.contactText, { color: isDarkTheme ? "#F9FAFB" : "#111827" }]}>
                                             {pet.contactPhone}
                                         </Text>
-                                        <Feather name="external-link" size={16} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -919,13 +918,13 @@ const styles = StyleSheet.create({
     },
     sectionHeaderContact: {
         flexDirection: "column",
-        marginBottom: isSmallScreen ? 12 : 16,
-        height: isSmallScreen ? 40 : 44,
+        marginBottom: isSmallScreen ? 10 : 16,
+        height: isSmallScreen ? 42 : 44,
     },
     contactIconContainer: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: isSmallScreen ? 8 : 10,
+        marginBottom: isSmallScreen ? 7 : 10,
     },
     sectionTitle: {
         fontSize: isSmallScreen ? 18 : 20,
@@ -1083,9 +1082,10 @@ const styles = StyleSheet.create({
         marginRight: 16,
     },
     contactText: {
-        fontSize: isSmallScreen ? 14 : 16,
+        fontSize: isSmallScreen ? 12 : 16,
         fontWeight: "500",
         marginRight: 8,
+        marginTop: isMediumScreen ? -10 : 2,
     },
     adoptionButtonContainer: {
         position: "absolute",
