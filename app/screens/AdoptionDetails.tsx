@@ -535,32 +535,18 @@ export default function PetAdoptionDetail() {
                                     <Feather name="phone" size={20} color={colors.primary} />
                                     <Text style={[styles.sectionTitle, { color: isDarkTheme ? "#F9FAFB" : "#111827" }]}>Contato</Text>
                                 </View>
-                                {userPhone && (
+                                {pet.contactPhone && (
                                     <TouchableOpacity
-                                        onPress={() => Linking.openURL(`tel:${userPhone?.replace(/\D/g, "")}`)}
+                                        onPress={() => Linking.openURL(`tel:${pet.contactPhone?.replace(/\D/g, "")}`)}
+                                        style={styles.contactItem}
                                     >
                                         <Text style={[styles.contactText, { color: isDarkTheme ? "#F9FAFB" : "#111827" }]}>
-                                            {userPhone}
+                                            {pet.contactPhone}
                                         </Text>
+                                        <Feather name="external-link" size={16} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />
                                     </TouchableOpacity>
                                 )}
                             </View>
-
-                            {pet.contactPhone && (
-                                <TouchableOpacity
-                                    onPress={() => Linking.openURL(`tel:${pet.contactPhone?.replace(/\D/g, "")}`)}
-                                    style={styles.contactItem}
-                                >
-                                    <View style={[styles.contactIcon, { backgroundColor: `${colors.primary}20` }]}>
-                                        <Feather name="phone" size={isSmallScreen ? 18 : 20} color={colors.primary} />
-                                    </View>
-                                    <Text style={[styles.contactText, { color: isDarkTheme ? "#F9FAFB" : "#111827" }]}>
-                                        {pet.contactPhone}
-                                    </Text>
-                                    <Feather name="external-link" size={16} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />
-                                </TouchableOpacity>
-                            )}
-
                             {pet.contactEmail && (
                                 <TouchableOpacity
                                     onPress={() => Linking.openURL(`mailto:${pet.contactEmail}`)}
