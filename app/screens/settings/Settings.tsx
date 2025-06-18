@@ -162,7 +162,7 @@ export default function Settings() {
               <SettingLinkItem
                 icon="shield"
                 title="Painel Admin"
-                onPress={() => navigation.navigate("AdminConsole")}
+                onPress={() => Platform.OS === 'web' ? navigation.navigate("AdminConsoleWeb") : navigation.navigate("AdminConsole")}
                 colors={colors}
                 isDark={isDarkTheme}
               />
