@@ -458,9 +458,6 @@ export const createPet = async (pet: Pet): Promise<string> => {
         const currentUser = auth.currentUser
         if (!currentUser) throw new Error("User not authenticated")
 
-        const isAdmin = await isUserAdmin(currentUser.uid)
-        if (!isAdmin) throw new Error("Unauthorized: Only admins can create pets")
-
         const petWithMetadata = {
             ...pet,
             createdBy: currentUser.uid,
