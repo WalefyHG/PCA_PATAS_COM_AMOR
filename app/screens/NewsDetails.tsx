@@ -172,10 +172,6 @@ export default function BlogPostDetail() {
 
     const handleScroll = (event: any) => {
         // Atualiza o valor do scrollY para Android
-        if (Platform.OS === "web") {
-            const offsetY = event.nativeEvent.target.scrollTop
-            scrollY.setValue(offsetY)
-        }
         if (Platform.OS === "android") {
             const offsetY = event.nativeEvent.contentOffset.y
             scrollY.setValue(offsetY)
