@@ -26,6 +26,8 @@ import {
     deleteObject,
 } from "firebase/storage"
 import { Alert, Platform } from "react-native"
+import messaging from "@react-native-firebase/messaging"
+import { useNavigation } from "@react-navigation/native"
 
 // Configuração do Firebase (substitua com suas credenciais)
 const firebaseConfig = {
@@ -111,7 +113,10 @@ export interface UserProfile {
     status: "active" | "inactive"
     createdAt?: Timestamp | Date
     logginFormat?: string
+    fcmToken?: string
+    petPreferences?: string[]
 }
+
 
 // Serviço de Autenticação
 export const getCurrentUser = (): Promise<User | null> => {
@@ -129,6 +134,44 @@ export const signOutUser = async (): Promise<void> => {
     } catch (error) {
         console.error("Error signing out:", error)
         throw error
+    }
+}
+
+export const setupFCM = async (): Promise<void> => {
+    const router = useNavigation()
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+    if (Platform.OS === "android") {
+        // Solicitar permissão para Android
+        const settings = await messaging().requestPermission();
+        if (settings === messaging.AuthorizationStatus.AUTHORIZED) {
+            console.log("FCM permission granted");
+        } else {
+            console.log("FCM permission denied");
+        }
+    }
+    if (enabled) {
+        Alert.alert("FCM permission granted");
+        await updateUserProfile(auth.currentUser?.uid || "", {
+            fcmToken: await messaging().getToken(),
+        });
+        messaging().onMessage((remoteMessage) => {
+            Alert.alert(
+                remoteMessage.notification?.title || "Você tem uma nova notificação",
+                remoteMessage.notification?.body || "Você recebeu uma nova mensagem.",
+            )
+        })
+        messaging().onNotificationOpenedApp((remoteMessage) => {
+            router.navigate({ name: "AdoptDetails", params: { id: remoteMessage?.data?.petId || "" } } as never)
+        });
+
+        const initalNotification = await messaging().getInitialNotification();
+        if (initalNotification) {
+            router.navigate({ name: "AdoptDetails", params: { id: initalNotification?.data?.petId || "" } } as never);
+        }
     }
 }
 
@@ -624,6 +667,50 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
         throw error
     }
 }
+
+export const subscribeToPetTopic = async (petType: string): Promise<void> => {
+    try {
+        const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, '')
+        await messaging().subscribeToTopic(topic)
+        console.log(`Subscribed to topic: ${topic}`)
+    } catch (error) {
+        console.error("Error subscribing to topic:", error)
+        throw error
+    }
+}
+
+export const unsubscribeFromPetTopic = async (petType: string) => {
+    try {
+        const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, '');
+        await messaging().unsubscribeFromTopic(topic);
+        console.log(`Unsubscribed from topic: ${topic}`);
+    } catch (error) {
+        console.error(`Error unsubscribing to topic: `, error);
+    }
+}
+
+export const manageUserPetPreferences = async (userId: string, newPreferences: string[]) => {
+    try {
+        const currentUserProfile = await getUserProfile(userId);
+        const oldPreferences = currentUserProfile?.petPreferences || [];
+
+        const topicsToSubscribe = newPreferences.filter(pref => !oldPreferences.includes(pref));
+        for (const topic of topicsToSubscribe) {
+            await subscribeToPetTopic(topic);
+        }
+
+        const topicsToUnsubscribe = oldPreferences.filter(pref => !newPreferences.includes(pref));
+        for (const topic of topicsToUnsubscribe) {
+            await unsubscribeFromPetTopic(topic);
+        }
+
+        await updateUserProfile(userId, { petPreferences: newPreferences });
+        console.log('Preferências de pet do usuário atualizadas no Firestore e FCM.');
+    } catch (error) {
+        console.error('Erro ao gerenciar preferências de pet:', error);
+        throw error;
+    }
+};
 
 export const deleteUserProfile = async (userId: string): Promise<void> => {
     try {

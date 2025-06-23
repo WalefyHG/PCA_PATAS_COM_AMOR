@@ -21,6 +21,7 @@ import BlogPostDetail from "@/app/screens/NewsDetails"
 import PetAdoptionDetail from "@/app/screens/AdoptionDetails"
 import AddPet from "@/app/screens/AddPet"
 import AddEditUserScreen from "@/app/screens/AddUsers"
+import AdminConsoleWeb from "@/app/screens/AdminConsoleWeb"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -182,12 +183,17 @@ const AppLayout = () => {
         },
         tabBarHideOnKeyboard: true,
     }
+
     return (
         <Stack.Navigator screenOptions={screenOptions}>
             <Stack.Screen name="(tabs)" component={TabLayout} options={{ headerShown: false }} />
             <Stack.Screen name="Adopt" component={Adopt} options={{ title: t("Adopt"), headerShown: false }} />
             <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{ title: t("Add Blog Post"), headerShown: false }} />
-            <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console"), headerShown: false }} />
+            {Platform.OS === "android" ? (
+                <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console"), headerShown: false }} />
+            ) : (
+                <Stack.Screen name="AdminConsoleWeb" component={AdminConsoleWeb} options={{ title: t("Admin Console"), headerShown: false }} />
+            )}
             <Stack.Screen name="NewsDetails" component={BlogPostDetail} options={{ title: t("News Details"), headerShown: false }} />
             <Stack.Screen name="AdoptDetails" component={PetAdoptionDetail} options={{ title: t("Adopt Details"), headerShown: false }} />
             <Stack.Screen name="AddPet" component={AddPet} options={{ title: t("Add Pet"), headerShown: false }} />
