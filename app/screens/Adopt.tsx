@@ -31,11 +31,18 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
+    fabShadow: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
+    },
 });
 
 export default function Adopt() {
     const { isDarkTheme, colors } = useThemeContext()
-    const router = useNavigation();
+    const router = useNavigation<any>();
     const isWeb = Platform.OS === "web"
 
     // Animated values
@@ -47,6 +54,9 @@ export default function Adopt() {
 
     const [pets, setPets] = useState<Pet[]>()
 
+    const handleAdd = () => {
+        router.navigate("AddPet")
+    }
 
     useEffect(() => {
         Animated.parallel([
@@ -158,6 +168,16 @@ export default function Adopt() {
                         </View>
                     ))}
                 </Animated.View>
+                <TouchableOpacity
+                    onPress={handleAdd}
+                    className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
+                    style={{
+                        backgroundColor: colors.secondary,
+                        ...styles.fabShadow,
+                    }}
+                >
+                    <Feather name="plus" size={24} color="white" />
+                </TouchableOpacity>
             </ScrollView>
         </View>
     )

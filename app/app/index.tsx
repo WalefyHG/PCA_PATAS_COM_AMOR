@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { auth, setupFCM } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button, Input } from '@ui-kitten/components';
@@ -55,6 +55,8 @@ export default function HomeScreen() {
 
       });
     }
+
+    setupFCM();
   }, []);
 
   // Handle Google Login (for Web and Android)
