@@ -115,6 +115,7 @@ export interface UserProfile {
     logginFormat?: string
     fcmToken?: string
     petPreferences?: string[]
+    expoPushToken?: string
 }
 
 

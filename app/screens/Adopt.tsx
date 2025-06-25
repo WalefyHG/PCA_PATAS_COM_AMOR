@@ -168,17 +168,17 @@ export default function Adopt() {
                         </View>
                     ))}
                 </Animated.View>
-                <TouchableOpacity
-                    onPress={handleAdd}
-                    className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
-                    style={{
-                        backgroundColor: colors.secondary,
-                        ...styles.fabShadow,
-                    }}
-                >
-                    <Feather name="plus" size={24} color="white" />
-                </TouchableOpacity>
             </ScrollView>
+            <TouchableOpacity
+                onPress={handleAdd}
+                className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
+                style={{
+                    backgroundColor: colors.secondary,
+                    ...styles.fabShadow,
+                }}
+            >
+                <Feather name="plus" size={24} color="white" />
+            </TouchableOpacity>
         </View>
     )
 }

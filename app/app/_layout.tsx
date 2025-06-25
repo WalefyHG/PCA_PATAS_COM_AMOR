@@ -19,6 +19,7 @@ import ForgotPasswordScreen from "../screens/ForgotPassword"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "../config/firebase"
 import { useNavigation } from "expo-router"
+import ExpoNotificationService from "../utils/NotificationsServices"
 
 const Stack = createNativeStackNavigator()
 
@@ -38,6 +39,22 @@ function NavigationContent() {
             }
         })
         return () => unsubscribe()
+    }, [])
+
+    useEffect(() => {
+        // Inicializar notificações quando o app carrega
+        const initNotifications = async () => {
+            const notificationService = ExpoNotificationService.getInstance()
+            const hasPermission = await notificationService.setupNotifications()
+
+            if (hasPermission) {
+                console.log("✅ Notificações Expo configuradas com sucesso")
+            } else {
+                console.log("❌ Permissão de notificação negada")
+            }
+        }
+
+        initNotifications()
     }, [])
 
     // Mostrar tela de carregamento enquanto verifica autenticação

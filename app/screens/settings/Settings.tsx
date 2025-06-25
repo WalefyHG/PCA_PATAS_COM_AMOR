@@ -204,6 +204,20 @@ export default function Settings() {
           {/* Account Section */}
           <SettingsSection title="Conta" icon="user">
             <SettingLinkItem
+              icon="shield"
+              title="Permissões"
+              onPress={() => navigation.navigate("PermissionsManager")}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
+            <SettingLinkItem
+              icon="heart"
+              title="Notificação de Pets Favoritos"
+              onPress={() => navigation.navigate("NotificationsPreferences")}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
+            <SettingLinkItem
               icon="user"
               title="Editar Perfil"
               onPress={() => navigation.navigate("EditProfile")}
