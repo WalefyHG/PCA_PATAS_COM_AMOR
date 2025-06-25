@@ -3,6 +3,7 @@ import { Camera } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Feather } from '@expo/vector-icons';
 
 interface ImageUploadProps {
     onImageSelected: (uri: string) => void;
@@ -82,7 +83,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImageSelected, currentImage
                     <Image source={{ uri: currentImage }} style={styles.image} />
                 ) : (
                     <View style={styles.placeholder}>
-                        <Camera size={40} color="#9ca3af" />
+                        <Feather name="camera" size={40} color="#9ca3af" />
                         <Text style={styles.placeholderText}>Adicionar Foto</Text>
                     </View>
                 )}

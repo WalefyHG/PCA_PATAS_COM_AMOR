@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
-import { View, TouchableOpacity, StyleSheet, Text, Platform, Animated, Pressable } from "react-native"
+import { View, TouchableOpacity, StyleSheet, Text, Platform, Animated, Pressable, Image } from "react-native"
 import Popover from "react-native-popover-view"
 import { LinearGradient } from "expo-linear-gradient"
 import { Feather } from "@expo/vector-icons"
@@ -96,7 +96,18 @@ export default function HeaderUserMenu() {
                         end={{ x: 1, y: 1 }}
                         style={styles.avatar}
                     >
-                        <Text style={styles.avatarLabel}>{initials}</Text>
+                        {user?.photoURL ? (
+                            <Image
+                                source={{ uri: user.photoURL }}
+                                style={styles.avatar}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <Text style={styles.avatarLabel}>
+                                {initials || "U"}
+                            </Text>
+                        )
+                        }
                     </LinearGradient>
                 </TouchableOpacity>
             </Animated.View>
@@ -283,7 +294,7 @@ const styles = StyleSheet.create({
     },
     menuAvatarLabel: {
         fontWeight: "bold",
-        fontSize: 14,
+        fontSize: 12,
         color: "#fff",
     },
     userName: {
