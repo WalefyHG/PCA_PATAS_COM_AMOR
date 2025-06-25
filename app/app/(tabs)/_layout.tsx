@@ -23,6 +23,7 @@ import AddPet from "@/app/screens/AddPet"
 import AddEditUserScreen from "@/app/screens/AddUsers"
 import AdminConsoleWeb from "@/app/screens/AdminConsoleWeb"
 import NotificationPreferences from "@/app/screens/NotificationsPreferences"
+import PermissionManager from "@/app/screens/PermissionManage"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -200,6 +201,7 @@ const AppLayout = () => {
             <Stack.Screen name="AddPet" component={AddPet} options={{ title: t("Add Pet"), headerShown: false }} />
             <Stack.Screen name="AddUsers" component={AddEditUserScreen} options={{ title: t("Add User"), headerShown: false }} />
             <Stack.Screen name="NotificationsPreferences" component={NotificationPreferences} options={{ title: t("Notification Preferences"), headerShown: false }} />
+            <Stack.Screen name="PermissionsManager" component={PermissionManager} options={{ title: t("Permission Manager"), headerShown: false }} />
         </Stack.Navigator>
     )
 }

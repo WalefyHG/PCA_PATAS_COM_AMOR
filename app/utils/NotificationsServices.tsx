@@ -1,4 +1,6 @@
-import messaging from "@react-native-firebase/messaging"
+import * as Notifications from "expo-notifications"
+import * as Device from "expo-device"
+import { Platform } from "react-native"
 import {
     collection,
     addDoc,
@@ -11,7 +13,7 @@ import {
     onSnapshot,
 } from "firebase/firestore"
 import { db, auth, updateUserProfile } from "../config/firebase"
-import { Alert } from "react-native"
+import { router } from "expo-router"
 
 export interface Favorite {
     id?: string
@@ -27,85 +29,184 @@ export interface NotificationPreference {
     enabled: boolean
 }
 
-class NotificationService {
-    private static instance: NotificationService
+// Configurar comportamento das notificações
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+    }),
+})
 
-    public static getInstance(): NotificationService {
-        if (!NotificationService.instance) {
-            NotificationService.instance = new NotificationService()
+class ExpoNotificationService {
+    private static instance: ExpoNotificationService
+    private expoPushToken: string | null = null
+
+    public static getInstance(): ExpoNotificationService {
+        if (!ExpoNotificationService.instance) {
+            ExpoNotificationService.instance = new ExpoNotificationService()
         }
-        return NotificationService.instance
+        return ExpoNotificationService.instance
     }
 
-    // Configurar FCM e solicitar permissões
-    async setupNotifications(): Promise<boolean> {
-        try {
-            const authStatus = await messaging().requestPermission()
-            const enabled =
-                authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-                authStatus === messaging.AuthorizationStatus.PROVISIONAL
+    // Registrar para notificações push
+    async registerForPushNotificationsAsync(): Promise<string | null> {
+        let token = null
 
-            if (enabled) {
-                const token = await messaging().getToken()
+        if (Platform.OS === "android") {
+            await Notifications.setNotificationChannelAsync("default", {
+                name: "default",
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: "#FF231F7C",
+            })
+        }
 
-                // Salvar token no perfil do usuário
-                if (auth.currentUser) {
-                    await updateUserProfile(auth.currentUser.uid, { fcmToken: token })
-                }
+        if (Device.isDevice) {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync()
+            let finalStatus = existingStatus
 
-                // Configurar listeners
-                this.setupMessageHandlers()
-
-                return true
+            if (existingStatus !== "granted") {
+                const { status } = await Notifications.requestPermissionsAsync()
+                finalStatus = status
             }
 
-            return false
+            if (finalStatus !== "granted") {
+                console.log("Permissão para notificações negada!")
+                return null
+            }
+
+            try {
+                const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "your-eas-project-id"
+                token = (
+                    await Notifications.getExpoPushTokenAsync({
+                        projectId,
+                    })
+                ).data
+                console.log("Expo Push Token:", token)
+            } catch (error) {
+                console.error("Erro ao obter Expo Push Token:", error)
+            }
+        } else {
+            console.log("Deve usar um dispositivo físico para notificações push")
+        }
+
+        return token
+    }
+
+    // Configurar notificações
+    async setupNotifications(): Promise<boolean> {
+        try {
+            console.log("🔔 Configurando notificações Expo...")
+
+            // Obter token
+            const token = await this.registerForPushNotificationsAsync()
+
+            if (!token) {
+                console.log("❌ Não foi possível obter token de notificação")
+                return false
+            }
+
+            this.expoPushToken = token
+
+            // Salvar token no perfil do usuário
+            if (auth.currentUser) {
+                await updateUserProfile(auth.currentUser.uid, {
+                    expoPushToken: token,
+                })
+                console.log("✅ Token salvo no perfil do usuário")
+            }
+
+            // Configurar listeners
+            this.setupNotificationListeners()
+
+            return true
         } catch (error) {
-            console.error("Erro ao configurar notificações:", error)
+            console.error("❌ Erro ao configurar notificações:", error)
             return false
         }
     }
 
-    // Configurar handlers de mensagens
-    private setupMessageHandlers() {
-        // Mensagens em primeiro plano
-        messaging().onMessage(async (remoteMessage) => {
-            Alert.alert(
-                remoteMessage.notification?.title || "Nova notificação",
-                remoteMessage.notification?.body || "Você tem uma nova mensagem",
-                [
-                    { text: "Fechar", style: "cancel" },
-                    {
-                        text: "Ver",
-                        onPress: () => this.handleNotificationPress(remoteMessage.data),
-                    },
-                ],
-            )
+    // Configurar listeners de notificações
+    private setupNotificationListeners() {
+        console.log("🎧 Configurando listeners de notificação...")
+
+        // Notificação recebida enquanto app está em primeiro plano
+        Notifications.addNotificationReceivedListener((notification) => {
+            console.log("📱 Notificação recebida:", notification)
         })
 
-        // App aberto via notificação
-        messaging().onNotificationOpenedApp((remoteMessage) => {
-            this.handleNotificationPress(remoteMessage.data)
+        // Notificação tocada pelo usuário
+        Notifications.addNotificationResponseReceivedListener((response) => {
+            console.log("👆 Notificação tocada:", response)
+            this.handleNotificationPress(response.notification.request.content.data)
         })
-
-        // App iniciado via notificação
-        messaging()
-            .getInitialNotification()
-            .then((remoteMessage) => {
-                if (remoteMessage) {
-                    this.handleNotificationPress(remoteMessage.data)
-                }
-            })
     }
 
     // Lidar com clique na notificação
     private handleNotificationPress(data: any) {
-        if (data?.action === "view_pet" && data?.petId) {
-            // Navegar para detalhes do pet
-            // navigation.navigate('PetDetails', { petId: data.petId });
-        } else if (data?.action === "view_favorites") {
-            // Navegar para favoritos
-            // navigation.navigate('Favorites');
+        console.log("🔄 Processando clique na notificação:", data)
+
+        if (!data) return
+
+        try {
+            if (data.action === "view_pet" && data.petId) {
+                router.push(`/pet-details/${data.petId}`)
+            } else if (data.action === "view_favorites") {
+                router.push("/favorites")
+            } else if (data.screen) {
+                router.push(`/${data.screen}`)
+            }
+        } catch (error) {
+            console.error("❌ Erro ao navegar:", error)
+        }
+    }
+
+    // Enviar notificação local
+    async sendLocalNotification(title: string, body: string, data?: any) {
+        try {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title,
+                    body,
+                    data: data || {},
+                    sound: "default",
+                },
+                trigger: null, // Enviar imediatamente
+            })
+            console.log("✅ Notificação local enviada")
+        } catch (error) {
+            console.error("❌ Erro ao enviar notificação local:", error)
+        }
+    }
+
+    // Enviar notificação push via API do Expo
+    async sendPushNotification(expoPushToken: string, title: string, body: string, data?: any) {
+        const message = {
+            to: expoPushToken,
+            sound: "default",
+            title,
+            body,
+            data: data || {},
+        }
+
+        try {
+            const response = await fetch("https://exp.host/--/api/v2/push/send", {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    "Accept-encoding": "gzip, deflate",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(message),
+            })
+
+            const result = await response.json()
+            console.log("✅ Push notification enviada:", result)
+            return result
+        } catch (error) {
+            console.error("❌ Erro ao enviar push notification:", error)
+            throw error
         }
     }
 
@@ -113,6 +214,8 @@ class NotificationService {
     async addToFavorites(petId: string, petType: string, petName: string): Promise<void> {
         try {
             if (!auth.currentUser) throw new Error("Usuário não autenticado")
+
+            console.log("❤️ Adicionando aos favoritos:", { petId, petType, petName })
 
             const favorite: Favorite = {
                 userId: auth.currentUser.uid,
@@ -122,17 +225,23 @@ class NotificationService {
                 createdAt: serverTimestamp(),
             }
 
+            // Adicionar ao Firestore
             await addDoc(collection(db, "favorites"), favorite)
 
-            // Automaticamente se inscrever no tópico do tipo de pet
-            await this.subscribeToTopic(petType)
-
-            Alert.alert(
+            // Enviar notificação local de confirmação
+            await this.sendLocalNotification(
                 "Adicionado aos favoritos! ❤️",
-                `Você receberá notificações sobre ${petType.toLowerCase()}s similares.`,
+                `${petName} foi adicionado aos seus favoritos. Você receberá notificações sobre ${petType.toLowerCase()}s similares.`,
+                {
+                    action: "view_favorites",
+                    petId,
+                    petType,
+                },
             )
+
+            console.log("✅ Pet adicionado aos favoritos com sucesso")
         } catch (error) {
-            console.error("Erro ao adicionar favorito:", error)
+            console.error("❌ Erro ao adicionar favorito:", error)
             throw error
         }
     }
@@ -153,8 +262,10 @@ class NotificationService {
             for (const docSnapshot of querySnapshot.docs) {
                 await deleteDoc(doc(db, "favorites", docSnapshot.id))
             }
+
+            console.log("💔 Pet removido dos favoritos")
         } catch (error) {
-            console.error("Erro ao remover favorito:", error)
+            console.error("❌ Erro ao remover favorito:", error)
             throw error
         }
     }
@@ -173,49 +284,8 @@ class NotificationService {
             const querySnapshot = await getDocs(q)
             return !querySnapshot.empty
         } catch (error) {
-            console.error("Erro ao verificar favorito:", error)
+            console.error("❌ Erro ao verificar favorito:", error)
             return false
-        }
-    }
-
-    // Buscar favoritos do usuário
-    async getUserFavorites(): Promise<Favorite[]> {
-        try {
-            if (!auth.currentUser) return []
-
-            const q = query(collection(db, "favorites"), where("userId", "==", auth.currentUser.uid))
-
-            const querySnapshot = await getDocs(q)
-
-            return querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as Favorite[]
-        } catch (error) {
-            console.error("Erro ao buscar favoritos:", error)
-            return []
-        }
-    }
-
-    // Se inscrever em tópico
-    async subscribeToTopic(petType: string): Promise<void> {
-        try {
-            const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, "")
-            await messaging().subscribeToTopic(topic)
-            console.log(`Inscrito no tópico: ${topic}`)
-        } catch (error) {
-            console.error("Erro ao se inscrever no tópico:", error)
-        }
-    }
-
-    // Cancelar inscrição em tópico
-    async unsubscribeFromTopic(petType: string): Promise<void> {
-        try {
-            const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, "")
-            await messaging().unsubscribeFromTopic(topic)
-            console.log(`Desinscrito do tópico: ${topic}`)
-        } catch (error) {
-            console.error("Erro ao cancelar inscrição no tópico:", error)
         }
     }
 
@@ -231,18 +301,25 @@ class NotificationService {
                 petPreferences: enabledTypes,
             })
 
-            // Gerenciar inscrições nos tópicos
-            for (const pref of preferences) {
-                if (pref.enabled) {
-                    await this.subscribeToTopic(pref.petType)
-                } else {
-                    await this.unsubscribeFromTopic(pref.petType)
-                }
-            }
+            console.log("✅ Preferências atualizadas:", enabledTypes)
         } catch (error) {
-            console.error("Erro ao atualizar preferências:", error)
+            console.error("❌ Erro ao atualizar preferências:", error)
             throw error
         }
+    }
+
+    // Simular notificação de novo pet (para desenvolvimento)
+    async simulateNewPetNotification(petType: string, petName: string, petId: string) {
+        await this.sendLocalNotification(
+            `Novo ${petType} para adoção! 🐾`,
+            `${petName} está procurando um lar. Toque para ver mais detalhes.`,
+            {
+                action: "view_pet",
+                petId,
+                petType,
+                petName,
+            },
+        )
     }
 
     // Buscar histórico de notificações
@@ -262,6 +339,11 @@ class NotificationService {
             callback(notifications)
         })
     }
+
+    // Obter token atual
+    getExpoPushToken(): string | null {
+        return this.expoPushToken
+    }
 }
 
-export default NotificationService
+export default ExpoNotificationService
