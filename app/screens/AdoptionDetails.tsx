@@ -15,14 +15,17 @@ import {
     Linking,
     Alert,
     Dimensions,
+    ActivityIndicator,
 } from "react-native"
 import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
-import { auth, db, getPetById, type Pet } from "../config/firebase"
+import { auth, db, getPetById, type Pet, getUserProfile } from "../config/firebase"
 import { doc, getDoc } from "firebase/firestore"
 import HeaderLayout from "../utils/HeaderLayout"
+import ChatService from "../utils/ChatServices"
+import ChatModal from "../screens/chat/ChatModal"
 
 // Get screen dimensions for responsive sizing
 const { width, height } = Dimensions.get("window")
@@ -70,6 +73,9 @@ export default function PetAdoptionDetail() {
     const [phoneInput, setPhoneInput] = useState("")
     const [isSubmittingPhone, setIsSubmittingPhone] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    const [showChatModal, setShowChatModal] = useState(false)
+    const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+    const [creatingChat, setCreatingChat] = useState(false)
 
     const isIOS = Platform.OS === "ios"
     const isAndroid = Platform.OS === "android"
@@ -142,24 +148,29 @@ export default function PetAdoptionDetail() {
     const handleAdopt = async () => {
         if (!pet) return
 
-        const rawNumber = pet.contactPhone || userPhone
+        setCreatingChat(true)
 
-        if (rawNumber) {
-            const phoneNumber = rawNumber.replace(/\D/g, "")
-            if (phoneNumber) {
-                const message = `Olá! Tenho interesse na adoção do ${pet.name}. Podemos conversar?`
-                const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-                try {
-                    await Linking.openURL(url)
-                } catch (error) {
-                    console.error("Erro ao abrir WhatsApp:", error)
-                    Alert.alert("Erro", "Não foi possível abrir o WhatsApp. Verifique se o app está instalado.")
-                }
-            } else {
-                Alert.alert("Erro", "Número de telefone não disponível. Entre em contato por email.")
+        try {
+            // Obter dados do dono do pet
+            const ownerData = await getUserProfile(pet.createdBy || "")
+
+            if (!ownerData) {
+                Alert.alert("Erro", "Não foi possível encontrar os dados do responsável pelo pet.")
+                return
             }
-        } else {
-            Alert.alert("Erro", "Número de telefone não disponível. Entre em contato por email.")
+
+            // Criar ou obter chat existente
+            const chatService = ChatService.getInstance()
+            const chatId = await chatService.createOrGetChat(petId, pet, ownerData)
+
+            // Abrir chat
+            setCurrentChatId(chatId)
+            setShowChatModal(true)
+        } catch (error) {
+            console.error("Erro ao iniciar chat:", error)
+            Alert.alert("Erro", "Não foi possível iniciar o chat. Tente novamente.")
+        } finally {
+            setCreatingChat(false)
         }
     }
 
@@ -568,13 +579,24 @@ export default function PetAdoptionDetail() {
             {/* Enhanced Adoption Button */}
             <View style={[styles.adoptionButtonContainer, { backgroundColor: isDarkTheme ? "#111827" : "#F9FAFB" }]}>
                 <View style={styles.adoptionButtonWrapper}>
-                    <TouchableOpacity onPress={handleAdopt} style={styles.adoptionButton}>
+                    <TouchableOpacity onPress={handleAdopt} style={styles.adoptionButton} disabled={creatingChat}>
                         <LinearGradient
                             colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
                             style={styles.adoptionButtonGradient}
                         >
-                            <Feather name="heart" size={isSmallScreen ? 18 : 20} color="white" style={{ marginRight: 8 }} />
-                            <Text style={styles.adoptionButtonText}>Quero Adotar {pet.name}</Text>
+                            {creatingChat ? (
+                                <ActivityIndicator size={isSmallScreen ? 18 : 20} color="white" style={{ marginRight: 8 }} />
+                            ) : (
+                                <Feather
+                                    name="message-circle"
+                                    size={isSmallScreen ? 18 : 20}
+                                    color="white"
+                                    style={{ marginRight: 8 }}
+                                />
+                            )}
+                            <Text style={styles.adoptionButtonText}>
+                                {creatingChat ? "Iniciando Chat..." : `Conversar sobre ${pet.name}`}
+                            </Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
@@ -638,6 +660,15 @@ export default function PetAdoptionDetail() {
                     </View>
                 </View>
             </Modal>
+            {/* Chat Modal */}
+            <ChatModal
+                visible={showChatModal}
+                chatId={currentChatId}
+                onClose={() => {
+                    setShowChatModal(false)
+                    setCurrentChatId(null)
+                }}
+            />
         </View>
     )
 }

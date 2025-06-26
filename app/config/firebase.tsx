@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app"
+import { getApp, getApps, initializeApp } from "firebase/app"
 import { getAuth, onAuthStateChanged, signOut, type User } from "firebase/auth"
 import {
     getFirestore,
@@ -28,6 +28,7 @@ import {
 import { Alert, Platform } from "react-native"
 import messaging from "@react-native-firebase/messaging"
 import { useNavigation } from "@react-navigation/native"
+import { getDatabase } from "firebase/database"
 
 // Configuração do Firebase (substitua com suas credenciais)
 const firebaseConfig = {
@@ -37,13 +38,15 @@ const firebaseConfig = {
     storageBucket: process.env.EXPO_PUBLIC_STORAGEBUCKET,
     messagingSenderId: process.env.EXPO_PUBLIC_MESSAGINGSENDERID,
     appId: process.env.EXPO_PUBLIC_APPID,
+    databaseURL: process.env.EXPO_PUBLIC_DATABASEURL,
 }
 
 // Inicializar Firebase
-const app = initializeApp(firebaseConfig)
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
+export const database = getDatabase(app)
 
 // Tipos
 export interface BlogPost {

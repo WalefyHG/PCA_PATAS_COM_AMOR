@@ -24,6 +24,7 @@ import AddEditUserScreen from "@/app/screens/AddUsers"
 import AdminConsoleWeb from "@/app/screens/AdminConsoleWeb"
 import NotificationPreferences from "@/app/screens/NotificationsPreferences"
 import PermissionManager from "@/app/screens/PermissionManage"
+import ChatList from "@/app/screens/chat/ChatList"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -202,6 +203,7 @@ const AppLayout = () => {
             <Stack.Screen name="AddUsers" component={AddEditUserScreen} options={{ title: t("Add User"), headerShown: false }} />
             <Stack.Screen name="NotificationsPreferences" component={NotificationPreferences} options={{ title: t("Notification Preferences"), headerShown: false }} />
             <Stack.Screen name="PermissionsManager" component={PermissionManager} options={{ title: t("Permission Manager"), headerShown: false }} />
+            <Stack.Screen name="ChatList" component={ChatList} options={{ title: t("Chat"), headerShown: false }} />
         </Stack.Navigator>
     )
 }
