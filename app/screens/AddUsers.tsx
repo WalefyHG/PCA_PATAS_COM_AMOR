@@ -100,7 +100,7 @@ export default function AddEditUserScreen() {
                 Alert.alert("Sucesso", "Usuário criado com sucesso!")
             }
 
-            navigate.goBack()
+            navigate.navigate("AdminConsole")
         } catch (error) {
             console.error(error)
             Alert.alert("Erro", "Erro ao salvar usuário, tente novamente.")

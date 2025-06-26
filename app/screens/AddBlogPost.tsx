@@ -220,10 +220,10 @@ export default function AddBlogPost() {
 
             if (isEditing) {
                 await updateBlogPost(postId, postData)
-                Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
+                Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
             } else {
                 await createBlogPost(postData)
-                Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
+                Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
             }
         } catch (error) {
             console.error("Erro ao salvar post:", error)

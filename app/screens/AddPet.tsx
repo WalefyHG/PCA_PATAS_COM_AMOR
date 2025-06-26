@@ -475,7 +475,7 @@ export default function AddPetEnhanced() {
                 Alert.alert("Sucesso", "Pet salvo com sucesso!")
             }
 
-            navigation.goBack()
+            navigation.navigate("Adopt")
         } catch (error) {
             console.error("Erro ao salvar pet:", error)
             Alert.alert("Erro", "Houve um erro ao salvar o pet. Tente novamente.")
