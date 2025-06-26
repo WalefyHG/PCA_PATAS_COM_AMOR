@@ -151,7 +151,7 @@ class ExpoNotificationService {
 
         try {
             if (data.action === "view_pet" && data.petId) {
-                router.push(`/pet-details/${data.petId}`)
+                router.push(`/pet/${data.petId}`)
             } else if (data.action === "view_favorites") {
                 router.push("/favorites")
             } else if (data.screen) {

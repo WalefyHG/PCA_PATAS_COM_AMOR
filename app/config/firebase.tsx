@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore"
 import {
     getStorage,
-    ref,
+    ref as storageRef,
     uploadBytesResumable,
     getDownloadURL,
     deleteObject,
@@ -28,7 +28,7 @@ import {
 import { Alert, Platform } from "react-native"
 import messaging from "@react-native-firebase/messaging"
 import { useNavigation } from "@react-navigation/native"
-import { getDatabase } from "firebase/database"
+import { getDatabase, ref, onValue, off, get, set, update, remove, push } from "firebase/database"
 
 // Configuração do Firebase (substitua com suas credenciais)
 const firebaseConfig = {
@@ -57,7 +57,7 @@ export interface BlogPost {
     author: string
     authorId: string
     authorAvatar?: string
-    date?: Timestamp | Date
+    date?: number | string
     image: string
     likes?: number
     comments?: number
@@ -87,8 +87,8 @@ export interface Pet {
     specialNeeds: boolean
     specialNeedsDescription?: string
     status: "available" | "adopted" | "pending"
-    createdAt?: Timestamp | Date
-    updatedAt?: Timestamp | Date
+    createdAt?: number | string
+    updatedAt?: number | string
     createdBy?: string
 }
 
@@ -98,7 +98,7 @@ export interface Comment {
     author: string
     authorId: string
     authorAvatar?: string
-    date?: Timestamp | Date
+    date?: number | string
     content: string
     likes?: number
 }
@@ -114,13 +114,12 @@ export interface UserProfile {
     bio?: string
     role: "admin" | "user"
     status: "active" | "inactive"
-    createdAt?: Timestamp | Date
+    createdAt?: number | string
     logginFormat?: string
     fcmToken?: string
     petPreferences?: string[]
     expoPushToken?: string
 }
-
 
 // Serviço de Autenticação
 export const getCurrentUser = (): Promise<User | null> => {
@@ -143,25 +142,23 @@ export const signOutUser = async (): Promise<void> => {
 
 export const setupFCM = async (): Promise<void> => {
     const router = useNavigation()
-    const authStatus = await messaging().requestPermission();
+    const authStatus = await messaging().requestPermission()
     const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL
 
     if (Platform.OS === "android") {
-        // Solicitar permissão para Android
-        const settings = await messaging().requestPermission();
+        const settings = await messaging().requestPermission()
         if (settings === messaging.AuthorizationStatus.AUTHORIZED) {
-            console.log("FCM permission granted");
+            console.log("FCM permission granted")
         } else {
-            console.log("FCM permission denied");
+            console.log("FCM permission denied")
         }
     }
     if (enabled) {
-        Alert.alert("FCM permission granted");
+        Alert.alert("FCM permission granted")
         await updateUserProfile(auth.currentUser?.uid || "", {
             fcmToken: await messaging().getToken(),
-        });
+        })
         messaging().onMessage((remoteMessage) => {
             Alert.alert(
                 remoteMessage.notification?.title || "Você tem uma nova notificação",
@@ -170,11 +167,11 @@ export const setupFCM = async (): Promise<void> => {
         })
         messaging().onNotificationOpenedApp((remoteMessage) => {
             router.navigate({ name: "AdoptDetails", params: { id: remoteMessage?.data?.petId || "" } } as never)
-        });
+        })
 
-        const initalNotification = await messaging().getInitialNotification();
+        const initalNotification = await messaging().getInitialNotification()
         if (initalNotification) {
-            router.navigate({ name: "AdoptDetails", params: { id: initalNotification?.data?.petId || "" } } as never);
+            router.navigate({ name: "AdoptDetails", params: { id: initalNotification?.data?.petId || "" } } as never)
         }
     }
 }
@@ -182,9 +179,11 @@ export const setupFCM = async (): Promise<void> => {
 // Verificar se o usuário é administrador
 export const isUserAdmin = async (userId: string): Promise<boolean> => {
     try {
-        const userDoc = await getDoc(doc(db, "users", userId))
-        if (userDoc.exists()) {
-            const userData = userDoc.data() as UserProfile
+        const userRef = ref(database, `users/${userId}`)
+        const snapshot = await get(userRef)
+
+        if (snapshot.exists()) {
+            const userData = snapshot.val() as UserProfile
             return userData.role === "admin"
         }
         return false
@@ -195,20 +194,29 @@ export const isUserAdmin = async (userId: string): Promise<boolean> => {
 }
 
 // Serviço de Blog Posts
-const ALL_CATEGORIES = "Todos"
-
-export const getBlogPosts = async (
-    category?: string,
-    limit_count: number = 10,
-    onlyPublished: boolean = true
-): Promise<BlogPost[]> => {
+export const getBlogPosts = async (category?: string, limit_count = 10, onlyPublished = true): Promise<BlogPost[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "blog_posts"))
+        const postsRef = ref(database, "blog_posts")
+        const snapshot = await get(postsRef)
 
-        let posts = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        })) as BlogPost[]
+        if (!snapshot.exists()) {
+            return []
+        }
+
+        let posts: BlogPost[] = []
+        const postsData = snapshot.val()
+
+        Object.keys(postsData).forEach((key) => {
+            posts.push({
+                id: key,
+                ...postsData[key],
+            })
+        })
+
+        // Filtrar apenas posts publicados se solicitado
+        if (onlyPublished) {
+            posts = posts.filter((post) => post.status === "published")
+        }
 
         // Filtrar por categoria
         if (category && category !== "Todos") {
@@ -217,20 +225,9 @@ export const getBlogPosts = async (
 
         // Ordenar por data (do mais recente pro mais antigo)
         posts = posts.sort((a, b) => {
-            const getTime = (date: Timestamp | Date | undefined) => {
-                if (!date) return 0;
-                if (typeof (date as any).toDate === "function") {
-                    // Firestore Timestamp
-                    return (date as Timestamp).toDate().getTime();
-                }
-                if (date instanceof Date) {
-                    return date.getTime();
-                }
-                return 0;
-            };
-            const dateA = getTime(a.date);
-            const dateB = getTime(b.date);
-            return dateB - dateA;
+            const dateA = typeof a.date === "number" ? a.date : new Date(a.date || 0).getTime()
+            const dateB = typeof b.date === "number" ? b.date : new Date(b.date || 0).getTime()
+            return dateB - dateA
         })
 
         // Limitar a quantidade de posts
@@ -243,13 +240,13 @@ export const getBlogPosts = async (
 
 export const getBlogPostById = async (postId: string): Promise<BlogPost | null> => {
     try {
-        const docRef = doc(db, "blog_posts", postId)
-        const docSnap = await getDoc(docRef)
+        const postRef = ref(database, `blog_posts/${postId}`)
+        const snapshot = await get(postRef)
 
-        if (docSnap.exists()) {
+        if (snapshot.exists()) {
             return {
-                id: docSnap.id,
-                ...docSnap.data() as BlogPost,
+                id: postId,
+                ...(snapshot.val() as BlogPost),
             }
         }
 
@@ -269,22 +266,23 @@ export const createBlogPost = async (post: BlogPost): Promise<string> => {
         const isAdmin = await isUserAdmin(currentUser.uid)
         if (!isAdmin) throw new Error("Unauthorized: Only admins can create blog posts")
 
+        // Criar nova referência com ID único
+        const postsRef = ref(database, "blog_posts")
+        const newPostRef = push(postsRef)
+        const postId = newPostRef.key!
+
         // Adicionar metadados
         const postWithMetadata = {
             ...post,
+            id: postId,
             authorId: currentUser.uid,
-            date: serverTimestamp(),
+            date: Date.now(),
             likes: 0,
             comments: 0,
         }
 
-        const docRef = await addDoc(collection(db, "blog_posts"), postWithMetadata)
-
-        await updateDoc(doc(db, "blog_posts", docRef.id), {
-            id: docRef.id,
-        })
-
-        return docRef.id
+        await set(newPostRef, postWithMetadata)
+        return postId
     } catch (error) {
         console.error("Error creating blog post:", error)
         throw error
@@ -300,11 +298,13 @@ export const updateBlogPost = async (postId: string, post: Partial<BlogPost>): P
         const isAdmin = await isUserAdmin(currentUser.uid)
         if (!isAdmin) throw new Error("Unauthorized: Only admins can update blog posts")
 
-        const docRef = doc(db, "blog_posts", postId)
-        await updateDoc(docRef, {
+        const postRef = ref(database, `blog_posts/${postId}`)
+        const updates = {
             ...post,
-            updatedAt: serverTimestamp(),
-        })
+            updatedAt: Date.now(),
+        }
+
+        await update(postRef, updates)
     } catch (error) {
         console.error("Error updating blog post:", error)
         throw error
@@ -321,18 +321,27 @@ export const deleteBlogPost = async (postId: string): Promise<void> => {
         if (!isAdmin) throw new Error("Unauthorized: Only admins can delete blog posts")
 
         // Excluir o post
-        const docRef = doc(db, "blog_posts", postId)
-        await deleteDoc(docRef)
+        const postRef = ref(database, `blog_posts/${postId}`)
+        await remove(postRef)
 
         // Também excluir comentários relacionados
-        const commentsQuery = query(collection(db, "comments"), where("postId", "==", postId))
-        const commentsSnapshot = await getDocs(commentsQuery)
+        const commentsRef = ref(database, "comments")
+        const commentsSnapshot = await get(commentsRef)
 
-        const deletePromises = commentsSnapshot.docs.map((commentDoc) =>
-            deleteDoc(doc(db, "comments", commentDoc.id))
-        )
+        if (commentsSnapshot.exists()) {
+            const commentsData = commentsSnapshot.val()
+            const updates: { [key: string]: null } = {}
 
-        await Promise.all(deletePromises)
+            Object.keys(commentsData).forEach((commentId) => {
+                if (commentsData[commentId].postId === postId) {
+                    updates[`comments/${commentId}`] = null
+                }
+            })
+
+            if (Object.keys(updates).length > 0) {
+                await update(ref(database), updates)
+            }
+        }
     } catch (error) {
         console.error("Error deleting blog post:", error)
         throw error
@@ -342,18 +351,31 @@ export const deleteBlogPost = async (postId: string): Promise<void> => {
 // Serviço de Comentários
 export const getCommentsByPostId = async (postId: string): Promise<Comment[]> => {
     try {
-        const q = query(
-            collection(db, "comments"),
-            where("postId", "==", postId),
-            orderBy("date", "desc")
-        )
+        const commentsRef = ref(database, "comments")
+        const snapshot = await get(commentsRef)
 
-        const querySnapshot = await getDocs(q)
+        if (!snapshot.exists()) {
+            return []
+        }
 
-        return querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data() as Comment,
-        }))
+        const comments: Comment[] = []
+        const commentsData = snapshot.val()
+
+        Object.keys(commentsData).forEach((key) => {
+            if (commentsData[key].postId === postId) {
+                comments.push({
+                    id: key,
+                    ...commentsData[key],
+                })
+            }
+        })
+
+        // Ordenar por data (do mais recente pro mais antigo)
+        return comments.sort((a, b) => {
+            const dateA = typeof a.date === "number" ? a.date : new Date(a.date || 0).getTime()
+            const dateB = typeof b.date === "number" ? b.date : new Date(b.date || 0).getTime()
+            return dateB - dateA
+        })
     } catch (error) {
         console.error("Error fetching comments:", error)
         throw error
@@ -365,28 +387,34 @@ export const addComment = async (comment: Comment): Promise<string> => {
         const currentUser = auth.currentUser
         if (!currentUser) throw new Error("User not authenticated")
 
+        // Criar nova referência com ID único
+        const commentsRef = ref(database, "comments")
+        const newCommentRef = push(commentsRef)
+        const commentId = newCommentRef.key!
+
         // Adicionar metadados
         const commentWithMetadata = {
             ...comment,
+            id: commentId,
             authorId: currentUser.uid,
-            date: serverTimestamp(),
+            date: Date.now(),
             likes: 0,
         }
 
-        const docRef = await addDoc(collection(db, "comments"), commentWithMetadata)
+        await set(newCommentRef, commentWithMetadata)
 
         // Atualizar contador de comentários no post
-        const postRef = doc(db, "blog_posts", comment.postId)
-        const postDoc = await getDoc(postRef)
+        const postRef = ref(database, `blog_posts/${comment.postId}`)
+        const postSnapshot = await get(postRef)
 
-        if (postDoc.exists()) {
-            const postData = postDoc.data() as BlogPost
-            await updateDoc(postRef, {
+        if (postSnapshot.exists()) {
+            const postData = postSnapshot.val() as BlogPost
+            await update(postRef, {
                 comments: (postData.comments || 0) + 1,
             })
         }
 
-        return docRef.id
+        return commentId
     } catch (error) {
         console.error("Error adding comment:", error)
         throw error
@@ -394,43 +422,43 @@ export const addComment = async (comment: Comment): Promise<string> => {
 }
 
 // Serviço de Pets
-export const getPets = async (
-    type?: string,
-    status: string = "available",
-    limit_count: number = 10
-): Promise<Pet[]> => {
+export const getPets = async (type?: string, status = "available", limit_count = 10): Promise<Pet[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "pets"))
+        const petsRef = ref(database, "pets")
+        const snapshot = await get(petsRef)
 
-        let pets = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        })) as Pet[]
+        if (!snapshot.exists()) {
+            return []
+        }
 
-        // Filtrar por categoria
-        if (status && status !== "available") {
+        let pets: Pet[] = []
+        const petsData = snapshot.val()
+
+        Object.keys(petsData).forEach((key) => {
+            pets.push({
+                id: key,
+                ...petsData[key],
+            })
+        })
+
+        // Filtrar por status
+        if (status && status !== "all") {
             pets = pets.filter((pet) => pet.status === status)
+        }
+
+        // Filtrar por tipo
+        if (type && type !== "all") {
+            pets = pets.filter((pet) => pet.type.toLowerCase() === type.toLowerCase())
         }
 
         // Ordenar por data (do mais recente pro mais antigo)
         pets = pets.sort((a, b) => {
-            const getTime = (date: Timestamp | Date | undefined) => {
-                if (!date) return 0;
-                if (typeof (date as any).toDate === "function") {
-                    // Firestore Timestamp
-                    return (date as Timestamp).toDate().getTime();
-                }
-                if (date instanceof Date) {
-                    return date.getTime();
-                }
-                return 0;
-            };
-            const dateA = getTime(a.createdAt);
-            const dateB = getTime(b.createdAt);
-            return dateB - dateA;
+            const dateA = typeof a.createdAt === "number" ? a.createdAt : new Date(a.createdAt || 0).getTime()
+            const dateB = typeof b.createdAt === "number" ? b.createdAt : new Date(b.createdAt || 0).getTime()
+            return dateB - dateA
         })
 
-        // Limitar a quantidade de posts
+        // Limitar a quantidade de pets
         return pets.slice(0, limit_count)
     } catch (error) {
         console.error("Error fetching pets:", error)
@@ -440,13 +468,13 @@ export const getPets = async (
 
 export const getPetById = async (petId: string): Promise<Pet | null> => {
     try {
-        const docRef = doc(db, "pets", petId)
-        const docSnap = await getDoc(docRef)
+        const petRef = ref(database, `pets/${petId}`)
+        const snapshot = await get(petRef)
 
-        if (docSnap.exists()) {
+        if (snapshot.exists()) {
             return {
-                id: docSnap.id,
-                ...docSnap.data() as Pet,
+                id: petId,
+                ...(snapshot.val() as Pet),
             }
         }
 
@@ -462,20 +490,21 @@ export const createPet = async (pet: Pet): Promise<string> => {
         const currentUser = auth.currentUser
         if (!currentUser) throw new Error("User not authenticated")
 
+        // Criar nova referência com ID único
+        const petsRef = ref(database, "pets")
+        const newPetRef = push(petsRef)
+        const petId = newPetRef.key!
+
         const petWithMetadata = {
             ...pet,
+            id: petId,
             createdBy: currentUser.uid,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         }
 
-        const docRef = await addDoc(collection(db, "pets"), petWithMetadata)
-
-        await updateDoc(doc(db, "pets", docRef.id), {
-            id: docRef.id,
-        })
-
-        return docRef.id
+        await set(newPetRef, petWithMetadata)
+        return petId
     } catch (error) {
         console.error("Error creating pet:", error)
         throw error
@@ -491,18 +520,20 @@ export const updatePet = async (petId: string, pet: Partial<Pet>): Promise<void>
         const isAdmin = await isUserAdmin(currentUser.uid)
         if (!isAdmin) throw new Error("Unauthorized: Only admins can update pets")
 
-        const docRef = doc(db, "pets", petId)
+        const petRef = ref(database, `pets/${petId}`)
 
-        const docSnap = await getDoc(docRef)
-
-        if (!docSnap.exists()) {
+        // Verificar se o pet existe
+        const snapshot = await get(petRef)
+        if (!snapshot.exists()) {
             throw new Error(`Pet with ID "${petId}" does not exist.`)
         }
 
-        await updateDoc(docRef, {
+        const updates = {
             ...pet,
-            updatedAt: serverTimestamp(),
-        })
+            updatedAt: Date.now(),
+        }
+
+        await update(petRef, updates)
     } catch (error) {
         console.error("Error updating pet:", error)
         throw error
@@ -518,8 +549,8 @@ export const deletePet = async (petId: string): Promise<void> => {
         const isAdmin = await isUserAdmin(currentUser.uid)
         if (!isAdmin) throw new Error("Unauthorized: Only admins can delete pets")
 
-        const docRef = doc(db, "pets", petId)
-        await deleteDoc(docRef)
+        const petRef = ref(database, `pets/${petId}`)
+        await remove(petRef)
     } catch (error) {
         console.error("Error deleting pet:", error)
         throw error
@@ -530,69 +561,69 @@ export const deletePet = async (petId: string): Promise<void> => {
 export const uploadImage = async (
     uri: string,
     path: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
 ): Promise<string> => {
     try {
         // Adicionar verificação de URI
         if (!uri) {
-            throw new Error("URI da imagem não fornecida");
+            throw new Error("URI da imagem não fornecida")
         }
 
         // Obter o blob da imagem com tratamento de erros
-        let blob: Blob;
+        let blob: Blob
         try {
-            const response = await fetch(uri);
+            const response = await fetch(uri)
             if (!response.ok) {
-                throw new Error(`Falha ao buscar imagem: ${response.status}`);
+                throw new Error(`Falha ao buscar imagem: ${response.status}`)
             }
-            blob = await response.blob();
+            blob = await response.blob()
         } catch (error) {
-            console.error("Erro ao converter imagem para blob:", error);
-            throw new Error("Não foi possível processar a imagem");
+            console.error("Erro ao converter imagem para blob:", error)
+            throw new Error("Não foi possível processar a imagem")
         }
 
         // Criar referência no Storage com metadados
-        const storageRef = ref(storage, path);
+        const imageRef = storageRef(storage, path)
         const metadata = {
-            contentType: blob.type || 'image/jpeg', // Tipo padrão se não detectado
-            cacheControl: 'public, max-age=31536000', // Cache por 1 ano
-        };
+            contentType: blob.type || "image/jpeg",
+            cacheControl: "public, max-age=31536000",
+        }
 
         // Iniciar upload com metadados
-        const uploadTask = uploadBytesResumable(storageRef, blob, metadata);
+        const uploadTask = uploadBytesResumable(imageRef, blob, metadata)
 
         return new Promise((resolve, reject) => {
             uploadTask.on(
                 "state_changed",
                 (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    if (onProgress) onProgress(Math.round(progress));
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+                    if (onProgress) onProgress(Math.round(progress))
                 },
                 (error) => {
-                    console.error("Erro no upload:", error);
-                    reject(new Error("Falha no upload da imagem"));
+                    console.error("Erro no upload:", error)
+                    reject(new Error("Falha no upload da imagem"))
                 },
                 async () => {
                     try {
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                        resolve(downloadURL);
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
+                        resolve(downloadURL)
                     } catch (error) {
-                        console.error("Erro ao obter URL de download:", error);
-                        reject(new Error("Falha ao obter URL da imagem"));
+                        console.error("Erro ao obter URL de download:", error)
+                        reject(new Error("Falha ao obter URL da imagem"))
                     }
-                }
-            );
-        });
+                },
+            )
+        })
     } catch (error) {
-        console.error("Erro no processo de upload:", error);
-        throw error;
+        console.error("Erro no processo de upload:", error)
+        throw error
     }
-};
+}
 
 export const deleteImage = async (path: string): Promise<void> => {
     try {
-        const storageRef = ref(storage, path)
-        await deleteObject(storageRef)
+        const imageRef = storageRef(storage, path)
+        await deleteObject(imageRef)
     } catch (error) {
         console.error("Error deleting image:", error)
         throw error
@@ -602,13 +633,13 @@ export const deleteImage = async (path: string): Promise<void> => {
 // Serviço de Usuários
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-        const docRef = doc(db, "users", userId)
-        const docSnap = await getDoc(docRef)
+        const userRef = ref(database, `users/${userId}`)
+        const snapshot = await get(userRef)
 
-        if (docSnap.exists()) {
+        if (snapshot.exists()) {
             return {
-                ...(docSnap.data() as UserProfile),
-                uid: docSnap.id,
+                ...(snapshot.val() as UserProfile),
+                uid: userId,
             }
         }
 
@@ -628,22 +659,21 @@ export const createUser = async (user: UserProfile): Promise<string> => {
         const isAdmin = await isUserAdmin(currentUser.uid)
         if (!isAdmin) throw new Error("Unauthorized: Only admins can create users")
 
+        // Usar o UID do usuário atual como chave
+        const userId = currentUser.uid
+        const userRef = ref(database, `users/${userId}`)
+
         // Adicionar metadados
         const userWithMetadata = {
             ...user,
-            uid: currentUser.uid,
-            createdAt: serverTimestamp(),
+            uid: userId,
+            createdAt: Date.now(),
             role: "user",
             status: "active",
         }
 
-        const docRef = await addDoc(collection(db, "users"), userWithMetadata)
-
-        await updateDoc(doc(db, "users", docRef.id), {
-            uid: docRef.id,
-        })
-
-        return docRef.id
+        await set(userRef, userWithMetadata)
+        return userId
     } catch (error) {
         console.error("Error creating user:", error)
         throw error
@@ -652,17 +682,18 @@ export const createUser = async (user: UserProfile): Promise<string> => {
 
 export const updateUserProfile = async (userId: string, data: Partial<UserProfile>): Promise<void> => {
     try {
-        const docRef = doc(db, "users", userId)
+        const userRef = ref(database, `users/${userId}`)
 
-        // Verificar se o usuário tem o campo logginFormat e formatar do jeito correto se for email continuar email na hora do update e se for google ou facebook, deixar do mesmo jeito
-        const userDoc = await getDoc(docRef)
-        if (userDoc.exists()) {
-            const userData = userDoc.data() as UserProfile
+        // Verificar se o usuário tem o campo logginFormat e formatar do jeito correto
+        const snapshot = await get(userRef)
+        if (snapshot.exists()) {
+            const userData = snapshot.val() as UserProfile
             if (userData.logginFormat && data.logginFormat && userData.logginFormat !== data.logginFormat) {
                 throw new Error("Cannot change loggin format once set")
             }
         }
-        await updateDoc(docRef, data)
+
+        await update(userRef, data)
     } catch (error) {
         console.error("Error updating user profile:", error)
         throw error
@@ -671,7 +702,7 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
 
 export const subscribeToPetTopic = async (petType: string): Promise<void> => {
     try {
-        const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, "")
         await messaging().subscribeToTopic(topic)
         console.log(`Subscribed to topic: ${topic}`)
     } catch (error) {
@@ -682,36 +713,36 @@ export const subscribeToPetTopic = async (petType: string): Promise<void> => {
 
 export const unsubscribeFromPetTopic = async (petType: string) => {
     try {
-        const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, '');
-        await messaging().unsubscribeFromTopic(topic);
-        console.log(`Unsubscribed from topic: ${topic}`);
+        const topic = petType.toLowerCase().replace(/[^a-z0-9]/g, "")
+        await messaging().unsubscribeFromTopic(topic)
+        console.log(`Unsubscribed from topic: ${topic}`)
     } catch (error) {
-        console.error(`Error unsubscribing to topic: `, error);
+        console.error(`Error unsubscribing to topic: `, error)
     }
 }
 
 export const manageUserPetPreferences = async (userId: string, newPreferences: string[]) => {
     try {
-        const currentUserProfile = await getUserProfile(userId);
-        const oldPreferences = currentUserProfile?.petPreferences || [];
+        const currentUserProfile = await getUserProfile(userId)
+        const oldPreferences = currentUserProfile?.petPreferences || []
 
-        const topicsToSubscribe = newPreferences.filter(pref => !oldPreferences.includes(pref));
+        const topicsToSubscribe = newPreferences.filter((pref) => !oldPreferences.includes(pref))
         for (const topic of topicsToSubscribe) {
-            await subscribeToPetTopic(topic);
+            await subscribeToPetTopic(topic)
         }
 
-        const topicsToUnsubscribe = oldPreferences.filter(pref => !newPreferences.includes(pref));
+        const topicsToUnsubscribe = oldPreferences.filter((pref) => !newPreferences.includes(pref))
         for (const topic of topicsToUnsubscribe) {
-            await unsubscribeFromPetTopic(topic);
+            await unsubscribeFromPetTopic(topic)
         }
 
-        await updateUserProfile(userId, { petPreferences: newPreferences });
-        console.log('Preferências de pet do usuário atualizadas no Firestore e FCM.');
+        await updateUserProfile(userId, { petPreferences: newPreferences })
+        console.log("Preferências de pet do usuário atualizadas no Realtime Database e FCM.")
     } catch (error) {
-        console.error('Erro ao gerenciar preferências de pet:', error);
-        throw error;
+        console.error("Erro ao gerenciar preferências de pet:", error)
+        throw error
     }
-};
+}
 
 export const deleteUserProfile = async (userId: string): Promise<void> => {
     try {
@@ -722,8 +753,8 @@ export const deleteUserProfile = async (userId: string): Promise<void> => {
         const isAdmin = await isUserAdmin(currentUser.uid)
         if (!isAdmin) throw new Error("Unauthorized: Only admins can delete users")
 
-        const docRef = doc(db, "users", userId)
-        await deleteDoc(docRef)
+        const userRef = ref(database, `users/${userId}`)
+        await remove(userRef)
     } catch (error) {
         console.error("Error deleting user profile:", error)
         throw error
@@ -731,120 +762,227 @@ export const deleteUserProfile = async (userId: string): Promise<void> => {
 }
 
 export const getUsers = async (
-    limit_count: number = 10,
+    limit_count = 10,
     role?: "admin" | "user",
-    status?: "active" | "inactive"
+    status?: "active" | "inactive",
 ): Promise<UserProfile[]> => {
     try {
-        const snapshot = await getDocs(collection(db, "users"))
+        const usersRef = ref(database, "users")
+        const snapshot = await get(usersRef)
 
-        let users = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        })) as unknown as UserProfile[]
+        if (!snapshot.exists()) {
+            return []
+        }
+
+        let users: UserProfile[] = []
+        const usersData = snapshot.val()
+
+        Object.keys(usersData).forEach((key) => {
+            users.push({
+                uid: key,
+                ...usersData[key],
+            })
+        })
+
+        // Filtrar por role se especificado
+        if (role) {
+            users = users.filter((user) => user.role === role)
+        }
+
+        // Filtrar por status se especificado
+        if (status) {
+            users = users.filter((user) => user.status === status)
+        }
 
         // Ordenar por data (do mais recente pro mais antigo)
         users = users.sort((a, b) => {
-            const getTime = (date: Timestamp | Date | undefined) => {
-                if (!date) return 0;
-                if (typeof (date as any).toDate === "function") {
-                    // Firestore Timestamp
-                    return (date as Timestamp).toDate().getTime();
-                }
-                if (date instanceof Date) {
-                    return date.getTime();
-                }
-                return 0;
-            };
-            const dateA = getTime(a.createdAt);
-            const dateB = getTime(b.createdAt);
-            return dateB - dateA;
+            const dateA = typeof a.createdAt === "number" ? a.createdAt : new Date(a.createdAt || 0).getTime()
+            const dateB = typeof b.createdAt === "number" ? b.createdAt : new Date(b.createdAt || 0).getTime()
+            return dateB - dateA
         })
 
-        // Limitar a quantidade de posts
+        // Limitar a quantidade de usuários
         return users.slice(0, limit_count)
     } catch (error: any) {
-        console.error("Erro ao buscar posts:", error.message)
-        throw new Error("Não foi possível carregar os posts do blog.")
+        console.error("Erro ao buscar usuários:", error.message)
+        throw new Error("Não foi possível carregar os usuários.")
     }
 }
 
-// Função para verificar e criar coleções necessárias
+// Função para verificar e criar estruturas necessárias no Realtime Database
 export const initializeFirestore = async (): Promise<void> => {
     try {
-        // Verificar se as coleções existem e criar documentos de exemplo se necessário
+        // Verificar se as estruturas existem no Realtime Database
         const collections = ["blog_posts", "pets", "comments", "users"]
 
         for (const collectionName of collections) {
-            const collectionRef = collection(db, collectionName)
-            const snapshot = await getDocs(query(collectionRef, limit(1)))
+            const collectionRef = ref(database, collectionName)
+            const snapshot = await get(collectionRef)
 
-            if (snapshot.empty) {
-                console.log(`Collection ${collectionName} is empty or doesn't exist. Creating...`)
-                // Aqui você poderia criar documentos de exemplo se necessário
+            if (!snapshot.exists()) {
+                console.log(`Collection ${collectionName} is empty or doesn't exist in Realtime Database.`)
+                // Aqui você poderia criar estruturas de exemplo se necessário
             }
         }
 
-        console.log("Firestore initialized successfully")
+        console.log("Realtime Database initialized successfully")
     } catch (error) {
-        console.error("Error initializing Firestore:", error)
+        console.error("Error initializing Realtime Database:", error)
     }
 }
 
-
-export const uploadToCloudinary = (
-    uri: string | File,
-    onProgress?: (progress: number) => void
-): Promise<string> => {
+export const uploadToCloudinary = (uri: string | File, onProgress?: (progress: number) => void): Promise<string> => {
     return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
+        const xhr = new XMLHttpRequest()
+        const formData = new FormData()
 
-        if (Platform.OS === 'web') {
+        if (Platform.OS === "web") {
             if (!(uri instanceof File)) {
-                return reject(new Error('Na web, o arquivo precisa ser do tipo File.'));
+                return reject(new Error("Na web, o arquivo precisa ser do tipo File."))
             }
-            formData.append('file', uri);
+            formData.append("file", uri)
         } else {
-            formData.append('file', {
+            formData.append("file", {
                 uri,
-                type: 'image/jpeg',
+                type: "image/jpeg",
                 name: `upload_${Date.now()}.jpg`,
-            } as any);
+            } as any)
         }
 
-        formData.append('upload_preset', 'pca_fixed');
+        formData.append("upload_preset", "pca_fixed")
 
-        xhr.open('POST', 'https://api.cloudinary.com/v1_1/drwe1wtnk/image/upload');
+        xhr.open("POST", "https://api.cloudinary.com/v1_1/drwe1wtnk/image/upload")
 
         xhr.upload.onprogress = (event) => {
             if (event.lengthComputable && onProgress) {
-                const percent = Math.round((event.loaded / event.total) * 100);
-                onProgress(percent);
+                const percent = Math.round((event.loaded / event.total) * 100)
+                onProgress(percent)
             }
-        };
+        }
 
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
-                    const data = JSON.parse(xhr.responseText);
+                    const data = JSON.parse(xhr.responseText)
                     if (data.secure_url) {
-                        resolve(data.secure_url);
+                        resolve(data.secure_url)
                     } else {
-                        reject(new Error('URL não encontrada na resposta do Cloudinary'));
+                        reject(new Error("URL não encontrada na resposta do Cloudinary"))
                     }
                 } catch (err) {
-                    reject(new Error('Erro ao processar resposta do Cloudinary'));
+                    reject(new Error("Erro ao processar resposta do Cloudinary"))
                 }
             } else {
-                reject(new Error(`Erro no upload: ${xhr.status} ${xhr.statusText}`));
+                reject(new Error(`Erro no upload: ${xhr.status} ${xhr.statusText}`))
             }
-        };
+        }
 
         xhr.onerror = () => {
-            reject(new Error('Erro de rede no upload da imagem'));
-        };
+            reject(new Error("Erro de rede no upload da imagem"))
+        }
 
-        xhr.send(formData);
-    });
-};
+        xhr.send(formData)
+    })
+}
+
+// Funções adicionais para aproveitar recursos do Realtime Database
+
+// Listener em tempo real para posts do blog
+export const subscribeToBlogs = (callback: (posts: BlogPost[]) => void): (() => void) => {
+    const postsRef = ref(database, "blog_posts")
+
+    const unsubscribe = onValue(postsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const posts: BlogPost[] = []
+            const postsData = snapshot.val()
+
+            Object.keys(postsData).forEach((key) => {
+                posts.push({
+                    id: key,
+                    ...postsData[key],
+                })
+            })
+
+            // Ordenar por data
+            posts.sort((a, b) => {
+                const dateA = typeof a.date === "number" ? a.date : new Date(a.date || 0).getTime()
+                const dateB = typeof b.date === "number" ? b.date : new Date(b.date || 0).getTime()
+                return dateB - dateA
+            })
+
+            callback(posts)
+        } else {
+            callback([])
+        }
+    })
+
+    return () => off(postsRef, "value", unsubscribe)
+}
+
+// Listener em tempo real para pets
+export const subscribeToPets = (callback: (pets: Pet[]) => void): (() => void) => {
+    const petsRef = ref(database, "pets")
+
+    const unsubscribe = onValue(petsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const pets: Pet[] = []
+            const petsData = snapshot.val()
+
+            Object.keys(petsData).forEach((key) => {
+                pets.push({
+                    id: key,
+                    ...petsData[key],
+                })
+            })
+
+            // Ordenar por data
+            pets.sort((a, b) => {
+                const dateA = typeof a.createdAt === "number" ? a.createdAt : new Date(a.createdAt || 0).getTime()
+                const dateB = typeof b.createdAt === "number" ? b.createdAt : new Date(b.createdAt || 0).getTime()
+                return dateB - dateA
+            })
+
+            callback(pets)
+        } else {
+            callback([])
+        }
+    })
+
+    return () => off(petsRef, "value", unsubscribe)
+}
+
+// Listener em tempo real para comentários de um post específico
+export const subscribeToComments = (postId: string, callback: (comments: Comment[]) => void): (() => void) => {
+    const commentsRef = ref(database, "comments")
+
+    const valueCallback = (snapshot: any) => {
+        if (snapshot.exists()) {
+            const comments: Comment[] = []
+            const commentsData = snapshot.val()
+
+            Object.keys(commentsData).forEach((key) => {
+                if (commentsData[key].postId === postId) {
+                    comments.push({
+                        id: key,
+                        ...commentsData[key],
+                    })
+                }
+            })
+
+            // Ordenar por data
+            comments.sort((a, b) => {
+                const dateA = typeof a.date === "number" ? a.date : new Date(a.date || 0).getTime()
+                const dateB = typeof b.date === "number" ? b.date : new Date(b.date || 0).getTime()
+                return dateB - dateA
+            })
+
+            callback(comments)
+        } else {
+            callback([])
+        }
+    }
+
+    onValue(commentsRef, valueCallback)
+
+    return () => off(commentsRef, "value", valueCallback)
+}

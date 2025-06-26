@@ -17,20 +17,7 @@ import { Feather } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import PermissionService, { type PermissionInfo } from "../utils/PermissionsServices"
 import { useNavigation } from "@react-navigation/native"
-
-// Mock theme context
-const useThemeContext = () => ({
-    isDarkTheme: false,
-    colors: {
-        primary: "#6366F1",
-        secondary: "#8B5CF6",
-        primaryDark: "#4F46E5",
-        secondaryDark: "#7C3AED",
-        success: "#10B981",
-        warning: "#F59E0B",
-        error: "#EF4444",
-    },
-})
+import { useThemeContext } from "../utils/ThemeContext"
 
 export default function PermissionManager() {
     const { isDarkTheme, colors } = useThemeContext()

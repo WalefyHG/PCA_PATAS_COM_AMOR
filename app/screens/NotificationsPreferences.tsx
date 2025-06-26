@@ -19,19 +19,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import ExpoNotificationService, { type NotificationPreference } from "../utils/NotificationsServices"
 import { getUserProfile, auth } from "../config/firebase"
 import { useNavigation } from "@react-navigation/native"
-
-// Mock theme context (adapte para seu contexto real)
-const useThemeContext = () => ({
-    isDarkTheme: false,
-    colors: {
-        primary: "#6366F1",
-        secondary: "#8B5CF6",
-        primaryDark: "#4F46E5",
-        secondaryDark: "#7C3AED",
-        success: "#10B981",
-        error: "#EF4444",
-    },
-})
+import { useThemeContext } from "../utils/ThemeContext"
 
 const PET_TYPES = [
     { type: "Cão", icon: "heart", description: "Receber notificações sobre cães disponíveis para adoção" },
