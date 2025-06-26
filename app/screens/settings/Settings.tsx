@@ -169,6 +169,16 @@ export default function Settings() {
             </SettingsSection>
           )}
 
+          {/* Chat Section */}
+          <SettingsSection title="Chat" icon="message-circle">
+            <SettingLinkItem
+              icon="message-circle"
+              title="Lista de Chats"
+              onPress={() => navigation.navigate("ChatList")}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
+          </SettingsSection>
           {/* Notifications Section */}
           <SettingsSection title="Notificações" icon="bell">
             <SettingToggleItem

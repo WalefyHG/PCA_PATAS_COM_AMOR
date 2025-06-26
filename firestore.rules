@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database
+    }/documents {
+        // Regras para usuários
+    match /users/{userId
+        } {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // Permitir leitura para outros usuários (para chat)
+        }
+        // Regras para chats
+    match /chats/{chatId
+        } {
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.adopterId || 
+         request.auth.uid == resource.data.ownerId);
+      allow create: if request.auth != null;
+        }
+        // Regras para mensagens
+    match /messages/{messageId
+        } {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.senderId;
+      allow update: if request.auth != null && 
+        (request.auth.uid == resource.data.senderId || 
+         request.resource.data.keys().hasOnly(['read'
+            ])); // Permitir marcar como lida
+        }
+        // Regras para favoritos
+    match /favorites/{favoriteId
+        } {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+        }
+        // Regras para pets
+    match /pets/{petId
+        } {
+      allow read: if true;
+      allow write: if request.auth != null;
+        }
+        // Regras para notificações
+    match /notifications/{notificationId
+        } {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+        }
+    }
+}

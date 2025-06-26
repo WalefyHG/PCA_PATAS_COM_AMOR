@@ -16,9 +16,12 @@ import {
     ActivityIndicator,
     Switch,
     Dimensions,
+    Modal,
+    Linking,
 } from "react-native"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
+import * as Location from "expo-location"
 import { LinearGradient } from "expo-linear-gradient"
 import { Feather } from "@expo/vector-icons"
 import { useThemeContext } from "../utils/ThemeContext"
@@ -31,7 +34,7 @@ const isMediumScreen = width >= 380 && width < 768
 const isLargeScreen = width >= 768
 const isWebPlatform = Platform.OS === "web"
 
-export default function AddPet() {
+export default function AddPetEnhanced() {
     const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation<any>()
     const route = useRoute<any>()
@@ -66,6 +69,15 @@ export default function AddPet() {
     const [currentRequirement, setCurrentRequirement] = useState("")
     const [fadeAnim] = useState(new Animated.Value(0))
     const [slideAnim] = useState(new Animated.Value(30))
+    const [isLoadingLocation, setIsLoadingLocation] = useState(false)
+    const [currentLocation, setCurrentLocation] = useState<{
+        latitude: number
+        longitude: number
+        address?: string
+    } | null>(null)
+    const [showImageModal, setShowImageModal] = useState(false)
+    const [isWebcamActive, setIsWebcamActive] = useState(false)
+    const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null)
 
     const isIOS = Platform.OS === "ios"
     const isAndroid = Platform.OS === "android"
@@ -119,7 +131,38 @@ export default function AddPet() {
         }))
     }
 
-    const pickImage = async () => {
+    // Enhanced image picker with platform-specific options
+    const showImagePickerOptions = () => {
+        setShowImageModal(true)
+    }
+
+    // Mobile camera function (Android/iOS)
+    const takePhotoWithCamera = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync()
+
+        if (status !== "granted") {
+            Alert.alert("Permissão necessária", "Precisamos de permissão para acessar sua câmera.")
+            return
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.7,
+        })
+
+        if (!result.canceled) {
+            const newImage = result.assets[0].uri
+            setPet((prevPet) => ({
+                ...prevPet,
+                images: [...prevPet.images, newImage].slice(0, 5),
+            }))
+        }
+        setShowImageModal(false)
+    }
+
+    // Mobile gallery function (Android/iOS)
+    const pickImageFromGallery = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
 
         if (status !== "granted") {
@@ -138,8 +181,246 @@ export default function AddPet() {
             const newImages = result.assets.map((asset) => asset.uri)
             setPet((prevPet) => ({
                 ...prevPet,
-                images: [...prevPet.images, ...newImages].slice(0, 5), // Limit to 5 images
+                images: [...prevPet.images, ...newImages].slice(0, 5),
             }))
+        }
+        setShowImageModal(false)
+    }
+
+    // Web webcam function
+    const startWebcam = async () => {
+        if (Platform.OS !== "web") return
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480 },
+            })
+            setWebcamStream(stream)
+            setIsWebcamActive(true)
+            setShowImageModal(false)
+        } catch (error) {
+            console.error("Erro ao acessar webcam:", error)
+            Alert.alert("Erro", "Não foi possível acessar a webcam.")
+        }
+    }
+
+    // Web file upload function
+    const uploadFileFromWeb = () => {
+        if (Platform.OS !== "web") return
+
+        const input = document.createElement("input")
+        input.type = "file"
+        input.accept = "image/*"
+        input.multiple = true
+
+        input.onchange = (event: any) => {
+            const files = event.target.files
+            if (files && files.length > 0) {
+                const newImages: string[] = []
+
+                Array.from(files).forEach((file: any) => {
+                    const reader = new FileReader()
+                    reader.onload = (e) => {
+                        if (e.target?.result) {
+                            newImages.push(e.target.result as string)
+
+                            // Update state when all files are processed
+                            if (newImages.length === files.length) {
+                                setPet((prevPet) => ({
+                                    ...prevPet,
+                                    images: [...prevPet.images, ...newImages].slice(0, 5),
+                                }))
+                            }
+                        }
+                    }
+                    reader.readAsDataURL(file)
+                })
+            }
+        }
+
+        input.click()
+        setShowImageModal(false)
+    }
+
+    // Capture photo from webcam
+    const captureWebcamPhoto = () => {
+        if (!webcamStream || Platform.OS !== "web") return
+
+        const video = document.getElementById("webcam-video") as HTMLVideoElement
+        if (!video) return
+
+        const canvas = document.createElement("canvas")
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+            ctx.drawImage(video, 0, 0)
+            const imageData = canvas.toDataURL("image/jpeg", 0.7)
+
+            setPet((prevPet) => ({
+                ...prevPet,
+                images: [...prevPet.images, imageData].slice(0, 5),
+            }))
+
+            stopWebcam()
+        }
+    }
+
+    // Stop webcam
+    const stopWebcam = () => {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach((track) => track.stop())
+            setWebcamStream(null)
+        }
+        setIsWebcamActive(false)
+    }
+
+    // Enhanced geolocation functionality with more specific location
+    const getCurrentLocation = async () => {
+        setIsLoadingLocation(true)
+
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync()
+
+            if (status !== "granted") {
+                Alert.alert("Permissão necessária", "Precisamos de permissão para acessar sua localização.")
+                setIsLoadingLocation(false)
+                return
+            }
+
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.High,
+            })
+
+            const { latitude, longitude } = location.coords
+
+            // Enhanced reverse geocoding with multiple attempts
+            let formattedAddress = ""
+
+            try {
+                // First attempt: High precision reverse geocoding
+                const reverseGeocode = await Location.reverseGeocodeAsync({
+                    latitude,
+                    longitude,
+                })
+
+                if (reverseGeocode.length > 0) {
+                    const address = reverseGeocode[0]
+
+                    // Build comprehensive address
+                    const addressParts = []
+
+                    if (address.street) addressParts.push(address.street)
+                    if (address.streetNumber) addressParts.push(address.streetNumber)
+                    if (address.district) addressParts.push(address.district)
+                    if (address.city) addressParts.push(address.city)
+                    if (address.region) addressParts.push(address.region)
+                    if (address.country) addressParts.push(address.country)
+                    if (address.postalCode) addressParts.push(`CEP: ${address.postalCode}`)
+
+                    formattedAddress = addressParts.join(", ")
+                }
+
+                // If no detailed address found, try with lower precision
+                if (!formattedAddress || formattedAddress.length < 10) {
+                    // Second attempt: Try nearby locations with slight coordinate variations
+                    const variations = [
+                        { lat: latitude + 0.001, lng: longitude },
+                        { lat: latitude - 0.001, lng: longitude },
+                        { lat: latitude, lng: longitude + 0.001 },
+                        { lat: latitude, lng: longitude - 0.001 },
+                    ]
+
+                    for (const variation of variations) {
+                        try {
+                            const nearbyGeocode = await Location.reverseGeocodeAsync({
+                                latitude: variation.lat,
+                                longitude: variation.lng,
+                            })
+
+                            if (nearbyGeocode.length > 0) {
+                                const nearbyAddress = nearbyGeocode[0]
+                                const nearbyParts = []
+
+                                if (nearbyAddress.street) nearbyParts.push(nearbyAddress.street)
+                                if (nearbyAddress.district) nearbyParts.push(nearbyAddress.district)
+                                if (nearbyAddress.city) nearbyParts.push(nearbyAddress.city)
+                                if (nearbyAddress.region) nearbyParts.push(nearbyAddress.region)
+
+                                if (nearbyParts.length > 0) {
+                                    formattedAddress = nearbyParts.join(", ") + " (aproximado)"
+                                    break
+                                }
+                            }
+                        } catch (error) {
+                            console.log("Tentativa de geocoding próximo falhou:", error)
+                        }
+                    }
+                }
+
+                // Final fallback: Use coordinates with city/region if available
+                if (!formattedAddress || formattedAddress.length < 5) {
+                    if (reverseGeocode.length > 0) {
+                        const address = reverseGeocode[0]
+                        const fallbackParts = []
+
+                        if (address.city) fallbackParts.push(address.city)
+                        if (address.region) fallbackParts.push(address.region)
+                        if (address.country) fallbackParts.push(address.country)
+
+                        if (fallbackParts.length > 0) {
+                            formattedAddress = `${fallbackParts.join(", ")} (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`
+                        } else {
+                            formattedAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+                        }
+                    } else {
+                        formattedAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+                    }
+                }
+            } catch (geocodeError) {
+                console.error("Erro no reverse geocoding:", geocodeError)
+                formattedAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+            }
+
+            setCurrentLocation({
+                latitude,
+                longitude,
+                address: formattedAddress,
+            })
+
+            // Update pet location with formatted address
+            handleInputChange("location", formattedAddress)
+        } catch (error) {
+            console.error("Erro ao obter localização:", error)
+            Alert.alert("Erro", "Não foi possível obter sua localização atual.")
+        } finally {
+            setIsLoadingLocation(false)
+        }
+    }
+
+    const openMapsForLocation = async () => {
+        if (currentLocation) {
+            const { latitude, longitude } = currentLocation
+            const url = Platform.select({
+                ios: `maps:${latitude},${longitude}`,
+                android: `geo:${latitude},${longitude}?q=${latitude},${longitude}`,
+                default: `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`,
+            })
+
+            try {
+                const supported = await Linking.canOpenURL(url!)
+                if (supported) {
+                    await Linking.openURL(url!)
+                } else {
+                    // Fallback to web version
+                    const webUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+                    await Linking.openURL(webUrl)
+                }
+            } catch (error) {
+                console.error("Erro ao abrir mapa:", error)
+                Alert.alert("Erro", "Não foi possível abrir o mapa.")
+            }
         }
     }
 
@@ -202,6 +483,7 @@ export default function AddPet() {
             setIsSubmitting(false)
         }
     }
+
 
     const renderSelectButton = (
         options: string[],
@@ -283,6 +565,184 @@ export default function AddPet() {
         </View>
     )
 
+    const renderImagePickerModal = () => (
+        <Modal
+            visible={showImageModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowImageModal(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                    <Animated.View style={[styles.modalContent, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                Adicionar Foto do Pet
+                            </Text>
+                            <Text style={[styles.modalSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                {Platform.OS === "web"
+                                    ? "Escolha como deseja adicionar a foto"
+                                    : "Escolha como deseja adicionar a foto"}
+                            </Text>
+                        </View>
+
+                        <View style={styles.modalButtons}>
+                            {Platform.OS === "web" ? (
+                                // Web options
+                                <>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            styles.cameraButton,
+                                            { backgroundColor: `${colors.primary}15`, borderColor: colors.primary },
+                                        ]}
+                                        onPress={startWebcam}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.primary }]}>
+                                            <Feather name="video" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Usar Webcam
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Tirar foto com a webcam
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            styles.galleryButton,
+                                            { backgroundColor: `${colors.secondary}15`, borderColor: colors.secondary },
+                                        ]}
+                                        onPress={uploadFileFromWeb}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.secondary }]}>
+                                            <Feather name="upload" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Enviar Arquivo
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Selecionar arquivos do computador
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                // Mobile options (Android/iOS)
+                                <>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            styles.cameraButton,
+                                            { backgroundColor: `${colors.primary}15`, borderColor: colors.primary },
+                                        ]}
+                                        onPress={takePhotoWithCamera}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.primary }]}>
+                                            <Feather name="camera" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Tirar Foto
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Use a câmera do dispositivo
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            styles.galleryButton,
+                                            { backgroundColor: `${colors.secondary}15`, borderColor: colors.secondary },
+                                        ]}
+                                        onPress={pickImageFromGallery}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.secondary }]}>
+                                            <Feather name="image" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Escolher da Galeria
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Selecione fotos existentes
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </View>
+
+                        <View style={styles.modalCancelContainer}>
+                            <TouchableOpacity
+                                style={[styles.modalCancelButton, { backgroundColor: isDarkTheme ? "#374151" : "#F3F4F6" }]}
+                                onPress={() => setShowImageModal(false)}
+                            >
+                                <Text style={[styles.modalCancelText, { color: isDarkTheme ? "#D1D5DB" : "#6B7280" }]}>Cancelar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
+                </View>
+            </View>
+        </Modal>
+    )
+
+    // Add webcam modal for web
+    const renderWebcamModal = () =>
+        Platform.OS === "web" && (
+            <Modal visible={isWebcamActive} transparent={true} animationType="slide" onRequestClose={stopWebcam}>
+                <View style={styles.webcamOverlay}>
+                    <View style={[styles.webcamContainer, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
+                        <View style={styles.webcamHeader}>
+                            <Text style={[styles.webcamTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Tirar Foto</Text>
+                            <TouchableOpacity onPress={stopWebcam} style={styles.webcamCloseButton}>
+                                <Feather name="x" size={24} color={isDarkTheme ? "white" : "#374151"} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.webcamVideoContainer}>
+                            {Platform.OS === "web" && (
+                                <video
+                                    id="webcam-video"
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        borderRadius: 12,
+                                    }}
+                                    ref={(video) => {
+                                        if (video && webcamStream) {
+                                            video.srcObject = webcamStream
+                                        }
+                                    }}
+                                />
+                            )}
+                        </View>
+
+                        <View style={styles.webcamControls}>
+                            <TouchableOpacity
+                                style={[styles.webcamCaptureButton, { backgroundColor: colors.primary }]}
+                                onPress={captureWebcamPhoto}
+                            >
+                                <Feather name="camera" size={24} color="white" />
+                                <Text style={styles.webcamCaptureText}>Capturar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        )
+
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
@@ -319,7 +779,7 @@ export default function AddPet() {
                             },
                         ]}
                     >
-                        {/* Image Upload Section */}
+                        {/* Enhanced Image Upload Section */}
                         <View style={styles.imageSection}>
                             <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>Imagens do Pet *</Text>
 
@@ -329,7 +789,7 @@ export default function AddPet() {
                                     { backgroundColor: isDarkTheme ? "#374151" : "white" },
                                     isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : {},
                                 ]}
-                                onPress={pickImage}
+                                onPress={showImagePickerOptions}
                             >
                                 {pet.images.length > 0 ? (
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -342,7 +802,7 @@ export default function AddPet() {
                                             </View>
                                         ))}
                                         {pet.images.length < 5 && (
-                                            <TouchableOpacity style={styles.addMoreImagesButton}>
+                                            <TouchableOpacity style={styles.addMoreImagesButton} onPress={showImagePickerOptions}>
                                                 <Feather name="plus" size={isSmallScreen ? 28 : 32} color={colors.primary} />
                                             </TouchableOpacity>
                                         )}
@@ -350,10 +810,10 @@ export default function AddPet() {
                                 ) : (
                                     <View style={styles.emptyImageContainer}>
                                         <View style={[styles.imageIcon, { backgroundColor: `${colors.primary}15` }]}>
-                                            <Feather name="image" size={isSmallScreen ? 28 : 32} color={colors.primary} />
+                                            <Feather name="camera" size={isSmallScreen ? 28 : 32} color={colors.primary} />
                                         </View>
                                         <Text style={[styles.imageUploadText, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
-                                            Toque para adicionar imagens
+                                            Toque para tirar foto ou escolher da galeria
                                         </Text>
                                     </View>
                                 )}
@@ -436,21 +896,42 @@ export default function AddPet() {
                                 />
                             </View>
 
+                            {/* Enhanced Location Section */}
                             <View style={styles.inputContainer}>
                                 <Text style={[styles.inputLabel, { color: isDarkTheme ? "white" : "#374151" }]}>Localização *</Text>
-                                <TextInput
-                                    style={[
-                                        styles.textInput,
-                                        {
-                                            backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
-                                            color: isDarkTheme ? "white" : "#374151",
-                                        },
-                                    ]}
-                                    placeholder="Digite a localização atual do pet"
-                                    placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
-                                    value={pet.location}
-                                    onChangeText={(value) => handleInputChange("location", value)}
-                                />
+                                <View style={styles.locationContainer}>
+                                    <TextInput
+                                        style={[
+                                            styles.locationInput,
+                                            {
+                                                backgroundColor: isDarkTheme ? "#374151" : "#F9FAFB",
+                                                color: isDarkTheme ? "white" : "#374151",
+                                            },
+                                        ]}
+                                        placeholder="Digite a localização ou use GPS"
+                                        placeholderTextColor={isDarkTheme ? "#9CA3AF" : "#6B7280"}
+                                        value={pet.location}
+                                        onChangeText={(value) => handleInputChange("location", value)}
+                                        multiline
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.locationButton, { backgroundColor: colors.primary }]}
+                                        onPress={getCurrentLocation}
+                                        disabled={isLoadingLocation}
+                                    >
+                                        {isLoadingLocation ? (
+                                            <ActivityIndicator size="small" color="white" />
+                                        ) : (
+                                            <Feather name="map-pin" size={isSmallScreen ? 18 : 20} color="white" />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                                {currentLocation && (
+                                    <TouchableOpacity style={styles.mapButton} onPress={openMapsForLocation}>
+                                        <Feather name="map" size={14} color={colors.primary} />
+                                        <Text style={[styles.mapButtonText, { color: colors.primary }]}>Ver no mapa</Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
 
@@ -693,6 +1174,8 @@ export default function AddPet() {
                         </TouchableOpacity>
                     </Animated.View>
                 </ScrollView>
+                {renderImagePickerModal()}
+                {renderWebcamModal()}
             </View>
         </KeyboardAvoidingView>
     )
@@ -788,6 +1271,44 @@ const styles = StyleSheet.create({
         ...(Platform.OS === "web" && {
             outlineStyle: "none",
         }),
+    },
+    // Enhanced location styles
+    locationContainer: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+    },
+    locationInput: {
+        flex: 1,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        fontSize: isSmallScreen ? 15 : 16,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        minHeight: 50,
+        ...(Platform.OS === "web" && {
+            outlineStyle: "none",
+        }),
+    },
+    locationButton: {
+        width: isSmallScreen ? 44 : 48,
+        height: isSmallScreen ? 44 : 48,
+        borderRadius: isSmallScreen ? 22 : 24,
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: 3,
+    },
+    mapButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 8,
+        paddingVertical: 4,
+    },
+    mapButtonText: {
+        fontSize: 12,
+        marginLeft: 4,
+        fontWeight: "500",
     },
     selectSection: {
         marginBottom: isSmallScreen ? 20 : 24,
@@ -915,6 +1436,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         ...(Platform.OS === "web" && {
             cursor: "pointer",
+            transition: "0.2s opacity",
         }),
     },
     requirementsList: {
@@ -980,5 +1502,158 @@ const styles = StyleSheet.create({
     },
     androidShadow: {
         elevation: 4,
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "flex-end",
+    },
+    modalContainer: {
+        justifyContent: "flex-end",
+    },
+    modalContent: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 8,
+        paddingBottom: Platform.OS === "ios" ? 34 : 24,
+        paddingHorizontal: 24,
+        minHeight: 280,
+        ...Platform.select({
+            ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 8,
+            },
+        }),
+    },
+    modalHeader: {
+        alignItems: "center",
+        paddingVertical: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: "#E5E7EB",
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: "700",
+        marginBottom: 4,
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        textAlign: "center",
+    },
+    modalButtons: {
+        gap: 12,
+        marginBottom: 20,
+    },
+    modalButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 2,
+    },
+    modalButtonIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 16,
+    },
+    modalButtonContent: {
+        flex: 1,
+    },
+    modalButtonTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+        marginBottom: 2,
+    },
+    modalButtonSubtitle: {
+        fontSize: 13,
+    },
+    cameraButton: {
+        // Additional styles for camera button if needed
+    },
+    galleryButton: {
+        // Additional styles for gallery button if needed
+    },
+    modalCancelContainer: {
+        borderTopWidth: 1,
+        borderTopColor: "#E5E7EB",
+        paddingTop: 16,
+    },
+    modalCancelButton: {
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: "center",
+    },
+    modalCancelText: {
+        fontSize: 16,
+        fontWeight: "500",
+    },
+    // Webcam modal styles
+    webcamOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+    },
+    webcamContainer: {
+        width: "100%",
+        maxWidth: 600,
+        height: "80%",
+        borderRadius: 20,
+        overflow: "hidden",
+    },
+    webcamHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: "#E5E7EB",
+    },
+    webcamTitle: {
+        fontSize: 18,
+        fontWeight: "700",
+    },
+    webcamCloseButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.1)",
+    },
+    webcamVideoContainer: {
+        flex: 1,
+        margin: 20,
+        borderRadius: 12,
+        overflow: "hidden",
+        backgroundColor: "#000",
+    },
+    webcamControls: {
+        padding: 20,
+        alignItems: "center",
+    },
+    webcamCaptureButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 25,
+        gap: 8,
+    },
+    webcamCaptureText: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "600",
     },
 })
