@@ -68,7 +68,7 @@ export default function FavoriteButton({ petId, petType, petName, size = 24, sty
 
     return (
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <TouchableOpacity style={[styles.button, style]} onPress={toggleFavorite} disabled={loading}>
+            <TouchableOpacity style={[styles.button, style]} onPress={toggleFavorite} testID="favorite-button" accessibilityRole="button" accessibilityHint="" disabled={loading}>
                 <Feather
                     name={isFavorited ? "heart" : "heart"}
                     size={size}
