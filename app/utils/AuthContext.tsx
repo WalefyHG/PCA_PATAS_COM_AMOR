@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect } from "react"
 import { auth, isUserAdmin } from "../config/firebase"
 import { onAuthStateChanged, signOut, type User } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
+import ExpoNotificationService from "./NotificationsServices"
 
 interface AuthContextType {
   user: User | null
@@ -39,8 +40,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Verificar se o usuário é admin
           const adminStatus = await isUserAdmin(currentUser.uid)
           setIsAdmin(adminStatus)
+
+          // Configurar notificações quando o usuário faz login
+          const notificationService = ExpoNotificationService.getInstance()
+          const hasPermission = await notificationService.setupNotifications()
+
+          if (hasPermission) {
+            console.log("✅ Notificações configuradas com sucesso para o usuário logado")
+          } else {
+            console.log("❌ Permissão de notificação negada")
+          }
         } catch (error) {
-          console.error("Error checking admin status:", error)
+          console.error("Error checking admin status or setting up notifications:", error)
           setIsAdmin(false)
         }
       } else {

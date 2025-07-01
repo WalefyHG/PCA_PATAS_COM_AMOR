@@ -109,12 +109,16 @@ class ExpoNotificationService {
 
             this.expoPushToken = token
 
-            // Salvar token no perfil do usuário
+            // Salvar token no perfil do usuário sempre que configurar
             if (auth.currentUser) {
-                await updateUserProfile(auth.currentUser.uid, {
-                    expoPushToken: token,
-                })
-                console.log("✅ Token salvo no perfil do usuário")
+                try {
+                    await updateUserProfile(auth.currentUser.uid, {
+                        expoPushToken: token,
+                    })
+                    console.log("✅ Token Expo salvo/atualizado no perfil do usuário")
+                } catch (error) {
+                    console.error("❌ Erro ao salvar token no perfil:", error)
+                }
             }
 
             // Configurar listeners
@@ -154,6 +158,8 @@ class ExpoNotificationService {
                 router.push(`/pet-details/${data.petId}`)
             } else if (data.action === "view_favorites") {
                 router.push("/favorites")
+            } else if (data.action === "open_chat" && data.chatId) {
+                router.push(`/chat/${data.chatId}`)
             } else if (data.screen) {
                 router.push(`/${data.screen}`)
             }
@@ -343,6 +349,28 @@ class ExpoNotificationService {
     // Obter token atual
     getExpoPushToken(): string | null {
         return this.expoPushToken
+    }
+
+    // Enviar notificação de nova mensagem no chat
+    async sendChatNotification(recipientToken: string, senderName: string, message: string, chatData: any) {
+        try {
+            await this.sendPushNotification(
+                recipientToken,
+                `💬 ${senderName}`,
+                message.length > 100 ? `${message.substring(0, 100)}...` : message,
+                {
+                    action: "open_chat",
+                    chatId: chatData.id,
+                    petName: chatData.petName,
+                    senderName,
+                    type: "chat_message",
+                },
+            )
+            console.log("✅ Notificação de chat enviada")
+        } catch (error) {
+            console.error("❌ Erro ao enviar notificação de chat:", error)
+            throw error
+        }
     }
 }
 

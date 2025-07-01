@@ -1,17 +1,6 @@
-import {
-    ref,
-    set,
-    get,
-    push,
-    update,
-    onValue,
-    serverTimestamp,
-    query,
-    orderByChild,
-    equalTo,
-    off,
-} from "firebase/database"
+import { ref, set, get, push, update, onValue, query, orderByChild, equalTo, off } from "firebase/database"
 import { database as db, auth } from "../config/firebase"
+import { getUserProfile } from "../config/firebase"
 import ExpoNotificationService from "./NotificationsServices"
 
 export interface ChatMessage {
@@ -128,6 +117,45 @@ class ChatService {
             lastMessage: message,
             lastMessageTime: Date.now(),
         })
+
+        // Enviar notificação push para o destinatário
+        await this.sendNotificationToRecipient(chatId, message, auth.currentUser.uid)
+    }
+
+    private async sendNotificationToRecipient(chatId: string, message: string, senderId: string): Promise<void> {
+        try {
+            // Buscar dados do chat
+            const chatData = await this.getChatData(chatId)
+            if (!chatData) return
+
+            // Determinar quem é o destinatário
+            const recipientId = chatData.ownerId === senderId ? chatData.adopterId : chatData.ownerId
+            const senderName = chatData.ownerId === senderId ? chatData.ownerName : chatData.adopterName
+
+            // Buscar perfil do destinatário para obter o token Expo
+            const recipientProfile = await getUserProfile(recipientId)
+            if (!recipientProfile?.expoPushToken) {
+                console.log("Destinatário não possui token Expo")
+                return
+            }
+
+            // Enviar notificação push
+            await this.notificationService.sendPushNotification(
+                recipientProfile.expoPushToken,
+                `Nova mensagem de ${senderName}`,
+                message.length > 50 ? `${message.substring(0, 50)}...` : message,
+                {
+                    action: "open_chat",
+                    chatId,
+                    petName: chatData.petName,
+                    senderName,
+                },
+            )
+
+            console.log("✅ Notificação push enviada com sucesso")
+        } catch (error) {
+            console.error("❌ Erro ao enviar notificação push:", error)
+        }
     }
 
     async sendSystemMessage(chatId: string, message: string): Promise<void> {
@@ -216,7 +244,7 @@ class ChatService {
 
             // Adiciona chats do adopter que não estejam já no ownerChats (compara pelo id)
             adopterChats.forEach((chat) => {
-                if (!combined.find(c => c.id === chat.id)) {
+                if (!combined.find((c) => c.id === chat.id)) {
                     combined.push(chat)
                 }
             })
@@ -257,7 +285,7 @@ class ChatService {
     }
 
     async getUnreadCount(chatId: string) {
-        return get(ref(db, `chats/${chatId}/unreadCount`)).then(snapshot => {
+        return get(ref(db, `chats/${chatId}/unreadCount`)).then((snapshot) => {
             return snapshot.exists() ? snapshot.val() : 0
         })
     }
