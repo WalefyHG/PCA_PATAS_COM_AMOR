@@ -100,7 +100,7 @@ export default function Adopt() {
                 <View className="flex-row items-center justify-between">
                     <TouchableOpacity
                         onPress={() => router.goBack()}
-                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+                        className="w-12 h-12 rounded-full bg-white/20 items-center justify-center"
                     >
                         <Feather name="arrow-left" size={20} color="white" />
                     </TouchableOpacity>

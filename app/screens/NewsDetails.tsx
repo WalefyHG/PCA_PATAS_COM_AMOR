@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import {
     View,
     Text,
@@ -8,7 +8,6 @@ import {
     ScrollView,
     TouchableOpacity,
     Platform,
-    Animated,
     StyleSheet,
     Share,
     TextInput,
@@ -18,7 +17,6 @@ import { useThemeContext } from "../utils/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
-import HeaderLayout from "../utils/HeaderLayout"
 import { getBlogPostById } from "../config/firebase"
 
 interface BlogPostDetail {
@@ -58,31 +56,8 @@ export default function BlogPostDetail() {
     const isLargeScreen = screenData.width >= 1024
     const isMobile = screenData.width < 768
 
-    // Animated values
-    const [fadeAnim] = useState(new Animated.Value(0))
-    const [slideAnim] = useState(new Animated.Value(30))
-    const scrollY = useRef(new Animated.Value(0)).current
-
-    // Header animation values
-    const headerHeight = 300 // Approximate header height with image
-    const headerOpacity = scrollY.interpolate({
-        inputRange: [0, headerHeight * 0.5, headerHeight],
-        outputRange: [0, 0.5, 1],
-        extrapolate: "clamp",
-    })
-
-    const imageOpacity = scrollY.interpolate({
-        inputRange: [0, headerHeight * 0.5, headerHeight],
-        outputRange: [1, 0.5, 0],
-        extrapolate: "clamp",
-    })
-
-    const imageTranslateY = scrollY.interpolate({
-        inputRange: [0, headerHeight],
-        outputRange: [0, headerHeight * 0.5],
-        extrapolate: "clamp",
-    })
-
+    // Simplified state - removed complex animations
+    const [showFloatingHeader, setShowFloatingHeader] = useState(false)
     const [post, setPost] = useState<BlogPostDetail | null>(null)
     const [comments, setComments] = useState<Comment[]>([])
     const [isLiked, setIsLiked] = useState(false)
@@ -97,13 +72,11 @@ export default function BlogPostDetail() {
         const onChange = (result: any) => {
             setScreenData(result.window)
         }
-
         const subscription = Dimensions.addEventListener("change", onChange)
         return () => subscription?.remove()
     }, [])
 
     useEffect(() => {
-        // Fetch post data based on postId
         const fetchPost = async () => {
             const response = await getBlogPostById(postId)
             if (response && typeof response.id === "string") {
@@ -130,36 +103,18 @@ export default function BlogPostDetail() {
         }
 
         fetchPost()
-
-        // Start animations when component mounts
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                speed: 12,
-                bounciness: 6,
-                useNativeDriver: true,
-            }),
-        ]).start()
     }, [postId])
 
     const handleLike = () => {
         setIsLiked(!isLiked)
-        // In a real app, you would update the like count in the database
     }
 
     const handleSave = () => {
         setIsSaved(!isSaved)
-        // In a real app, you would save the post to the user's bookmarks
     }
 
     const handleShare = async () => {
         if (!post) return
-
         try {
             await Share.share({
                 message: `${post.title} - ${post.excerpt}\n\nLeia mais no aplicativo Patas com Amor`,
@@ -170,26 +125,16 @@ export default function BlogPostDetail() {
         }
     }
 
+    // Simple scroll handler without complex animations
     const handleScroll = (event: any) => {
-
-        if (Platform.OS === "android") {
-            const offsetY = event.nativeEvent.contentOffset.y
-            scrollY.setValue(offsetY)
-        } else {
-            // Para iOS, usamos o Animated.event
-            Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-                useNativeDriver: true,
-            })(event)
-        }
+        const offsetY = event.nativeEvent.contentOffset.y
+        setShowFloatingHeader(offsetY > 200)
     }
 
     const handleSubmitComment = async () => {
         if (!commentText.trim()) return
 
         setIsSubmittingComment(true)
-
-        // In a real app, you would send the comment to the database
-        // Simulating API call
         setTimeout(() => {
             const newComment: Comment = {
                 id: `temp-${Date.now()}`,
@@ -199,7 +144,6 @@ export default function BlogPostDetail() {
                 content: commentText,
                 likes: 0,
             }
-
             setComments([newComment, ...comments])
             setCommentText("")
             setIsSubmittingComment(false)
@@ -209,14 +153,7 @@ export default function BlogPostDetail() {
     if (!post) {
         return (
             <View className={`flex-1 items-center justify-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
-                <Animated.View
-                    style={{
-                        opacity: fadeAnim,
-                        transform: [{ scale: fadeAnim }],
-                    }}
-                >
-                    <Feather name="loader" size={40} color={colors.primary} className="animate-spin" />
-                </Animated.View>
+                <Feather name="loader" size={40} color={colors.primary} />
                 <Text
                     className={`mt-4 text-lg ${isDarkTheme ? "text-white" : "text-gray-800"}`}
                     style={Platform.select({
@@ -231,10 +168,8 @@ export default function BlogPostDetail() {
     }
 
     const formatText = (text: string) => {
-        // Simple markdown-like formatting
         const paragraphs = text.split("\n\n")
         return paragraphs.map((paragraph, index) => {
-            // Handle headers
             if (paragraph.startsWith("## ")) {
                 return (
                     <Text
@@ -253,7 +188,6 @@ export default function BlogPostDetail() {
                 )
             }
 
-            // Handle lists
             if (paragraph.includes("\n- ")) {
                 const [listTitle, ...items] = paragraph.split("\n- ")
                 return (
@@ -293,7 +227,6 @@ export default function BlogPostDetail() {
                 )
             }
 
-            // Regular paragraph
             return (
                 <Text
                     key={index}
@@ -317,85 +250,72 @@ export default function BlogPostDetail() {
 
     return (
         <View className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
-            {/* Floating Header */}
-            <Animated.View
-                style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 10,
-                    opacity: headerOpacity,
-                }}
-            >
-                <LinearGradient
-                    colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+            {/* Simple Floating Header */}
+            {showFloatingHeader && (
+                <View
                     style={{
-                        paddingTop: 64,
-                        paddingBottom: 16,
-                        paddingHorizontal: isLargeScreen ? 32 : 16,
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        zIndex: 10,
                     }}
                 >
-                    <View className="flex-row items-center justify-between">
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={{
-                                width: isTablet ? 48 : 40,
-                                height: isTablet ? 48 : 40,
-                                borderRadius: isTablet ? 24 : 20,
-                                backgroundColor: "rgba(255, 255, 255, 0.2)",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Feather name="arrow-left" size={isTablet ? 24 : 20} color="white" />
-                        </TouchableOpacity>
-                        <Text
-                            className="text-white font-bold"
-                            numberOfLines={1}
-                            style={{
-                                fontSize: isTablet ? 20 : 16,
-                                ...Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                }),
-                                maxWidth: "60%",
-                            }}
-                        >
-                            {post.title}
-                        </Text>
-                        <TouchableOpacity
-                            onPress={handleShare}
-                            style={{
-                                width: isTablet ? 48 : 40,
-                                height: isTablet ? 48 : 40,
-                                borderRadius: isTablet ? 24 : 20,
-                                backgroundColor: "rgba(255, 255, 255, 0.2)",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Feather name="share-2" size={isTablet ? 24 : 20} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                </LinearGradient>
-            </Animated.View>
-
-            <View
-                style={{
-                    position: "absolute",
-                    right: 0,
-                    top: 20,
-                    flexDirection: "row",
-                    alignSelf: "flex-end",
-                    alignItems: "center",
-                    zIndex: 11,
-                }}
-            >
-                <HeaderLayout title="Blog" />
-            </View>
+                    <LinearGradient
+                        colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{
+                            paddingTop: 64,
+                            paddingBottom: 16,
+                            paddingHorizontal: isLargeScreen ? 32 : 16,
+                        }}
+                    >
+                        <View className="flex-row items-center justify-between">
+                            <TouchableOpacity
+                                onPress={() => navigation.goBack()}
+                                style={{
+                                    width: isTablet ? 48 : 40,
+                                    height: isTablet ? 48 : 40,
+                                    borderRadius: isTablet ? 24 : 20,
+                                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <Feather name="arrow-left" size={isTablet ? 24 : 20} color="white" />
+                            </TouchableOpacity>
+                            <Text
+                                className="text-white font-bold"
+                                numberOfLines={1}
+                                style={{
+                                    fontSize: isTablet ? 20 : 16,
+                                    ...Platform.select({
+                                        ios: { fontFamily: "San Francisco" },
+                                        android: { fontFamily: "Roboto" },
+                                    }),
+                                    maxWidth: "60%",
+                                }}
+                            >
+                                {post.title}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={handleShare}
+                                style={{
+                                    width: isTablet ? 48 : 40,
+                                    height: isTablet ? 48 : 40,
+                                    borderRadius: isTablet ? 24 : 20,
+                                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <Feather name="share-2" size={isTablet ? 24 : 20} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                    </LinearGradient>
+                </View>
+            )}
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -407,93 +327,81 @@ export default function BlogPostDetail() {
                     width: "100%",
                 }}
             >
-                {/* Header Image */}
-                <Animated.View
-                    style={{
-                        opacity: imageOpacity,
-                        transform: [{ translateY: imageTranslateY }],
-                    }}
-                >
-                    <View className="relative">
-                        <Image
-                            source={{ uri: post.image }}
-                            className="w-full object-cover"
-                            style={{
-                                height: isLargeScreen ? 450 : isWeb ? 400 : isTablet ? 350 : 280,
-                            }}
-                        />
-                        <LinearGradient
-                            colors={["transparent", "rgba(0,0,0,0.7)"]}
-                            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120 }}
-                        />
-                        <View
-                            className="absolute bottom-0 left-0 right-0"
-                            style={{
-                                padding: isLargeScreen ? 32 : isTablet ? 24 : 16,
-                            }}
-                        >
-                            <View className="flex-row items-center mb-2">
-                                <View
-                                    className="rounded-full"
-                                    style={{
-                                        backgroundColor: `${colors.primary}CC`,
-                                        paddingHorizontal: isTablet ? 16 : 12,
-                                        paddingVertical: isTablet ? 8 : 4,
-                                    }}
-                                >
-                                    <Text
-                                        className="text-white font-medium"
-                                        style={{
-                                            fontSize: isTablet ? 14 : 12,
-                                        }}
-                                    >
-                                        {post.category}
-                                    </Text>
-                                </View>
+                {/* Header Image - No animations */}
+                <View className="relative">
+                    <Image
+                        source={{ uri: post.image }}
+                        className="w-full object-cover"
+                        style={{
+                            height: isLargeScreen ? 450 : isWeb ? 400 : isTablet ? 350 : 280,
+                        }}
+                    />
+                    <LinearGradient
+                        colors={["transparent", "rgba(0,0,0,0.7)"]}
+                        style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120 }}
+                    />
+                    <View
+                        className="absolute bottom-0 left-0 right-0"
+                        style={{
+                            padding: isLargeScreen ? 32 : isTablet ? 24 : 16,
+                        }}
+                    >
+                        <View className="flex-row items-center mb-2">
+                            <View
+                                className="rounded-full"
+                                style={{
+                                    backgroundColor: `${colors.primary}CC`,
+                                    paddingHorizontal: isTablet ? 16 : 12,
+                                    paddingVertical: isTablet ? 8 : 4,
+                                }}
+                            >
                                 <Text
-                                    className="text-white ml-2"
+                                    className="text-white font-medium"
                                     style={{
                                         fontSize: isTablet ? 14 : 12,
                                     }}
                                 >
-                                    {post.readTime} de leitura
+                                    {post.category}
                                 </Text>
                             </View>
+                            <Text
+                                className="text-white ml-2"
+                                style={{
+                                    fontSize: isTablet ? 14 : 12,
+                                }}
+                            >
+                                {post.readTime} de leitura
+                            </Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={{
-                                position: "absolute",
-                                top: 48,
-                                left: isLargeScreen ? 24 : 16,
-                                width: isTablet ? 48 : 40,
-                                height: isTablet ? 48 : 40,
-                                borderRadius: isTablet ? 24 : 20,
-                                backgroundColor: "rgba(0, 0, 0, 0.3)",
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Feather name="arrow-left" size={isTablet ? 24 : 20} color="white" />
-                        </TouchableOpacity>
                     </View>
-                </Animated.View>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={{
+                            position: "absolute",
+                            top: 48,
+                            left: isLargeScreen ? 24 : 16,
+                            width: isTablet ? 48 : 40,
+                            height: isTablet ? 48 : 40,
+                            borderRadius: isTablet ? 24 : 20,
+                            backgroundColor: "rgba(0, 0, 0, 0.3)",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <Feather name="arrow-left" size={isTablet ? 24 : 20} color="white" />
+                    </TouchableOpacity>
+                </View>
 
-                <Animated.View
-                    style={[
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }],
-                        },
-                        {
-                            paddingHorizontal: isLargeScreen ? 48 : isTablet ? 32 : 16,
-                            paddingTop: isTablet ? 32 : 24,
-                            paddingBottom: isTablet ? 80 : 60,
-                        }
-                    ]}
+                {/* Content - No animations */}
+                <View
+                    style={{
+                        paddingHorizontal: isLargeScreen ? 48 : isTablet ? 32 : 16,
+                        paddingTop: isTablet ? 32 : 24,
+                        paddingBottom: isTablet ? 80 : 60,
+                    }}
                     className="pt-6 pb-20"
                 >
-                    {/* Title and Author */}
+                    {/* Title */}
                     <Text
                         className={`font-bold mb-4 ${isDarkTheme ? "text-white" : "text-gray-800"}`}
                         style={[
@@ -511,7 +419,7 @@ export default function BlogPostDetail() {
                         {post.title}
                     </Text>
 
-                    {/* Author Section - Redesigned with Fixed Action Buttons */}
+                    {/* Author Section */}
                     <View
                         className={`rounded-xl mb-6 ${isDarkTheme ? "bg-gray-800" : "bg-white"}`}
                         style={[
@@ -526,7 +434,6 @@ export default function BlogPostDetail() {
                         <View
                             style={{ flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center" }}
                         >
-                            {/* Author Info */}
                             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginBottom: isMobile ? 16 : 0 }}>
                                 <Image
                                     source={{ uri: post.authorAvatar }}
@@ -634,6 +541,21 @@ export default function BlogPostDetail() {
                                 </TouchableOpacity>
                             </View>
                         </View>
+                    </View>
+
+                    {/* Content */}
+                    <View
+                        className={`rounded-xl mb-6 ${isDarkTheme ? "bg-gray-800" : "bg-white"}`}
+                        style={[
+                            isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow,
+                            {
+                                padding: isLargeScreen ? 32 : isTablet ? 24 : 16,
+                                marginBottom: isTablet ? 32 : 24,
+                                borderRadius: isTablet ? 20 : 12,
+                            },
+                        ]}
+                    >
+                        {formatText(post.content)}
                     </View>
 
                     {/* Engagement */}
@@ -779,7 +701,6 @@ export default function BlogPostDetail() {
                                     },
                                 ]}
                             />
-
                             <View
                                 style={{
                                     flexDirection: "row",
@@ -804,12 +725,7 @@ export default function BlogPostDetail() {
                                     }}
                                 >
                                     {isSubmittingComment ? (
-                                        <Feather
-                                            name="loader"
-                                            size={isLargeScreen ? 24 : isTablet ? 20 : 18}
-                                            color="white"
-                                            className="animate-spin"
-                                        />
+                                        <Feather name="loader" size={isLargeScreen ? 24 : isTablet ? 20 : 18} color="white" />
                                     ) : (
                                         <>
                                             <Feather
@@ -1006,7 +922,7 @@ export default function BlogPostDetail() {
                             </View>
                         )}
                     </View>
-                </Animated.View>
+                </View>
             </ScrollView>
         </View>
     )

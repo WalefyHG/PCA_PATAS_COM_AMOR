@@ -309,8 +309,8 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     backButton: {
-        width: isSmallScreen ? 36 : 40,
-        height: isSmallScreen ? 36 : 40,
+        width: isSmallScreen ? 48 : 52,
+        height: isSmallScreen ? 48 : 52,
         justifyContent: "center",
         alignItems: "center",
     },

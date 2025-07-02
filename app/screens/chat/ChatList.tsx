@@ -203,9 +203,9 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: "rgba(255, 255, 255, 0.2)",
         alignItems: "center",
         justifyContent: "center",
