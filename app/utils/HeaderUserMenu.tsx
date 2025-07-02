@@ -249,9 +249,9 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: "center",
         justifyContent: "center",
         ...Platform.select({

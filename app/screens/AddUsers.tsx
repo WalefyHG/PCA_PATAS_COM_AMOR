@@ -100,7 +100,7 @@ export default function AddEditUserScreen() {
                 Alert.alert("Sucesso", "Usuário criado com sucesso!")
             }
 
-            navigate.goBack()
+            navigate.navigate("AdminConsole")
         } catch (error) {
             console.error(error)
             Alert.alert("Erro", "Erro ao salvar usuário, tente novamente.")
@@ -309,8 +309,8 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     backButton: {
-        width: isSmallScreen ? 36 : 40,
-        height: isSmallScreen ? 36 : 40,
+        width: isSmallScreen ? 48 : 52,
+        height: isSmallScreen ? 48 : 52,
         justifyContent: "center",
         alignItems: "center",
     },

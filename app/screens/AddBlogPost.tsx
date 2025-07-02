@@ -220,10 +220,10 @@ export default function AddBlogPost() {
 
             if (isEditing) {
                 await updateBlogPost(postId, postData)
-                Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
+                Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
             } else {
                 await createBlogPost(postData)
-                Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.goBack() }])
+                Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
             }
         } catch (error) {
             console.error("Erro ao salvar post:", error)
@@ -570,9 +570,9 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     backButton: {
-        width: isSmallScreen ? 36 : 40,
-        height: isSmallScreen ? 36 : 40,
-        borderRadius: isSmallScreen ? 18 : 20,
+        width: isSmallScreen ? 48 : 52,
+        height: isSmallScreen ? 48 : 52,
+        borderRadius: isSmallScreen ? 24 : 26,
         backgroundColor: "rgba(255, 255, 255, 0.2)",
         alignItems: "center",
         justifyContent: "center",

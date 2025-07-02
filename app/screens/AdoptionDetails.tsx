@@ -887,9 +887,9 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: Platform.OS === "ios" ? 48 : Platform.OS === "android" ? 32 : 16,
         left: isSmallScreen ? 12 : 16,
-        width: isSmallScreen ? 36 : 40,
-        height: isSmallScreen ? 36 : 40,
-        borderRadius: isSmallScreen ? 18 : 20,
+        width: isSmallScreen ? 48 : 52,
+        height: isSmallScreen ? 48 : 52,
+        borderRadius: isSmallScreen ? 24 : 26,
         overflow: "hidden",
     },
     backButtonGradient: {
