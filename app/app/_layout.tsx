@@ -2,24 +2,25 @@
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { SafeAreaProvider } from "react-native-safe-area-context"
-import Toastable from "../components/Toastable"
+import Toastable from "../presentation/components/Toastable"
 import "../../global.css"
 import { type LinkingOptions, NavigationContainer } from "@react-navigation/native"
 import { ActivityIndicator, View, Text } from "react-native"
-import { ThemeProvider, useThemeContext } from "../utils/ThemeContext"
-import { AuthProvider, useAuth } from "../utils/AuthContext"
+import { ThemeProvider, useThemeContext } from "../presentation/contexts/ThemeContext"
+import { AuthProvider, useAuth } from "../presentation/contexts/AuthContext"
 import { useEffect } from "react"
 import { NavigationIndependentTree } from "@react-navigation/native"
 
 // Screens
-import LoginScreen from "../screens/LoginScreen"
-import RegisterScreen from "../screens/RegisterScreen"
+import LoginScreen from "../presentation/screens/LoginScreen"
+import RegisterScreen from "../presentation/screens/RegisterScreen"
 import AppLayout from "./(tabs)/_layout"
-import ForgotPasswordScreen from "../screens/ForgotPassword"
+import ForgotPasswordScreen from "../presentation/screens/ForgotPassword"
 import { onAuthStateChanged } from "firebase/auth"
-import { auth } from "../config/firebase"
+import { auth } from "../data/datasources/firebase/firebase"
 import { useNavigation } from "expo-router"
-import ExpoNotificationService from "../utils/NotificationsServices"
+import ExpoNotificationService from "../repositories/NotificationRepository"
+
 
 const Stack = createNativeStackNavigator()
 

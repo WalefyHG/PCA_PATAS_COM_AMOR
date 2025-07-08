@@ -1,4 +1,4 @@
-import About from "../../../screens/users/About";
+import About from "../../../presentation/screens/users/About";
 
 export default function UserAbout() {
     return (

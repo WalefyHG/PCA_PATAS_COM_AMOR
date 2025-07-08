@@ -1,7 +1,7 @@
 import { View, StyleSheet, TouchableOpacity } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { Feather } from "@expo/vector-icons"
-import { useThemeContext } from "./ThemeContext"
+import { useThemeContext } from "../presentation/contexts/ThemeContext"
 import HeaderUserMenu from "./HeaderUserMenu"
 
 interface HeaderLayoutProps {

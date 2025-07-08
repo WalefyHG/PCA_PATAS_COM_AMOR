@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { auth, setupFCM } from '../config/firebase';
-import { db } from '../config/firebase';
+import { auth, setupFCM } from '../data/datasources/firebase/firebase';
+import { db } from '../data/datasources/firebase/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button, Input } from '@ui-kitten/components';
-import InputPassword from '../components/InputPassword';
+import InputPassword from '../presentation/components/InputPassword';
 import { showToastable } from 'react-native-toastable';
 
 

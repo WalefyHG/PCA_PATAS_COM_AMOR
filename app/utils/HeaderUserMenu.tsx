@@ -3,10 +3,10 @@ import { View, TouchableOpacity, StyleSheet, Text, Platform, Animated, Pressable
 import Popover from "react-native-popover-view"
 import { LinearGradient } from "expo-linear-gradient"
 import { Feather } from "@expo/vector-icons"
-import { auth } from "../config/firebase"
+import { auth } from "../data/datasources/firebase/firebase"
 import { onAuthStateChanged, signOut, User } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
-import { useThemeContext } from "./ThemeContext"
+import { useThemeContext } from "../presentation/contexts/ThemeContext"
 
 function getInitials(name: string) {
     return name

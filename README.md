@@ -8,20 +8,41 @@ Este projeto é uma aplicação completa para adoção de pets, gerenciamento de
 
 ## Arquitetura e Organização
 
+### Clean Architecture
+
+O projeto segue princípios de **Arquitetura Limpa (Clean Architecture)**, separando responsabilidades em camadas bem definidas. Isso facilita a manutenção, testes e escalabilidade do sistema. As principais camadas são:
+
+- **Domain**: Entidades e regras de negócio puras.
+- **Data**: Fontes de dados, integrações e implementações concretas.
+- **Repositories**: Interfaces e implementações para acesso a dados.
+- **Presentation**: Telas, componentes visuais e lógica de interface.
+- **Utils**: Utilitários e contextos globais.
+
 ### Estrutura de Pastas
 
 - **app/**: Código principal da aplicação.
-  - **app/**: Navegação principal, layouts e roteamento.
-  - **components/**: Componentes reutilizáveis (inputs, botões, upload de imagem, etc).
-  - **config/**: Configuração e serviços do Firebase.
-  - **hooks/**: Hooks customizados.
-  - **screens/**: Telas principais (AddPet, AddBlogPost, AdminConsole, etc).
+  - **domain/**: Entidades e modelos de negócio.
+    - **entities/**: Definições de entidades do domínio (ex: Pet, User, BlogPost).
+  - **data/**: Fontes de dados e integrações externas.
+    - **datasources/**: Serviços de acesso a dados (ex: Firebase, APIs).
+  - **repositories/**: Implementações dos repositórios (ex: FirebaseUserRepository, ChatRepository).
+  - **presentation/**: Camada de apresentação.
+    - **components/**: Componentes reutilizáveis (inputs, botões, upload de imagem, etc).
+    - **contexts/**: Contextos globais (tema, autenticação, etc).
+    - **screens/**: Telas principais (AddPet, AddBlogPost, AdminConsole, etc).
   - **utils/**: Utilitários (tema, permissões, autenticação, notificações, etc).
+  - **app/**: Navegação principal, layouts e roteamento.
+    - **(tabs)/**: Navegação por abas e sub-telas (about, news, profile, etc).
 - **assets/**: Imagens e recursos estáticos.
 - **constants/**: Constantes globais.
 - **__test__/**: Testes automatizados.
 - **android/**, **ios/**: Configurações nativas.
 - **locales/**: Internacionalização (i18n).
+
+> **Observação:** Os imports e referências de código foram ajustados para refletir essa organização. Por exemplo, para acessar o contexto de tema utilize:
+> ```tsx
+> import { useThemeContext } from "@/presentation/contexts/ThemeContext"
+> ```
 
 ---
 
@@ -29,16 +50,16 @@ Este projeto é uma aplicação completa para adoção de pets, gerenciamento de
 
 - Utiliza Firebase Auth para login, registro, logout e controle de sessão.
 - Suporte a login por email/senha e provedores sociais (Google, Facebook).
-- Contexto de autenticação global via [`AuthProvider`](app/utils/AuthContext.tsx).
-- Verificação de status de admin com [`isUserAdmin`](app/config/firebase.tsx).
+- Contexto de autenticação global via [`AuthProvider`](presentation/contexts/AuthContext.tsx).
+- Verificação de status de admin com [`isUserAdmin`](data/datasources/firebase.tsx).
 
 ---
 
 ## Gerenciamento de Permissões
 
-- Serviço centralizado em [`PermissionService`](app/utils/PermissionsServices.tsx).
+- Serviço centralizado em [`PermissionService`](utils/PermissionsServices.tsx).
 - Permissões essenciais: notificações, câmera, galeria, localização, contatos.
-- Telas para gerenciamento e solicitação de permissões ([`PermissionManager`](app/screens/PermissionManage.tsx)).
+- Telas para gerenciamento e solicitação de permissões ([`PermissionManager`](presentation/screens/PermissionManage.tsx)).
 - Diálogos de rationale e status detalhado para o usuário.
 
 ---
@@ -105,7 +126,7 @@ Este projeto é uma aplicação completa para adoção de pets, gerenciamento de
 
 ## Temas e Aparência
 
-- Contexto de tema global via [`ThemeProvider`](app/utils/ThemeContext.tsx).
+- Contexto de tema global via [`ThemeProvider`](presentation/contexts/ThemeContext.tsx).
 - Suporte a tema claro/escuro, cores customizadas e integração com react-native-paper e eva-design.
 
 ---
@@ -145,10 +166,10 @@ Este projeto é uma aplicação completa para adoção de pets, gerenciamento de
 
 ## Referências de Código
 
-- [app/config/firebase.tsx](app/config/firebase.tsx): Serviços de dados, autenticação e permissões.
-- [app/screens/](app/screens/): Telas principais do app.
-- [app/components/](app/components/): Componentes reutilizáveis.
-- [app/utils/](app/utils/): Utilitários de tema, permissões, autenticação, notificações.
+- [data/datasources/firebase.tsx](data/datasources/firebase.tsx): Serviços de dados, autenticação e permissões.
+- [presentation/screens/](presentation/screens/): Telas principais do app.
+- [presentation/components/](presentation/components/): Componentes reutilizáveis.
+- [utils/](utils/): Utilitários de tema, permissões, autenticação, notificações.
 
 ---
 

@@ -1,6 +1,6 @@
-import News from "../../../screens/users/News";
+import News from "../../../presentation/screens/users/News";
 
-export default function UserNews(){
+export default function UserNews() {
     return (
         <News />
     )

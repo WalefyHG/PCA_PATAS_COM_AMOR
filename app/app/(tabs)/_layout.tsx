@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next"
 import { Feather } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import HeaderLayout from "@/app/utils/HeaderLayout";
-import { useThemeContext } from "@/app/utils/ThemeContext";
+import { useThemeContext } from "@/app/presentation/contexts/ThemeContext";
 
 // Screens
 import User from './users/index';
@@ -14,17 +14,17 @@ import Profile from './profile/[id]';
 import About from './about/index';
 import Settings from './settings/index';
 import News from './news/index';
-import Adopt from "@/app/screens/Adopt";
-import AddBlogPost from "@/app/screens/AddBlogPost";
-import AdminConsole from "@/app/screens/AdminConsole";
-import BlogPostDetail from "@/app/screens/NewsDetails"
-import PetAdoptionDetail from "@/app/screens/AdoptionDetails"
-import AddPet from "@/app/screens/AddPet"
-import AddEditUserScreen from "@/app/screens/AddUsers"
-import AdminConsoleWeb from "@/app/screens/AdminConsoleWeb"
-import NotificationPreferences from "@/app/screens/NotificationsPreferences"
-import PermissionManager from "@/app/screens/PermissionManage"
-import ChatList from "@/app/screens/chat/ChatList"
+import Adopt from "@/app/presentation/screens/Adopt";
+import AddBlogPost from "@/app/presentation/screens/AddBlogPost";
+import AdminConsole from "@/app/presentation/screens/AdminConsole";
+import BlogPostDetail from "@/app/presentation/screens/NewsDetails"
+import PetAdoptionDetail from "@/app/presentation/screens/AdoptionDetails"
+import AddPet from "@/app/presentation/screens/AddPet"
+import AddEditUserScreen from "@/app/presentation/screens/AddUsers"
+import AdminConsoleWeb from "@/app/presentation/screens/AdminConsoleWeb"
+import NotificationPreferences from "@/app/presentation/screens/NotificationsPreferences"
+import PermissionManager from "@/app/presentation/screens/PermissionManage"
+import ChatList from "@/app/presentation/screens/chat/ChatList"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()

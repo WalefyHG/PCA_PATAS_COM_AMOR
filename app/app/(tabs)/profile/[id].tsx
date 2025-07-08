@@ -1,6 +1,6 @@
-import Profile from "../../../screens/users/Profile";
+import Profile from "../../../presentation/screens/users/Profile";
 
-export default function UserProfile(){
+export default function UserProfile() {
     return (
         <Profile />
     )
