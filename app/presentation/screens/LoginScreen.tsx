@@ -222,9 +222,9 @@ export default function LoginScreen() {
 
       <View style={styles.content}>
         <Image
-          source={require("../../assets/logo.png")}
+          source={require("../../../assets/logo.png")}
           style={styles.logo}
-          defaultSource={require("../../assets/logo.png")}
+          defaultSource={require("../../../assets/logo.png")}
         />
 
         <Text

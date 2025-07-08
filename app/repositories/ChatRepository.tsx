@@ -12,7 +12,7 @@ import {
     off,
 } from "firebase/database"
 import { database as db, auth } from "../data/datasources/firebase/firebase"
-import ExpoNotificationService from "../utils/NotificationsServices"
+import ExpoNotificationService from "../repositories/NotificationRepository"
 
 export interface ChatMessage {
     id?: string

@@ -74,10 +74,6 @@ export const createBlogPost = async (post: BlogPost): Promise<string> => {
         const currentUser = auth.currentUser
         if (!currentUser) throw new Error("User not authenticated")
 
-        // Verificar se o usuário é admin
-        const isAdmin = await isUserAdmin(currentUser.uid)
-        if (!isAdmin) throw new Error("Unauthorized: Only admins can create blog posts")
-
         // Adicionar metadados
         const postWithMetadata = {
             ...post,

@@ -84,9 +84,9 @@ export default function ForgotPasswordScreen() {
                 </TouchableOpacity>
 
                 <Image
-                    source={require("../../assets/logo.png")}
+                    source={require("../../../assets/logo.png")}
                     style={styles.logo}
-                    defaultSource={require("../../assets/logo.png")}
+                    defaultSource={require("../../../assets/logo.png")}
                 />
 
                 <Text style={[styles.headerText, { color: isDarkTheme ? colors.secondary : colors.primary, marginBottom: 30 }]}>

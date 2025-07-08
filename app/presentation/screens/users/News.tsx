@@ -7,7 +7,7 @@ import { Feather } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import HeaderLayout from "@/app/utils/HeaderLayout"
-import { getBlogPosts } from "@/app/data/datasources/firebase/firebase"
+import { getBlogPosts } from "@/app/repositories/FirebaseBlogRepository"
 
 interface BlogPost {
   id: string

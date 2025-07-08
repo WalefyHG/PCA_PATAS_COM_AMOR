@@ -100,8 +100,11 @@ export default function AddEditUserScreen() {
                 await createUser(user)
                 Alert.alert("Sucesso", "Usuário criado com sucesso!")
             }
-
-            navigate.navigate("AdminConsole")
+            if (user.role === "admin") {
+                navigate.navigate("AdminConsole")
+            } else {
+                navigate.navigate("Home")
+            }
         } catch (error) {
             console.error(error)
             Alert.alert("Erro", "Erro ao salvar usuário, tente novamente.")

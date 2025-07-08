@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, ScrollView, Alert, Platform, Animated, StyleSheet } from "react-native"
+import { View, Text, ScrollView, Alert, Platform, Animated } from "react-native"
 import { useThemeContext } from "../../contexts/ThemeContext"
 import { Feather } from "@expo/vector-icons"
 import { auth, isUserAdmin } from "../../../data/datasources/firebase/firebase"
@@ -10,17 +10,18 @@ import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import { SettingActionItem, SettingLinkItem, SettingsSection, SettingToggleItem } from "./SettingsUtils"
 import HeaderLayout from "@/app/utils/HeaderLayout"
+import { DeleteAccountModal } from "../../components/DeletedModal"
 
 export default function Settings() {
   const { toggleTheme, isDarkTheme, colors } = useThemeContext()
   const navigation = useNavigation<any>()
   const isWeb = Platform.OS === "web"
   const [isAdmin, setIsAdmin] = useState(false)
-
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [settings, setSettings] = useState({
     notifications: true,
     emailUpdates: true,
-    locationServices: false
+    locationServices: false,
   })
 
   // Animated values
@@ -55,8 +56,16 @@ export default function Settings() {
     }
   }
 
+  const handleAccountDeleted = () => {
+    // Navegar para tela de login após conta ser deletada
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Login" }],
+    })
+  }
+
   const toggleSetting = (key: keyof typeof settings) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }))
+    setSettings((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   useEffect(() => {
@@ -76,7 +85,7 @@ export default function Settings() {
   }, [])
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDarkTheme ? '#111827' : '#f3f4f6' }}>
+    <View style={{ flex: 1, backgroundColor: isDarkTheme ? "#111827" : "#f3f4f6" }}>
       {/* Header */}
       <LinearGradient
         colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
@@ -85,44 +94,60 @@ export default function Settings() {
         style={{
           paddingTop: Platform.select({ ios: 60, android: 40, web: 80 }),
           paddingBottom: 40,
-          paddingHorizontal: isWeb ? '20%' : 24
+          paddingHorizontal: isWeb ? "20%" : 24,
         }}
       >
-        <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+        <View
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 20,
+            flexDirection: "row",
+            alignSelf: "flex-end",
+            alignItems: "center",
+          }}
+        >
           <HeaderLayout title="Configurações" />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 16
-          }}>
+
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View
+            style={{
+              backgroundColor: "rgba(255,255,255,0.2)",
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 16,
+            }}
+          >
             <Feather name="settings" size={24} color="white" />
           </View>
           <View>
-            <Text style={{
-              color: 'white',
-              fontSize: 24,
-              fontWeight: 'bold',
-              ...Platform.select({
-                ios: { fontFamily: "San Francisco" },
-                android: { fontFamily: "Roboto" },
-              }),
-            }}>
+            <Text
+              style={{
+                color: "white",
+                fontSize: 24,
+                fontWeight: "bold",
+                ...Platform.select({
+                  ios: { fontFamily: "San Francisco" },
+                  android: { fontFamily: "Roboto" },
+                }),
+              }}
+            >
               Configurações
             </Text>
-            <Text style={{
-              color: 'rgba(255,255,255,0.8)',
-              fontSize: 14,
-              ...Platform.select({
-                ios: { fontFamily: "San Francisco" },
-                android: { fontFamily: "Roboto" },
-              }),
-            }}>
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 14,
+                ...Platform.select({
+                  ios: { fontFamily: "San Francisco" },
+                  android: { fontFamily: "Roboto" },
+                }),
+              }}
+            >
               Gerencie suas preferências
             </Text>
           </View>
@@ -133,8 +158,8 @@ export default function Settings() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           padding: isWeb ? 24 : 16,
-          paddingHorizontal: isWeb ? '20%' : 16,
-          paddingBottom: 40
+          paddingHorizontal: isWeb ? "20%" : 16,
+          paddingBottom: 40,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -162,7 +187,9 @@ export default function Settings() {
               <SettingLinkItem
                 icon="shield"
                 title="Painel Admin"
-                onPress={() => Platform.OS === 'web' ? navigation.navigate("AdminConsoleWeb") : navigation.navigate("AdminConsole")}
+                onPress={() =>
+                  Platform.OS === "web" ? navigation.navigate("AdminConsoleWeb") : navigation.navigate("AdminConsole")
+                }
                 colors={colors}
                 isDark={isDarkTheme}
               />
@@ -179,13 +206,14 @@ export default function Settings() {
               isDark={isDarkTheme}
             />
           </SettingsSection>
+
           {/* Notifications Section */}
           <SettingsSection title="Notificações" icon="bell">
             <SettingToggleItem
               icon="bell"
               title="Notificações Push"
               value={settings.notifications}
-              onToggle={() => toggleSetting('notifications')}
+              onToggle={() => toggleSetting("notifications")}
               colors={colors}
               isDark={isDarkTheme}
             />
@@ -193,7 +221,7 @@ export default function Settings() {
               icon="mail"
               title="Atualizações por Email"
               value={settings.emailUpdates}
-              onToggle={() => toggleSetting('emailUpdates')}
+              onToggle={() => toggleSetting("emailUpdates")}
               colors={colors}
               isDark={isDarkTheme}
             />
@@ -205,7 +233,7 @@ export default function Settings() {
               icon="map-pin"
               title="Serviços de Localização"
               value={settings.locationServices}
-              onToggle={() => toggleSetting('locationServices')}
+              onToggle={() => toggleSetting("locationServices")}
               colors={colors}
               isDark={isDarkTheme}
             />
@@ -241,36 +269,52 @@ export default function Settings() {
               colors={colors}
               isDark={isDarkTheme}
             />
+            <SettingLinkItem
+              icon="trash-2"
+              title="Excluir Conta"
+              onPress={() => setShowDeleteModal(true)}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
             <SettingActionItem
               icon="log-out"
               title="Sair da Conta"
-              onPress={() => Alert.alert(
-                "Sair",
-                "Tem certeza que deseja sair?",
-                [
+              onPress={() =>
+                Alert.alert("Sair", "Tem certeza que deseja sair?", [
                   { text: "Cancelar", style: "cancel" },
-                  { text: "Sair", onPress: handleLogout }
-                ]
-              )}
+                  { text: "Sair", onPress: handleLogout },
+                ])
+              }
               color="#EF4444"
-              isDark={isDarkTheme} colors={undefined} />
+              isDark={isDarkTheme}
+              colors={undefined}
+            />
           </SettingsSection>
 
           {/* App Version */}
-          <Text style={{
-            textAlign: 'center',
-            marginTop: 32,
-            color: isDarkTheme ? '#6b7280' : '#9ca3af',
-            fontSize: 12,
-            ...Platform.select({
-              ios: { fontFamily: "San Francisco" },
-              android: { fontFamily: "Roboto" },
-            }),
-          }}>
+          <Text
+            style={{
+              textAlign: "center",
+              marginTop: 32,
+              color: isDarkTheme ? "#6b7280" : "#9ca3af",
+              fontSize: 12,
+              ...Platform.select({
+                ios: { fontFamily: "San Francisco" },
+                android: { fontFamily: "Roboto" },
+              }),
+            }}
+          >
             Versão 1.0.0 · Patas com Amor
           </Text>
         </Animated.View>
       </ScrollView>
+
+      {/* Modal de Deletar Conta */}
+      <DeleteAccountModal
+        visible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onAccountDeleted={handleAccountDeleted}
+      />
     </View>
   )
 }

@@ -223,10 +223,18 @@ export default function AddBlogPost() {
 
             if (isEditing) {
                 await updateBlogPost(postId, postData)
-                Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
+                if (Platform.OS !== "web") {
+                    Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
+                } else {
+                    navigation.navigate("News")
+                }
             } else {
                 await createBlogPost(postData)
-                Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
+                if (Platform.OS !== "web") {
+                    Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
+                } else {
+                    navigation.navigate("News")
+                }
             }
         } catch (error) {
             console.error("Erro ao salvar post:", error)
@@ -533,10 +541,10 @@ export default function AddBlogPost() {
                                     <Text style={styles.submitButtonText}>{isEditing ? "Atualizando..." : "Publicando..."}</Text>
                                 </View>
                             ) : (
-                                <View style={styles.submitButtonContent}>
+                                <TouchableOpacity style={styles.submitButtonContent} onPress={handleSubmit}>
                                     <Feather name="send" size={isSmallScreen ? 18 : 20} color="white" />
                                     <Text style={styles.submitButtonText}>{isEditing ? "Atualizar Post" : "Publicar Post"}</Text>
-                                </View>
+                                </TouchableOpacity>
                             )}
                         </TouchableOpacity>
                     </Animated.View>

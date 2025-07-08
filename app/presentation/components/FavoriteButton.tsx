@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { TouchableOpacity, StyleSheet, Animated } from "react-native"
 import { Feather } from "@expo/vector-icons"
-import NotificationService from "../../utils/NotificationsServices"
+import NotificationService from "../../repositories/NotificationRepository"
 
 interface FavoriteButtonProps {
     petId: string
