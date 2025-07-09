@@ -227,20 +227,6 @@ export default function LoginScreen() {
           defaultSource={require("../../../assets/logo.png")}
         />
 
-        <Text
-          style={[
-            styles.platformIndicator,
-            { color: isDarkTheme ? colors.secondary : colors.primary, marginBottom: 30 },
-          ]}
-        >
-          {Platform.select({
-            ios: "Versão do App para iOS",
-            android: "Versão do App para Android",
-            web: "Versão do App para Web",
-            default: "Versão do App",
-          })}
-        </Text>
-
         <View style={styles.formContainer}>
           <Input
             style={[

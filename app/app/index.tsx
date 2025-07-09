@@ -116,14 +116,6 @@ export default function HomeScreen() {
       <View style={styles.topShape} />
       <View style={styles.content}>
         <Image source={require('../../assets/logo.png')} style={styles.logo} />
-        <Text style={styles.platformIndicator}>
-          {Platform.select({
-            ios: 'Versão do App para iOS',
-            android: 'Versão do App para Android',
-            web: 'Versão do App para Web',
-            default: 'Versão do App',
-          })}
-        </Text>
 
         <View style={styles.formContainer}>
           <Input
