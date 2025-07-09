@@ -1,105 +1,110 @@
-const admin = require("firebase-admin");
-const serviceAccount = require("./serviceAccountKey.json");
+const admin = require("firebase-admin")
+const serviceAccount = require("./serviceAccountKey.json")
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-});
+})
 
-const db = admin.firestore();
+const db = admin.firestore()
 
 const blogPosts = [
     {
-        title: "Como preparar seu lar para um novo pet",
-        content: "Receber um novo animal exige planejamento. Veja dicas importantes para que a adaptação seja tranquila para todos.",
-        excerpt: "Dicas essenciais para preparar a casa para adoção.",
-        author: "Ana Oliveira",
-        authorId: "ana123",
-        authorAvatar: "https://randomuser.me/api/portraits/women/45.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-05-10")),
-        image: "https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&w=800&q=80",
-        likes: 30,
-        comments: 5,
-        category: "Cuidados",
-        status: "published",
-        readTime: "4 min",
-    },
-    {
-        title: "História do Thor: de abandonado a herói",
-        content: "Conheça a trajetória do Thor, um cão que salvou uma criança e conquistou uma nova família.",
-        excerpt: "A incrível jornada de superação de Thor.",
-        author: "Carlos Mendes",
-        authorId: "carlos456",
-        authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-03-15")),
-        image: "https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=800&q=80",
-        likes: 58,
-        comments: 12,
-        category: "Histórias reais",
-        status: "published",
-        readTime: "5 min",
-    },
-    {
-        title: "Importância da vacinação para pets",
-        content: "Saiba quais vacinas seu pet precisa e por que a vacinação é fundamental para a saúde deles.",
-        excerpt: "Proteja seu pet: vacinação em dia.",
-        author: "Marina Silva",
-        authorId: "marina789",
-        authorAvatar: "https://randomuser.me/api/portraits/women/68.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-04-20")),
-        image: "https://images.unsplash.com/photo-1583337130417-7602a51f8d6a?auto=format&fit=crop&w=800&q=80",
-        likes: 45,
-        comments: 9,
-        category: "Saúde",
-        status: "published",
-        readTime: "3 min",
-    },
-    {
-        title: "Adotar é um ato de amor",
-        content: "Veja as vantagens da adoção responsável e como isso pode mudar a vida de um pet e da sua família.",
-        excerpt: "Adotar muda vidas, inclusive a sua.",
-        author: "Lucas Ferreira",
-        authorId: "lucas321",
-        authorAvatar: "https://randomuser.me/api/portraits/men/54.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-06-01")),
-        image: "https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=800&q=80",
-        likes: 75,
-        comments: 15,
+        title: "Primeiros passos na adoção de cães: guia completo",
+        content:
+            "Adotar um cão é uma decisão que mudará sua vida para sempre. Neste guia, você encontrará todas as informações necessárias para fazer uma adoção responsável, desde a escolha do pet ideal até os primeiros cuidados em casa. Abordaremos questões como preparação do ambiente, documentação necessária e adaptação do animal ao novo lar.",
+        excerpt: "Tudo que você precisa saber antes de adotar seu primeiro cão.",
+        author: "Dr. Ricardo Almeida",
+        authorId: "ricardo123",
+        authorAvatar: "https://randomuser.me/api/portraits/men/45.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-05")),
+        image: "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=800&q=80", // Pessoa adotando cão
+        likes: 42,
+        comments: 8,
         category: "Adoção",
         status: "published",
         readTime: "6 min",
     },
     {
-        title: "Dicas para cuidar de pets com necessidades especiais",
-        content: "Saiba como adaptar seu lar e rotina para oferecer o melhor cuidado para pets com necessidades especiais.",
-        excerpt: "Cuidando com amor e atenção.",
-        author: "Isabela Costa",
-        authorId: "isabela654",
-        authorAvatar: "https://randomuser.me/api/portraits/women/21.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-05-28")),
-        image: "https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=800&q=80",
-        likes: 22,
-        comments: 4,
+        title: "Cuidados essenciais com gatos filhotes",
+        content:
+            "Os primeiros meses de vida de um gatinho são cruciais para seu desenvolvimento saudável. Este artigo aborda alimentação adequada, vacinação, socialização e cuidados veterinários essenciais. Também discutimos como criar um ambiente seguro e estimulante para filhotes de gatos, incluindo brinquedos apropriados e áreas de descanso.",
+        excerpt: "Como cuidar adequadamente de gatinhos nos primeiros meses de vida.",
+        author: "Dra. Fernanda Costa",
+        authorId: "fernanda456",
+        authorAvatar: "https://randomuser.me/api/portraits/women/32.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-12")),
+        image: "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=800&q=80", // Gatinhos filhotes
+        likes: 67,
+        comments: 12,
+        category: "Cuidados",
+        status: "published",
+        readTime: "5 min",
+    },
+    {
+        title: "Pets idosos: amor e cuidados especiais",
+        content:
+            "Animais idosos merecem atenção especial e muito amor. Neste artigo, exploramos as necessidades específicas de cães e gatos na terceira idade, incluindo adaptações na alimentação, exercícios adequados, cuidados médicos preventivos e como proporcionar conforto e qualidade de vida. Também abordamos a importância da adoção de pets idosos.",
+        excerpt: "Cuidando com carinho dos nossos companheiros na melhor idade.",
+        author: "Veterinária Ana Paula",
+        authorId: "ana789",
+        authorAvatar: "https://randomuser.me/api/portraits/women/58.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-18")),
+        image: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80", // Cão idoso
+        likes: 89,
+        comments: 15,
         category: "Cuidados Especiais",
         status: "published",
+        readTime: "7 min",
+    },
+    {
+        title: "A importância da castração para pets",
+        content:
+            "A castração é um procedimento fundamental para a saúde e bem-estar dos animais de estimação. Este artigo explica os benefícios médicos e comportamentais da castração, o melhor momento para realizar o procedimento, cuidados pós-operatórios e como isso contribui para o controle populacional de animais abandonados.",
+        excerpt: "Entenda por que a castração é essencial para seu pet.",
+        author: "Dr. Carlos Mendes",
+        authorId: "carlos321",
+        authorAvatar: "https://randomuser.me/api/portraits/men/41.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-25")),
+        image: "https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=800&q=80", // Veterinário com pet
+        likes: 54,
+        comments: 9,
+        category: "Saúde",
+        status: "published",
         readTime: "4 min",
-    }
-];
+    },
+    {
+        title: "Histórias de superação: pets que encontraram uma nova chance",
+        content:
+            "Conheça histórias emocionantes de animais que superaram traumas e encontraram famílias amorosas. Desde cães resgatados de situações de maus-tratos até gatos abandonados que se tornaram companheiros fiéis, estas narrativas mostram o poder transformador do amor e cuidado. Cada história é um testemunho da resiliência animal e da importância da adoção responsável.",
+        excerpt: "Histórias reais que tocam o coração e inspiram a adoção.",
+        author: "Jornalista Marina Silva",
+        authorId: "marina654",
+        authorAvatar: "https://randomuser.me/api/portraits/women/28.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-02-01")),
+        image: "https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=800&q=80", // Cão resgatado feliz
+        likes: 126,
+        comments: 23,
+        category: "Histórias Reais",
+        status: "published",
+        readTime: "8 min",
+    },
+]
 
 const pets = [
     {
-        name: "Luna",
+        name: "Bella",
         age: "2 anos",
         type: "cachorro",
-        breed: "Labrador",
+        breed: "Golden Retriever",
         gender: "fêmea",
         size: "grande",
-        color: "preto",
-        description: "Brincalhona, ótima com crianças.",
-        history: "Resgatada de situação de maus-tratos.",
-        images: [
-            "https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&w=800&q=80"
-        ],
-        requirements: ["Espaço amplo", "Família presente"],
+        color: "dourado",
+        description:
+            "Bella é uma cadela extremamente carinhosa e brincalhona. Adora crianças e é muito obediente. Tem energia para brincar, mas também ama momentos de carinho no sofá.",
+        history:
+            "Bella foi resgatada de uma situação de abandono quando ainda era filhote. Passou por tratamento veterinário completo e agora está pronta para encontrar uma família amorosa.",
+        images: ["https://www.canilgoldenpremier.com.br/assets/images/nossos/femeas/g/dig1.jpg"], // Golden Retriever fêmea dourada
+        requirements: ["Casa com quintal", "Família ativa", "Tempo para exercícios diários"],
         location: "São Paulo, SP",
         vaccinated: true,
         neutered: true,
@@ -107,174 +112,188 @@ const pets = [
         status: "available",
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
-        createdBy: "ong123"
+        createdBy: "5F0yAX4lG2gPr5NchPbreCp6Dn03",
     },
     {
-        name: "Mimi",
-        age: "1 ano",
+        name: "Simba",
+        age: "6 meses",
         type: "gato",
-        breed: "SRD",
-        gender: "fêmea",
+        breed: "Persa",
+        gender: "macho",
         size: "pequeno",
-        color: "cinza",
-        description: "Carinhosa e calma, adora colo.",
-        history: "Abandonada ainda filhote.",
-        images: [
-            "https://images.unsplash.com/photo-1574158622681-7b3c1c8d3b7b?auto=format&fit=crop&w=800&q=80"
-        ],
-        requirements: ["Ambiente calmo", "Janela telada"],
-        location: "Parnaíba, PI",
+        color: "laranja",
+        description:
+            "Simba é um gatinho persa muito carinhoso e tranquilo. Adora colo e ronrona sempre que recebe carinho. É brincalhão mas não destrutivo.",
+        history:
+            "Simba foi encontrado sozinho na rua quando tinha apenas 2 meses. Foi cuidado por uma família temporária e agora está pronto para adoção.",
+        images: ["https://static.ndmais.com.br/2024/07/gato-persa-laranja-800x533.jpg"], // Gato persa laranja
+        requirements: ["Ambiente interno", "Janelas teladas", "Paciência com filhote"],
+        location: "Rio de Janeiro, RJ",
         vaccinated: true,
-        neutered: true,
-        specialNeeds: true,
-        specialNeedsDescription: "Precisa de medicação diária para rins.",
+        neutered: false,
+        specialNeeds: false,
         status: "available",
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
-        createdBy: "ong456"
+        createdBy: "5F0yAX4lG2gPr5NchPbreCp6Dn03",
     },
     {
-        name: "Bolt",
+        name: "Max",
+        age: "4 anos",
+        type: "cachorro",
+        breed: "Labrador Mix",
+        gender: "macho",
+        size: "grande",
+        color: "preto",
+        description:
+            "Max é um cão muito inteligente e leal. Já foi treinado e conhece comandos básicos. É protetor mas não agressivo, ideal para famílias.",
+        history:
+            "Max foi doado por uma família que se mudou para um apartamento pequeno. É um cão bem cuidado e socializado.",
+        images: ["https://static.wixstatic.com/media/db516d_29006f5a1e304f068b4fea66c40bab83~mv2.jpg/v1/fill/w_640,h_450,al_c,q_80,usm_1.20_1.00_0.01,enc_avif,quality_auto/db516d_29006f5a1e304f068b4fea66c40bab83~mv2.jpg"], // Labrador preto
+        requirements: ["Espaço amplo", "Exercícios regulares", "Família experiente com cães"],
+        location: "Belo Horizonte, MG",
+        vaccinated: true,
+        neutered: true,
+        specialNeeds: false,
+        status: "available",
+        createdAt: admin.firestore.Timestamp.now(),
+        updatedAt: admin.firestore.Timestamp.now(),
+        createdBy: "5F0yAX4lG2gPr5NchPbreCp6Dn03",
+    },
+    {
+        name: "Luna",
         age: "3 anos",
+        type: "gato",
+        breed: "SRD",
+        gender: "fêmea",
+        size: "médio",
+        color: "cinza e branco",
+        description:
+            "Luna é uma gata muito independente mas carinhosa. Gosta de observar pela janela e é muito limpa. Convive bem com outros gatos.",
+        history:
+            "Luna vivia na rua e foi resgatada grávida. Seus filhotes já foram adotados e agora é a vez dela encontrar um lar.",
+        images: ["https://blog-static.petlove.com.br/wp-content/uploads/2020/10/gato-cinza-tigrado-petove.jpg"], // Gata cinza e branca
+        requirements: ["Ambiente calmo", "Janelas teladas", "Caixa de areia sempre limpa"],
+        location: "Curitiba, PR",
+        vaccinated: true,
+        neutered: true,
+        specialNeeds: false,
+        status: "available",
+        createdAt: admin.firestore.Timestamp.now(),
+        updatedAt: admin.firestore.Timestamp.now(),
+        createdBy: "5F0yAX4lG2gPr5NchPbreCp6Dn03",
+    },
+    {
+        name: "Thor",
+        age: "8 anos",
         type: "cachorro",
         breed: "Pastor Alemão",
         gender: "macho",
         size: "grande",
         color: "marrom e preto",
-        description: "Protector e inteligente, ótimo cão de guarda.",
-        history: "Doado por família que não podia cuidar.",
-        images: [
-            "https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=800&q=80"
-        ],
-        requirements: ["Exercício diário", "Treinamento constante"],
-        location: "Belo Horizonte, MG",
+        description:
+            "Thor é um cão idoso muito sábio e calmo. Apesar da idade, ainda gosta de caminhadas leves. É extremamente fiel e carinhoso.",
+        history:
+            "Thor foi abandonado após seu dono idoso falecer. É um cão bem educado que merece passar seus anos dourados em uma família amorosa.",
+        images: ["https://images.unsplash.com/photo-1630357265106-8ea40e77ab30?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"], // Pastor Alemão marrom e preto
+        requirements: ["Família paciente", "Cuidados veterinários regulares", "Ambiente tranquilo"],
+        location: "Porto Alegre, RS",
         vaccinated: true,
-        neutered: false,
-        specialNeeds: false,
+        neutered: true,
+        specialNeeds: true,
+        specialNeedsDescription: "Artrite leve, precisa de medicação para dor ocasionalmente.",
         status: "available",
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
-        createdBy: "ong789"
+        createdBy: "5F0yAX4lG2gPr5NchPbreCp6Dn03",
     },
-    {
-        name: "Mia",
-        age: "4 meses",
-        type: "gato",
-        breed: "Siamês",
-        gender: "fêmea",
-        size: "pequeno",
-        color: "bege com preto",
-        description: "Curiosa e brincalhona, adora subir em móveis.",
-        history: "Encontrada na rua, está em recuperação.",
-        images: [
-            "https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=800&q=80"
-        ],
-        requirements: ["Ambiente seguro", "Brinquedos"],
-        location: "Curitiba, PR",
-        vaccinated: false,
-        neutered: false,
-        specialNeeds: false,
-        status: "pending",
-        createdAt: admin.firestore.Timestamp.now(),
-        updatedAt: admin.firestore.Timestamp.now(),
-        createdBy: "ong321"
-    },
-    {
-        name: "Thor",
-        age: "5 anos",
-        type: "cachorro",
-        breed: "Boxer",
-        gender: "macho",
-        size: "médio",
-        color: "marrom",
-        description: "Calmo e carinhoso, ótimo com crianças.",
-        history: "Resgatado de abandono.",
-        images: [
-            "https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=800&q=80"
-        ],
-        requirements: ["Casa com quintal", "Atenção diária"],
-        location: "Rio de Janeiro, RJ",
-        vaccinated: true,
-        neutered: true,
-        specialNeeds: false,
-        status: "adopted",
-        createdAt: admin.firestore.Timestamp.now(),
-        updatedAt: admin.firestore.Timestamp.now(),
-        createdBy: "ong654"
-    }
-];
+]
 
 const comments = [
     {
-        postId: "", // vai ser atualizado após criação do post
-        author: "Joana Lima",
-        authorId: "joana789",
-        authorAvatar: "https://randomuser.me/api/portraits/women/33.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-06-12")),
-        content: "Amei a história do Thor!",
-        likes: 8
+        postId: "", // será atualizado após criação do post
+        author: "Maria Santos",
+        authorId: "maria123",
+        authorAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-06")),
+        content: "Excelente artigo! Me ajudou muito na decisão de adotar meu primeiro cão.",
+        likes: 12,
     },
     {
         postId: "",
-        author: "Felipe Rocha",
-        authorId: "felipe987",
-        authorAvatar: "https://randomuser.me/api/portraits/men/11.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-06-13")),
-        content: "Muito inspirador!",
-        likes: 3
+        author: "João Silva",
+        authorId: "joao456",
+        authorAvatar: "https://randomuser.me/api/portraits/men/33.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-13")),
+        content: "As dicas sobre gatinhos foram muito úteis. Minha gatinha está crescendo saudável!",
+        likes: 8,
     },
     {
         postId: "",
-        author: "Camila Souza",
-        authorId: "camila321",
-        authorAvatar: "https://randomuser.me/api/portraits/women/55.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-06-10")),
-        content: "Gostaria de saber mais sobre a adoção de gatos.",
-        likes: 6
+        author: "Carla Oliveira",
+        authorId: "carla789",
+        authorAvatar: "https://randomuser.me/api/portraits/women/29.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-19")),
+        content: "Que bom ver conteúdo sobre pets idosos. Eles merecem muito amor!",
+        likes: 15,
     },
     {
         postId: "",
-        author: "Rafael Silva",
-        authorId: "rafael654",
-        authorAvatar: "https://randomuser.me/api/portraits/men/40.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-06-11")),
-        content: "As dicas para preparar a casa foram muito úteis.",
-        likes: 4
+        author: "Pedro Costa",
+        authorId: "pedro321",
+        authorAvatar: "https://randomuser.me/api/portraits/men/52.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-01-26")),
+        content: "Informações muito importantes sobre castração. Todos deveriam ler!",
+        likes: 6,
     },
     {
         postId: "",
-        author: "Larissa Martins",
-        authorId: "larissa987",
-        authorAvatar: "https://randomuser.me/api/portraits/women/15.jpg",
-        date: admin.firestore.Timestamp.fromDate(new Date("2025-06-09")),
-        content: "Muito bom conteúdo, parabéns!",
-        likes: 7
-    }
-];
+        author: "Lucia Ferreira",
+        authorId: "lucia654",
+        authorAvatar: "https://randomuser.me/api/portraits/women/38.jpg",
+        date: admin.firestore.Timestamp.fromDate(new Date("2025-02-02")),
+        content: "Chorei lendo essas histórias. Que inspiração para adotar!",
+        likes: 22,
+    },
+]
 
 async function importAll() {
-    const postRefs = [];
+    try {
+        console.log("🚀 Iniciando importação dos dados...")
 
-    // Import blog posts
-    for (const post of blogPosts) {
-        const docRef = await db.collection("blog_posts").add(post);
-        postRefs.push(docRef.id);
+        const postRefs = []
+
+        // Import blog posts
+        console.log("📝 Importando posts do blog...")
+        for (const post of blogPosts) {
+            const docRef = await db.collection("blog_posts").add(post)
+            postRefs.push(docRef.id)
+            console.log(`✅ Post "${post.title}" importado com ID: ${docRef.id}`)
+        }
+
+        // Import pets
+        console.log("🐕 Importando pets...")
+        for (const pet of pets) {
+            const docRef = await db.collection("pets").add(pet)
+            console.log(`✅ Pet "${pet.name}" importado com ID: ${docRef.id}`)
+        }
+
+        // Atualiza postId nos comentários e importa
+        console.log("💬 Importando comentários...")
+        comments.forEach((comment, i) => {
+            comment.postId = postRefs[i % postRefs.length]
+        })
+
+        for (const comment of comments) {
+            const docRef = await db.collection("comments").add(comment)
+            console.log(`✅ Comentário de "${comment.author}" importado com ID: ${docRef.id}`)
+        }
+
+        console.log("🎉 Importação concluída com sucesso!")
+        console.log(`📊 Resumo: ${blogPosts.length} posts, ${pets.length} pets, ${comments.length} comentários`)
+    } catch (error) {
+        console.error("❌ Erro durante a importação:", error)
     }
-
-    // Import pets
-    for (const pet of pets) {
-        await db.collection("pets").add(pet);
-    }
-
-    // Atualiza postId nos comentários e importa
-    comments.forEach((comment, i) => {
-        comment.postId = postRefs[i % postRefs.length];
-    });
-    for (const comment of comments) {
-        await db.collection("comments").add(comment);
-    }
-
-    console.log("✅ Importação concluída com dados e imagens reais.");
 }
 
-importAll().catch(console.error);
+importAll().catch(console.error)
