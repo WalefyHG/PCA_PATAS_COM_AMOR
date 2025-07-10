@@ -2,8 +2,8 @@ import 'dotenv/config';
 
 export default {
     expo: {
-        name: "test expo",
-        slug: "test-expo",
+        name: "Patas Com Amor",
+        slug: "patas-com-amor",
         plugins: ["expo-router"],
         router: {
             appRoot: 'app/'
