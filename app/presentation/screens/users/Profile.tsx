@@ -162,22 +162,6 @@ export default function Profile() {
           end={{ x: 1, y: 0 }}
           style={{ paddingTop: 60, paddingBottom: 40, paddingHorizontal: 16, position: "relative" }}
         >
-          {/* Título centralizado */}
-          <View style={{ alignItems: "center", justifyContent: "center" }}>
-            <Text
-              style={{
-                color: "white",
-                fontSize: 20,
-                fontWeight: "bold",
-                ...Platform.select({
-                  ios: { fontFamily: "San Francisco" },
-                  android: { fontFamily: "Roboto" },
-                }),
-              }}
-            >
-              Perfil
-            </Text>
-          </View>
 
           {/* HeaderLayout posicionado absolutamente na direita */}
           <View
