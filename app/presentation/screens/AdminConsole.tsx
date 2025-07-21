@@ -14,48 +14,51 @@ import {
     Platform,
     Animated,
     ActivityIndicator,
+    Modal,
 } from "react-native"
 import { useThemeContext } from "../contexts/ThemeContext"
 import { Feather, FontAwesome } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import { useTranslation } from "react-i18next"
-import {
-    isUserAdmin,
-} from "../../data/datasources/firebase/firebase"
+import { isUserAdmin } from "../../data/datasources/firebase/firebase"
 
-import {
-    getBlogPosts,
-    deleteBlogPost,
-    type BlogPost,
-} from "../../repositories/FirebaseBlogRepository"
+import { getBlogPosts, deleteBlogPost, type BlogPost } from "../../repositories/FirebaseBlogRepository"
 
-import {
-    getPets,
-    deletePet,
-    type Pet,
-} from "../../repositories/FirebasePetRepository"
+import { getPets, deletePet, type Pet } from "../../repositories/FirebasePetRepository"
 
-import {
-    getUsers,
-    deleteUserProfile,
-} from "../../repositories/FirebaseUserRepository"
+import { getUsers, deleteUserProfile } from "../../repositories/FirebaseUserRepository"
 
-import { UserProfile } from "../../domain/entities/User"
+import type { UserProfile } from "../../domain/entities/User"
+import type { Donation } from "../../domain/entities/Ongs"
+import { ongRepository } from "../../repositories/FirebaseOngRepository"
+import { asaasService } from "../../repositories/AsaasRepository"
 
 import { auth } from "../../data/datasources/firebase/firebase"
 import HeaderLayout from "../../utils/HeaderLayout"
 import { ConfirmModal } from "../../utils/ConfirmModal"
-import { User } from "firebase/auth"
-import { Mail } from "lucide-react"
+import { ErrorModal } from "../components/ErrorModal"
+import PaymentDetailsModal from "../components/PaymentDetailsModal" // Importar o novo componente
+import type { User } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
-import Svg, { Path } from "react-native-svg"
 
 // Tipos para os dados
 interface AdminTab {
     id: string
     title: string
     icon: keyof typeof Feather.glyphMap
+}
+
+interface PaymentDetails {
+    id: string
+    status: string
+    value: number
+    paymentDate?: string
+    clientPaymentDate?: string
+    description?: string
+    invoiceUrl?: string
+    bankSlipUrl?: string
+    transactionReceiptUrl?: string
 }
 
 export default function AdminConsole() {
@@ -81,6 +84,37 @@ export default function AdminConsole() {
     const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
     const [pets, setPets] = useState<Pet[]>([])
     const [users, setUsers] = useState<UserProfile[]>([])
+    const [donations, setDonations] = useState<Donation[]>([])
+
+    // Estados do ErrorModal
+    const [errorModal, setErrorModal] = useState({
+        visible: false,
+        title: "",
+        message: "",
+        type: "error" as "error" | "success" | "warning" | "info",
+    })
+
+    // Estados para transferências
+    const [transferLoading, setTransferLoading] = useState<string | null>(null)
+    const [asaasBalance, setAsaasBalance] = useState<number | null>(null)
+
+    // Estados para detalhes do pagamento
+    const [paymentDetailsModalVisible, setPaymentDetailsModalVisible] = useState(false)
+    const [selectedPayment, setSelectedPayment] = useState<PaymentDetails | null>(null)
+    const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
+
+    const showError = (message: string, title?: string, type: "error" | "success" | "warning" | "info" = "error") => {
+        setErrorModal({
+            visible: true,
+            title: title || "",
+            message,
+            type,
+        })
+    }
+
+    const closeErrorModal = () => {
+        setErrorModal({ ...errorModal, visible: false })
+    }
 
     useEffect(() => {
         const checkAdminStatus = async () => {
@@ -89,17 +123,17 @@ export default function AdminConsole() {
                 setIsAdmin(adminStatus)
 
                 if (!adminStatus) {
-                    Alert.alert("Acesso Restrito", "Apenas administradores podem acessar esta página.", [
-                        { text: "OK", onPress: () => navigation.goBack() },
-                    ])
+                    showError("Apenas administradores podem acessar esta página.", "Acesso Restrito", "warning")
+                    setTimeout(() => navigation.goBack(), 3000)
                 } else {
                     // Carregar dados iniciais
                     fetchData()
+                    // Carregar saldo ASAAS
+                    loadAsaasBalance()
                 }
             } else {
-                Alert.alert("Não Autenticado", "Você precisa estar logado para acessar esta página.", [
-                    { text: "OK", onPress: () => navigation.goBack() },
-                ])
+                showError("Você precisa estar logado para acessar esta página.", "Não Autenticado", "warning")
+                setTimeout(() => navigation.goBack(), 3000)
             }
         }
 
@@ -130,12 +164,22 @@ export default function AdminConsole() {
     useEffect(() => {
         if (!isAdmin) {
             const timer = setTimeout(() => {
-                navigation.goBack(); // ou o nome correto da sua tela inicial
-            }, 3000); // 3 segundos
+                navigation.goBack() // ou o nome correto da sua tela inicial
+            }, 3000) // 3 segundos
 
-            return () => clearTimeout(timer); // limpa o timer se o componente desmontar antes
+            return () => clearTimeout(timer) // limpa o timer se o componente desmontar antes
         }
-    }, [isAdmin, navigation]);
+    }, [isAdmin, navigation])
+
+    const loadAsaasBalance = async () => {
+        try {
+            const balance = await asaasService.getBalance()
+            setAsaasBalance(balance.balance)
+        } catch (error) {
+            console.error("Error loading ASAAS balance:", error)
+            // Não mostrar erro para não poluir a interface
+        }
+    }
 
     const fetchData = async () => {
         setIsLoading(true)
@@ -149,14 +193,16 @@ export default function AdminConsole() {
                 // Buscar todos os pets (disponíveis, pendentes e adotados)
                 const allPets = await getPets("", "", 20)
                 setPets(allPets)
-            }
-            else if (activeTab === "users") {
-                const allUser = await getUsers(20);
-                setUsers(allUser);
+            } else if (activeTab === "users") {
+                const allUser = await getUsers(20)
+                setUsers(allUser)
+            } else if (activeTab === "donations") {
+                const allDonations = await ongRepository.getAllDonations()
+                setDonations(allDonations)
             }
         } catch (error) {
             console.error(`Error fetching ${activeTab} data:`, error)
-            Alert.alert("Erro", `Ocorreu um erro ao carregar os dados de ${activeTab}.`)
+            showError(`Ocorreu um erro ao carregar os dados de ${activeTab}.`, "Erro")
         } finally {
             setIsLoading(false)
         }
@@ -165,11 +211,17 @@ export default function AdminConsole() {
     const onRefresh = async () => {
         setRefreshing(true)
         await fetchData()
+        if (activeTab === "donations") {
+            await loadAsaasBalance()
+        }
         setRefreshing(false)
     }
 
     const handleTabChange = (tabId: string) => {
         setActiveTab(tabId)
+        if (tabId === "donations") {
+            loadAsaasBalance()
+        }
         fetchData()
     }
 
@@ -178,58 +230,168 @@ export default function AdminConsole() {
             navigation.navigate("AddBlogPost", { postId: id })
         } else if (type === "pet") {
             navigation.navigate("AddPet", { petId: id })
-        }
-        else if (type === "users") {
+        } else if (type === "users") {
             navigation.navigate("AddUsers", { userId: id })
         }
     }
     const openDeleteModal = (id: string, type: string) => {
-        setItemToDelete({ id, type });
-        setModalVisible(true);
-    };
+        setItemToDelete({ id, type })
+        setModalVisible(true)
+    }
 
     // Função que executa a exclusão
     const handleDelete = async (id: string, type: string) => {
         try {
             if (type === "blog") {
-                await deleteBlogPost(id);
-                setBlogPosts((prev) => prev.filter((post) => post.id !== id));
+                await deleteBlogPost(id)
+                setBlogPosts((prev) => prev.filter((post) => post.id !== id))
             } else if (type === "pet") {
-                await deletePet(id);
-                setPets((prev) => prev.filter((pet) => pet.id !== id));
-            }
-            else if (type === "users") {
+                await deletePet(id)
+                setPets((prev) => prev.filter((pet) => pet.id !== id))
+            } else if (type === "users") {
                 await deleteUserProfile(id)
-                setUsers((prev) => prev.filter((user) => user.uid !== id));
+                setUsers((prev) => prev.filter((user) => user.uid !== id))
             }
 
-            if (Platform.OS === "web") {
-                window.alert(`${type === "blog" ? "Post" : type === "pet" ? "Pet" : "Usuário"
-                    } excluído com sucesso!`);
-            } else {
-                Alert.alert("Sucesso", `${type === "blog" ? "Post" : "Pet"} excluído com sucesso!`);
-            }
+            showError(
+                `${type === "blog" ? "Post" : type === "pet" ? "Pet" : "Usuário"} excluído com sucesso!`,
+                "Sucesso",
+                "success",
+            )
         } catch (error) {
-            console.error("Erro ao excluir:", error);
-            if (Platform.OS === "web") {
-                window.alert(`Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`);
-            } else {
-                Alert.alert("Erro", `Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`);
-            }
+            console.error("Erro ao excluir:", error)
+            showError(`Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`, "Erro")
         } finally {
-            setModalVisible(false);
-            setItemToDelete(null);
+            setModalVisible(false)
+            setItemToDelete(null)
         }
-    };
+    }
 
     const handleAdd = () => {
         if (activeTab === "blog") {
             navigation.navigate("AddBlogPost")
         } else if (activeTab === "pets") {
             navigation.navigate("AddPet")
-        }
-        else if (activeTab === "users") {
+        } else if (activeTab === "users") {
             navigation.navigate("AddUsers")
+        }
+    }
+
+    const handleTransferDonation = async (donation: Donation, isAsaasAccount: boolean) => {
+        if (!donation.id) return
+
+        setTransferLoading(donation.id)
+
+        try {
+            if (isAsaasAccount) {
+                // Transferência automática via ASAAS
+                showError("Iniciando transferência automática...", "Processando", "info")
+
+                const result = await asaasService.processAutomaticTransfer(
+                    donation.id,
+                    donation.pixKey,
+                    donation.amount,
+                    `Doação para ${donation.ongName} - ${donation.donorName}`,
+                )
+
+                if (result.success) {
+                    // Atualizar a doação na lista local
+                    setDonations((prev) => prev.map((d) => (d.id === donation.id ? { ...d, status: "paid" as const } : d)))
+
+                    // Recarregar saldo
+                    await loadAsaasBalance()
+
+                    showError(result.message, "Transferência Realizada", "success")
+                } else {
+                    showError(result.message, "Erro na Transferência", "error")
+                }
+            } else {
+                // Marcar como transferido manualmente
+                await ongRepository.updateDonationStatus(donation.id, "paid")
+                setDonations((prev) => prev.map((d) => (d.id === donation.id ? { ...d, status: "paid" as const } : d)))
+                showError("Doação marcada como transferida manualmente.", "Sucesso", "success")
+            }
+        } catch (error) {
+            console.error("Erro ao processar transferência:", error)
+            showError("Erro ao processar transferência.", "Erro")
+        } finally {
+            setTransferLoading(null)
+        }
+    }
+
+    // Função para sincronizar status com ASAAS
+    const handleSyncStatus = async (donation: Donation) => {
+        if (!donation.id || !donation.asaasPaymentId) return
+
+        setPaymentLoading(donation.id)
+
+        try {
+            const result = await asaasService.syncDonationStatus(donation.id, donation.asaasPaymentId)
+
+            if (result.success) {
+                // Recarregar as doações para pegar o status atualizado
+                await fetchData()
+                showError(result.message, "Status Sincronizado", "success")
+            } else {
+                showError(result.message, "Erro na Sincronização", "error")
+            }
+        } catch (error) {
+            console.error("Erro ao sincronizar status:", error)
+            showError("Erro ao sincronizar status.", "Erro")
+        } finally {
+            setPaymentLoading(null)
+        }
+    }
+
+    // Função para ver detalhes do pagamento ASAAS
+    const handleViewPaymentDetails = async (donation: Donation) => {
+        if (!donation.asaasPaymentId) {
+            showError("Esta doação não possui ID de pagamento ASAAS.", "Sem Dados ASAAS", "warning")
+            return
+        }
+
+        setPaymentLoading(donation.id || "")
+
+        try {
+            const result = await asaasService.getPaymentDetails(donation.asaasPaymentId)
+
+            if (result.success && result.payment) {
+                setSelectedPayment({
+                    id: result.payment.id,
+                    status: result.payment.status,
+                    value: result.payment.value,
+                    paymentDate: result.payment.paymentDate,
+                    clientPaymentDate: result.payment.clientPaymentDate,
+                    description: result.payment.description,
+                    invoiceUrl: result.payment.invoiceUrl,
+                    bankSlipUrl: result.payment.bankSlipUrl,
+                    transactionReceiptUrl: result.payment.transactionReceiptUrl,
+                })
+                setPaymentDetailsModalVisible(true) // Abre o novo modal
+            } else {
+                showError(result.message, "Erro ao Buscar Detalhes", "error")
+            }
+        } catch (error) {
+            console.error("Erro ao buscar detalhes:", error)
+            showError("Erro ao buscar detalhes do pagamento.", "Erro")
+        } finally {
+            setPaymentLoading(null)
+        }
+    }
+
+    // Função para alterar status manualmente
+    const handleChangeStatus = async (donation: Donation, newStatus: "pending" | "paid" | "cancelled") => {
+        if (!donation.id) return
+
+        try {
+            await ongRepository.updateDonationStatus(donation.id, newStatus)
+            setDonations((prev) => prev.map((d) => (d.id === donation.id ? { ...d, status: newStatus } : d)))
+
+            const statusText = newStatus === "paid" ? "Pago" : newStatus === "cancelled" ? "Cancelado" : "Pendente"
+            showError(`Status alterado para: ${statusText}`, "Status Atualizado", "success")
+        } catch (error) {
+            console.error("Erro ao alterar status:", error)
+            showError("Erro ao alterar status da doação.", "Erro")
         }
     }
 
@@ -238,6 +400,7 @@ export default function AdminConsole() {
         { id: "blog", title: "Blog", icon: "book-open" },
         { id: "pets", title: "Pets", icon: "heart" },
         { id: "users", title: "Usuários", icon: "users" },
+        { id: "donations", title: "Doações", icon: "dollar-sign" },
         { id: "settings", title: "Configurações", icon: "settings" },
     ]
 
@@ -267,7 +430,7 @@ export default function AdminConsole() {
                 end={{ x: 1, y: 0 }}
                 className="pt-16 pb-4 px-4"
             >
-                <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center justify-between mb-4">
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
                         className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
@@ -277,10 +440,47 @@ export default function AdminConsole() {
                     <Text className="text-white text-xl font-bold">{t("Admin Console")}</Text>
                     <View className="w-10" />
                 </View>
-                <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+                <View
+                    style={{
+                        position: "absolute",
+                        right: 0,
+                        top: 50,
+                        flexDirection: "row",
+                        alignSelf: "flex-end",
+                        alignItems: "center",
+                    }}
+                >
                     <HeaderLayout title="Profile" />
                 </View>
             </LinearGradient>
+
+            {/* ASAAS Balance Header - Apenas na aba de doações */}
+            {activeTab === "donations" && asaasBalance !== null && (
+                <View
+                    className={`${isDarkTheme ? "bg-gray-800" : "bg-white"} px-4 py-3 border-b ${isDarkTheme ? "border-gray-700" : "border-gray-200"}`}
+                >
+                    <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-green-100 items-center justify-center mr-3">
+                                <Feather name="dollar-sign" size={16} color="#10B981" />
+                            </View>
+                            <View>
+                                <Text className={`text-sm ${isDarkTheme ? "text-gray-400" : "text-gray-600"}`}>
+                                    Saldo ASAAS Disponível
+                                </Text>
+                                <Text className={`text-lg font-bold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                    R$  {asaasBalance != null
+                                        ? `R$ ${asaasBalance.toFixed(2).replace(".", ",")}`
+                                        : "Valor não disponível"}
+                                </Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={loadAsaasBalance}>
+                            <Feather name="refresh-cw" size={20} color={colors.primary} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
 
             {/* Tabs Navigation */}
             <View
@@ -465,14 +665,54 @@ export default function AdminConsole() {
                             />
                         )}
 
+                        {activeTab === "donations" && (
+                            <FlatList
+                                data={donations}
+                                keyExtractor={(item) => item.id || ""}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <DonationItem
+                                        donation={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onTransfer={(isAsaasAccount) => handleTransferDonation(item, isAsaasAccount)}
+                                        onSyncStatus={() => handleSyncStatus(item)}
+                                        onViewDetails={() => handleViewPaymentDetails(item)}
+                                        onChangeStatus={(status) => handleChangeStatus(item, status)}
+                                        isLoading={transferLoading === item.id}
+                                        isPaymentLoading={paymentLoading === item.id}
+                                    />
+                                )}
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="dollar-sign" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhuma doação encontrada
+                                        </Text>
+                                    </View>
+                                }
+                            />
+                        )}
+
                         {activeTab === "settings" && <SettingsPanel isDark={isDarkTheme} colors={colors} />}
                         <ConfirmModal
                             visible={modalVisible}
-                            message={`Tem certeza que deseja excluir este ${itemToDelete?.type === "blog"
-                                ? "post"
-                                : itemToDelete?.type === "pet"
-                                    ? "pet"
-                                    : "usuário"
+                            message={`Tem certeza que deseja excluir este ${itemToDelete?.type === "blog" ? "post" : itemToDelete?.type === "pet" ? "pet" : "usuário"
                                 }?`}
                             onConfirm={() => handleDelete(itemToDelete?.id || "", itemToDelete?.type || "")}
                             onCancel={() => setModalVisible(false)}
@@ -481,8 +721,15 @@ export default function AdminConsole() {
                 )}
             </Animated.View>
 
+            {/* Payment Details Modal (using the new component) */}
+            <PaymentDetailsModal
+                visible={paymentDetailsModalVisible}
+                onClose={() => setPaymentDetailsModalVisible(false)}
+                payment={selectedPayment}
+            />
+
             {/* Floating Action Button */}
-            {activeTab !== "settings" && (
+            {activeTab !== "settings" && activeTab !== "donations" && (
                 <TouchableOpacity
                     onPress={handleAdd}
                     className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
@@ -494,6 +741,15 @@ export default function AdminConsole() {
                     <Feather name="plus" size={24} color="white" />
                 </TouchableOpacity>
             )}
+
+            {/* Error Modal */}
+            <ErrorModal
+                visible={errorModal.visible}
+                title={errorModal.title}
+                message={errorModal.message}
+                type={errorModal.type}
+                onClose={closeErrorModal}
+            />
         </View>
     )
 }
@@ -760,12 +1016,12 @@ function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps)
 }
 
 interface UserItemProps {
-    user: UserProfile | User;
-    index: number;
-    isDark: boolean;
-    colors: any;
-    onEdit: () => void;
-    onDelete: () => void;
+    user: UserProfile | User
+    index: number
+    isDark: boolean
+    colors: any
+    onEdit: () => void
+    onDelete: () => void
 }
 
 function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemProps) {
@@ -773,20 +1029,20 @@ function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemPro
     const [slideAnim] = useState(new Animated.Value(50))
 
     const getLoginIcon = () => {
-        if ('logginFormat' in user && user.logginFormat === 'google') {
+        if ("logginFormat" in user && user.logginFormat === "google") {
             return (
                 <View className="flex items-center justify-center w-6 h-6 bg-red-100 rounded-full">
                     <FontAwesome name="google" size={14} color="#EA4335" />
                 </View>
-            );
+            )
         } else {
             return (
                 <View className="flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full">
                     <Feather name="mail" size={14} color="#1D4ED8" />
                 </View>
-            );
+            )
         }
-    };
+    }
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -818,7 +1074,9 @@ function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemPro
         >
             <View
                 className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
-                style={Platform.OS === "ios" ? styles.iosShadow : Platform.OS === "android" ? styles.androidShadow : styles.webShadow}
+                style={
+                    Platform.OS === "ios" ? styles.iosShadow : Platform.OS === "android" ? styles.androidShadow : styles.webShadow
+                }
             >
                 <View className="flex-row items-center p-4">
                     <Feather name="user" size={36} color={colors.primary} />
@@ -845,13 +1103,11 @@ function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemPro
                         <View className="flex-row items-center mt-2 space-x-2">
                             {getLoginIcon()}
                             <Text className="text-s ml-2 text-muted-foreground">
-                                {"logginFormat" in user && user.logginFormat === 'google' ? 'Login com Google' : 'Login com Email'}
+                                {"logginFormat" in user && user.logginFormat === "google" ? "Login com Google" : "Login com Email"}
                             </Text>
                             {"role" in user && user.role === "admin" && (
                                 <Badge style={{ backgroundColor: colors.primary, borderRadius: 50, marginLeft: 8 }}>
-                                    <Text className="text-s text-white font-semibold">
-                                        Admin
-                                    </Text>
+                                    <Text className="text-s text-white font-semibold">Admin</Text>
                                 </Badge>
                             )}
                         </View>
@@ -876,6 +1132,475 @@ function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemPro
                     </View>
                 </View>
             </View>
+        </Animated.View>
+    )
+}
+
+// Donation Item Component
+interface DonationItemProps {
+    donation: Donation
+    index: number
+    isDark: boolean
+    colors: any
+    onTransfer: (isAsaasAccount: boolean) => void
+    onSyncStatus: () => void
+    onViewDetails: () => void
+    onChangeStatus: (status: "pending" | "paid" | "cancelled") => void
+    isLoading?: boolean
+    isPaymentLoading?: boolean
+}
+
+function DonationItem({
+    donation,
+    index,
+    isDark,
+    colors,
+    onTransfer,
+    onSyncStatus,
+    onViewDetails,
+    onChangeStatus,
+    isLoading = false,
+    isPaymentLoading = false,
+}: DonationItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+    const [showStatusMenu, setShowStatusMenu] = useState(false)
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
+    const getStatusColor = () => {
+        switch (donation.status) {
+            case "paid":
+                return "#10B981" // Verde
+            case "pending":
+                return "#F59E0B" // Amarelo
+            case "cancelled":
+                return "#EF4444" // Vermelho
+            default:
+                return colors.primary
+        }
+    }
+
+    const getStatusText = () => {
+        switch (donation.status) {
+            case "paid":
+                return "Pago"
+            case "pending":
+                return "Pendente"
+            case "cancelled":
+                return "Cancelado"
+            default:
+                return donation.status
+        }
+    }
+
+    // Verificar se é conta ASAAS (exemplo: se a chave PIX contém "asaas" ou tem formato específico)
+    const isAsaasAccount =
+        donation.pixKey.toLowerCase().includes("asaas") ||
+        donation.pixKey.includes("@asaas.com") ||
+        donation.asaasPaymentId !== ""
+
+    const handleStatusChange = (status: "pending" | "paid" | "cancelled") => {
+        setShowStatusMenu(false)
+        onChangeStatus(status)
+    }
+
+    return (
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
+        >
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="p-4">
+                    {/* Header com valor e status */}
+                    <View className="flex-row items-center justify-between mb-3">
+                        <Text
+                            className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            R$ {donation.amount.toFixed(2).replace(".", ",")}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => setShowStatusMenu(true)}
+                            className="px-3 py-1 rounded-full"
+                            style={{
+                                backgroundColor: `${getStatusColor()}20`,
+                            }}
+                        >
+                            <Text
+                                className="text-sm font-medium"
+                                style={{
+                                    color: getStatusColor(),
+                                }}
+                            >
+                                {getStatusText()}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Informações da ONG */}
+                    <View className="mb-3">
+                        <Text
+                            className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {donation.ongName}
+                        </Text>
+                        <Text
+                            className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            PIX: {donation.pixKey}
+                        </Text>
+                    </View>
+
+                    {/* Informações do doador */}
+                    <View className="mb-3">
+                        <Text
+                            className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            <Text className="font-medium">Doador:</Text> {donation.donorName}
+                        </Text>
+                        <Text
+                            className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {donation.donorEmail}
+                        </Text>
+                    </View>
+
+                    {/* Data */}
+                    <View className="mb-4">
+                        <Text
+                            className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {donation.createdAt.toLocaleDateString("pt-BR")} às {donation.createdAt.toLocaleTimeString("pt-BR")}
+                        </Text>
+                    </View>
+
+                    {/* Indicador de tipo de conta */}
+                    <View className="flex-row items-center justify-between mb-4">
+                        <View className="flex-row items-center">
+                            <View
+                                className="w-3 h-3 rounded-full mr-2"
+                                style={{
+                                    backgroundColor: isAsaasAccount ? "#10B981" : "#6B7280",
+                                }}
+                            />
+                            <Text
+                                className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                {isAsaasAccount ? "Conta ASAAS" : "Conta Manual"}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Botões de ação para ASAAS */}
+                    {donation.asaasPaymentId && (
+                        <View className="flex-row space-x-2 mb-4 gap-4">
+                            <TouchableOpacity onPress={onSyncStatus} className="flex-1" disabled={isPaymentLoading}>
+                                <View
+                                    style={{
+                                        backgroundColor: isPaymentLoading ? "#9CA3AF" : "#3B82F6",
+                                        borderRadius: 8,
+                                        paddingVertical: 10,
+                                        alignItems: "center",
+                                        flexDirection: "row",
+                                        justifyContent: "center",
+                                        opacity: isPaymentLoading ? 0.7 : 1,
+                                    }}
+                                >
+                                    {isPaymentLoading ? (
+                                        <ActivityIndicator size="small" color="white" style={{ marginRight: 6 }} />
+                                    ) : (
+                                        <Feather name="refresh-cw" size={14} color="white" style={{ marginRight: 6 }} />
+                                    )}
+                                    <Text
+                                        style={{
+                                            color: "white",
+                                            fontSize: 12,
+                                            fontWeight: "600",
+                                        }}
+                                    >
+                                        {isPaymentLoading ? "Sincronizando..." : "Sincronizar"}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={onViewDetails} className="flex-1" disabled={isPaymentLoading}>
+                                <View
+                                    style={{
+                                        backgroundColor: isPaymentLoading ? "#9CA3AF" : "#8B5CF6",
+                                        borderRadius: 8,
+                                        paddingVertical: 10,
+                                        alignItems: "center",
+                                        flexDirection: "row",
+                                        justifyContent: "center",
+                                        opacity: isPaymentLoading ? 0.7 : 1,
+                                    }}
+                                >
+                                    {isPaymentLoading ? (
+                                        <ActivityIndicator size="small" color="white" style={{ marginRight: 6 }} />
+                                    ) : (
+                                        <Feather name="eye" size={14} color="white" style={{ marginRight: 6 }} />
+                                    )}
+                                    <Text
+                                        style={{
+                                            color: "white",
+                                            fontSize: 12,
+                                            fontWeight: "600",
+                                        }}
+                                    >
+                                        {isPaymentLoading ? "Carregando..." : "Ver Detalhes"}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Botões de ação principais */}
+                    {donation.status === "pending" && (
+                        <View className="flex-row space-x-3">
+                            {isAsaasAccount ? (
+                                <TouchableOpacity onPress={() => onTransfer(true)} className="flex-1" disabled={isLoading}>
+                                    <LinearGradient
+                                        colors={isLoading ? ["#9CA3AF", "#6B7280"] : ["#10B981", "#059669"]}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={{
+                                            borderRadius: 8,
+                                            paddingVertical: 12,
+                                            alignItems: "center",
+                                            flexDirection: "row",
+                                            justifyContent: "center",
+                                            opacity: isLoading ? 0.7 : 1,
+                                        }}
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator size="small" color="white" style={{ marginRight: 6 }} />
+                                        ) : (
+                                            <Feather name="zap" size={16} color="white" style={{ marginRight: 6 }} />
+                                        )}
+                                        <Text
+                                            style={{
+                                                color: "white",
+                                                fontSize: 14,
+                                                fontWeight: "600",
+                                            }}
+                                        >
+                                            {isLoading ? "Processando..." : "Transferir Auto"}
+                                        </Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity onPress={() => onTransfer(false)} className="flex-1" disabled={isLoading}>
+                                    <View
+                                        style={{
+                                            backgroundColor: isLoading ? "#9CA3AF" : isDark ? "#374151" : "#F3F4F6",
+                                            borderRadius: 8,
+                                            paddingVertical: 12,
+                                            alignItems: "center",
+                                            flexDirection: "row",
+                                            justifyContent: "center",
+                                            opacity: isLoading ? 0.7 : 1,
+                                        }}
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator
+                                                size="small"
+                                                color={isDark ? "#FFFFFF" : "#1F2937"}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                        ) : (
+                                            <Feather
+                                                name="check"
+                                                size={16}
+                                                color={isDark ? "#FFFFFF" : "#1F2937"}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                        )}
+                                        <Text
+                                            style={{
+                                                color: isDark ? "#FFFFFF" : "#1F2937",
+                                                fontSize: 14,
+                                                fontWeight: "600",
+                                            }}
+                                        >
+                                            {isLoading ? "Processando..." : "Marcar como Pago"}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+
+                    {donation.status === "paid" && (
+                        <View
+                            style={{
+                                backgroundColor: "#10B98120",
+                                borderRadius: 8,
+                                paddingVertical: 12,
+                                alignItems: "center",
+                                flexDirection: "row",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Feather name="check-circle" size={16} color="#10B981" style={{ marginRight: 6 }} />
+                            <Text
+                                style={{
+                                    color: "#10B981",
+                                    fontSize: 14,
+                                    fontWeight: "600",
+                                }}
+                            >
+                                Transferência Concluída
+                            </Text>
+                        </View>
+                    )}
+
+                    {donation.status === "cancelled" && (
+                        <View
+                            style={{
+                                backgroundColor: "#EF444420",
+                                borderRadius: 8,
+                                paddingVertical: 12,
+                                alignItems: "center",
+                                flexDirection: "row",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Feather name="x-circle" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                            <Text
+                                style={{
+                                    color: "#EF4444",
+                                    fontSize: 14,
+                                    fontWeight: "600",
+                                }}
+                            >
+                                Doação Cancelada
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+
+            {/* Status Change Modal */}
+            <Modal
+                visible={showStatusMenu}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowStatusMenu(false)}
+            >
+                <TouchableOpacity
+                    className="flex-1 bg-black/50 justify-center items-center"
+                    activeOpacity={1}
+                    onPress={() => setShowStatusMenu(false)}
+                >
+                    <View
+                        className={`${isDark ? "bg-gray-800" : "bg-white"} rounded-2xl p-6 mx-8 min-w-64`}
+                        style={{ maxWidth: 300 }}
+                    >
+                        <Text
+                            className={`text-lg font-bold mb-4 text-center ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            Alterar Status
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => handleStatusChange("pending")}
+                            className="flex-row items-center p-3 rounded-lg mb-2"
+                            style={{ backgroundColor: "#F59E0B20" }}
+                        >
+                            <View className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: "#F59E0B" }} />
+                            <Text className={`flex-1 ${isDark ? "text-white" : "text-gray-800"}`}>Pendente</Text>
+                            {donation.status === "pending" && <Feather name="check" size={16} color="#F59E0B" />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => handleStatusChange("paid")}
+                            className="flex-row items-center p-3 rounded-lg mb-2"
+                            style={{ backgroundColor: "#10B98120" }}
+                        >
+                            <View className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: "#10B981" }} />
+                            <Text className={`flex-1 ${isDark ? "text-white" : "text-gray-800"}`}>Pago</Text>
+                            {donation.status === "paid" && <Feather name="check" size={16} color="#10B981" />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => handleStatusChange("cancelled")}
+                            className="flex-row items-center p-3 rounded-lg mb-4"
+                            style={{ backgroundColor: "#EF444420" }}
+                        >
+                            <View className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: "#EF4444" }} />
+                            <Text className={`flex-1 ${isDark ? "text-white" : "text-gray-800"}`}>Cancelado</Text>
+                            {donation.status === "cancelled" && <Feather name="check" size={16} color="#EF4444" />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setShowStatusMenu(false)}
+                            className="p-3 rounded-lg"
+                            style={{ backgroundColor: isDark ? "#374151" : "#F3F4F6" }}
+                        >
+                            <Text className={`text-center font-medium ${isDark ? "text-white" : "text-gray-800"}`}>Cancelar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </Animated.View>
     )
 }
