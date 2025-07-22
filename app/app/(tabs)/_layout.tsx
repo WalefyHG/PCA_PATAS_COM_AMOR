@@ -11,7 +11,6 @@ import { useThemeContext } from "@/app/presentation/contexts/ThemeContext";
 // Screens
 import User from './users/index';
 import Profile from './profile/[id]';
-import About from './about/index';
 import Settings from './settings/index';
 import News from './news/index';
 import Adopt from "@/app/presentation/screens/Adopt";
@@ -25,6 +24,11 @@ import AdminConsoleWeb from "@/app/presentation/screens/AdminConsoleWeb"
 import NotificationPreferences from "@/app/presentation/screens/NotificationsPreferences"
 import PermissionManager from "@/app/presentation/screens/PermissionManage"
 import ChatList from "@/app/presentation/screens/chat/ChatList"
+import RegisterOng from "@/app/presentation/screens/RegisterOng"
+import { DonationScreen } from "@/app/presentation/screens/Donation"
+import MyOngs from "@/app/presentation/screens/OngsList"
+import OngDetails from "@/app/presentation/screens/OngsDetails"
+import Notifications from "@/app/presentation/screens/Notifications"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -55,7 +59,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
                 const isFocused = state.index === index
 
-                let iconName: "users" | "user" | "info" | "settings" | "book-open" | "circle"
+                let iconName: "users" | "user" | "dollar-sign" | "settings" | "book-open" | "circle"
                 switch (route.name) {
                     case "User":
                         iconName = "users"
@@ -63,8 +67,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                     case "Profile":
                         iconName = "user"
                         break
-                    case "About":
-                        iconName = "info"
+                    case "Donate":
+                        iconName = "dollar-sign"
                         break
                     case "Settings":
                         iconName = "settings"
@@ -161,7 +165,7 @@ const TabLayout = () => {
                 initialParams={{ id: route.params?.id ?? null }}
                 options={{ title: t("Profile"), headerShown: false }}
             />
-            <Tab.Screen name="About" component={About} options={{ title: t("About"), headerShown: false }} />
+            <Tab.Screen name="Donate" component={DonationScreen} options={{ title: t("Donation"), headerShown: false }} />
             <Tab.Screen name="Settings" component={Settings} options={{ title: t("Settings"), headerShown: false }} />
             <Tab.Screen name="News" component={News} options={{ title: t("News"), headerShown: false }} />
         </Tab.Navigator>
@@ -203,6 +207,10 @@ const AppLayout = () => {
             <Stack.Screen name="AddUsers" component={AddEditUserScreen} options={{ title: t("Add User"), headerShown: false }} />
             <Stack.Screen name="NotificationsPreferences" component={NotificationPreferences} options={{ title: t("Notification Preferences"), headerShown: false }} />
             <Stack.Screen name="PermissionsManager" component={PermissionManager} options={{ title: t("Permission Manager"), headerShown: false }} />
+            <Stack.Screen name="RegisterOng" component={RegisterOng} options={{ title: t("Register ONG"), headerShown: false }} />
+            <Stack.Screen name="OngList" component={MyOngs} options={{ title: t("ONG List"), headerShown: false }} />
+            <Stack.Screen name="OngDetails" component={OngDetails} options={{ title: t("ONG Details"), headerShown: false }} />
+            <Stack.Screen name="Notifications" component={Notifications} options={{ title: t("Notifications"), headerShown: false }} />
             <Stack.Screen name="ChatList" component={ChatList} options={{ title: t("Chat"), headerShown: false }} />
         </Stack.Navigator>
     )

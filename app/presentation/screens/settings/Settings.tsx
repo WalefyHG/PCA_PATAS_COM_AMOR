@@ -263,6 +263,13 @@ export default function Settings() {
               isDark={isDarkTheme}
             />
             <SettingLinkItem
+              icon="users"
+              title="Gerenciar ONGs"
+              onPress={() => navigation.navigate("OngList")}
+              colors={colors}
+              isDark={isDarkTheme}
+            />
+            <SettingLinkItem
               icon="lock"
               title="Alterar Senha"
               onPress={() => navigation.navigate("ChangePassword")}

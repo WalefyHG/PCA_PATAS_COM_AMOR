@@ -5,6 +5,7 @@ export default {
         name: "Patas Com Amor",
         slug: "patas-com-amor",
         plugins: ["expo-router"],
+        deepLinking: true,
         router: {
             appRoot: 'app/'
         },

@@ -1,72 +1,66 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    FlatList,
+    Image,
+    Alert,
+    RefreshControl,
+    Platform,
+    Animated,
+    ActivityIndicator,
+    Modal,
+} from "react-native"
 import { useThemeContext } from "../contexts/ThemeContext"
+import { Feather, FontAwesome } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
+import { LinearGradient } from "expo-linear-gradient"
 import { useTranslation } from "react-i18next"
-import {
-    isUserAdmin,
-} from "../../data/datasources/firebase/firebase"
+import { isUserAdmin } from "../../data/datasources/firebase/firebase"
 
+import { getBlogPosts, deleteBlogPost, type BlogPost } from "../../repositories/FirebaseBlogRepository"
 
-import {
-    getBlogPosts,
-    deleteBlogPost,
-    type BlogPost,
-} from "../../repositories/FirebaseBlogRepository"
+import { getPets, deletePet, type Pet } from "../../repositories/FirebasePetRepository"
 
-import {
-    getPets,
-    deletePet,
-    type Pet,
-} from "../../repositories/FirebasePetRepository"
+import { getUsers, deleteUserProfile } from "../../repositories/FirebaseUserRepository"
 
-import {
-    getUsers,
-    deleteUserProfile,
-} from "../../repositories/FirebaseUserRepository"
-
-import { UserProfile } from "../../domain/entities/User"
+import type { UserProfile } from "../../domain/entities/User"
+import type { Donation } from "../../domain/entities/Ongs"
+import { ongRepository } from "../../repositories/FirebaseOngRepository"
+import { asaasService } from "../../repositories/AsaasRepository"
 
 import { auth } from "../../data/datasources/firebase/firebase"
 import HeaderLayout from "../../utils/HeaderLayout"
 import { ConfirmModal } from "../../utils/ConfirmModal"
+import { ErrorModal } from "../components/ErrorModal"
 import type { User } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-    BookOpen,
-    Heart,
-    Users,
-    Settings,
-    ArrowLeft,
-    Plus,
-    Edit2,
-    Trash2,
-    Inbox,
-    Bell,
-    Mail,
-    Layout,
-    Database,
-    FileText,
-    Info,
-    ChevronRight,
-    UserIcon,
-    Loader2,
-} from "lucide-react"
 
 // Tipos para os dados
 interface AdminTab {
     id: string
     title: string
-    icon: React.ComponentType<any>
+    icon: keyof typeof Feather.glyphMap
 }
 
-export default function AdminConsoleWeb() {
+interface PaymentDetails {
+    id: string
+    status: string
+    value: number
+    paymentDate?: string
+    clientPaymentDate?: string
+    description?: string
+    invoiceUrl?: string
+    bankSlipUrl?: string
+    transactionReceiptUrl?: string
+}
+
+export default function AdminConsole() {
     const { isDarkTheme, colors } = useThemeContext()
     const navigation = useNavigation<any>()
     const [activeTab, setActiveTab] = useState<string>("blog")
@@ -78,10 +72,48 @@ export default function AdminConsoleWeb() {
 
     const { t } = useTranslation()
 
+    // Animated values
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(30))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
     // Dados
     const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
     const [pets, setPets] = useState<Pet[]>([])
     const [users, setUsers] = useState<UserProfile[]>([])
+    const [donations, setDonations] = useState<Donation[]>([])
+
+    // Estados do ErrorModal
+    const [errorModal, setErrorModal] = useState({
+        visible: false,
+        title: "",
+        message: "",
+        type: "error" as "error" | "success" | "warning" | "info",
+    })
+
+    // Estados para transferências
+    const [transferLoading, setTransferLoading] = useState<string | null>(null)
+    const [asaasBalance, setAsaasBalance] = useState<number | null>(null)
+
+    // Estados para detalhes do pagamento
+    const [paymentDetailsModal, setPaymentDetailsModal] = useState(false)
+    const [selectedPayment, setSelectedPayment] = useState<PaymentDetails | null>(null)
+    const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
+
+    const showError = (message: string, title?: string, type: "error" | "success" | "warning" | "info" = "error") => {
+        setErrorModal({
+            visible: true,
+            title: title || "",
+            message,
+            type,
+        })
+    }
+
+    const closeErrorModal = () => {
+        setErrorModal({ ...errorModal, visible: false })
+    }
 
     useEffect(() => {
         const checkAdminStatus = async () => {
@@ -90,23 +122,36 @@ export default function AdminConsoleWeb() {
                 setIsAdmin(adminStatus)
 
                 if (!adminStatus) {
-                    if (typeof window !== "undefined") {
-                        window.alert("Acesso Restrito: Apenas administradores podem acessar esta página.")
-                        navigation.goBack()
-                    }
+                    showError("Apenas administradores podem acessar esta página.", "Acesso Restrito", "warning")
+                    setTimeout(() => navigation.goBack(), 3000)
                 } else {
                     // Carregar dados iniciais
                     fetchData()
+                    // Carregar saldo ASAAS
+                    loadAsaasBalance()
                 }
             } else {
-                if (typeof window !== "undefined") {
-                    window.alert("Não Autenticado: Você precisa estar logado para acessar esta página.")
-                    navigation.goBack()
-                }
+                showError("Você precisa estar logado para acessar esta página.", "Não Autenticado", "warning")
+                setTimeout(() => navigation.goBack(), 3000)
             }
         }
 
         checkAdminStatus()
+
+        // Start animations when component mounts
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                speed: 12,
+                bounciness: 6,
+                useNativeDriver: true,
+            }),
+        ]).start()
     }, [navigation])
 
     useEffect(() => {
@@ -118,12 +163,22 @@ export default function AdminConsoleWeb() {
     useEffect(() => {
         if (!isAdmin) {
             const timer = setTimeout(() => {
-                navigation.goBack()
-            }, 3000)
+                navigation.goBack() // ou o nome correto da sua tela inicial
+            }, 3000) // 3 segundos
 
-            return () => clearTimeout(timer)
+            return () => clearTimeout(timer) // limpa o timer se o componente desmontar antes
         }
     }, [isAdmin, navigation])
+
+    const loadAsaasBalance = async () => {
+        try {
+            const balance = await asaasService.getBalance()
+            setAsaasBalance(balance.availableBalance)
+        } catch (error) {
+            console.error("Error loading ASAAS balance:", error)
+            // Não mostrar erro para não poluir a interface
+        }
+    }
 
     const fetchData = async () => {
         setIsLoading(true)
@@ -140,12 +195,13 @@ export default function AdminConsoleWeb() {
             } else if (activeTab === "users") {
                 const allUser = await getUsers(20)
                 setUsers(allUser)
+            } else if (activeTab === "donations") {
+                const allDonations = await ongRepository.getAllDonations()
+                setDonations(allDonations)
             }
         } catch (error) {
             console.error(`Error fetching ${activeTab} data:`, error)
-            if (typeof window !== "undefined") {
-                window.alert(`Ocorreu um erro ao carregar os dados de ${activeTab}.`)
-            }
+            showError(`Ocorreu um erro ao carregar os dados de ${activeTab}.`, "Erro")
         } finally {
             setIsLoading(false)
         }
@@ -154,11 +210,17 @@ export default function AdminConsoleWeb() {
     const onRefresh = async () => {
         setRefreshing(true)
         await fetchData()
+        if (activeTab === "donations") {
+            await loadAsaasBalance()
+        }
         setRefreshing(false)
     }
 
     const handleTabChange = (tabId: string) => {
         setActiveTab(tabId)
+        if (tabId === "donations") {
+            loadAsaasBalance()
+        }
         fetchData()
     }
 
@@ -171,7 +233,6 @@ export default function AdminConsoleWeb() {
             navigation.navigate("AddUsers", { userId: id })
         }
     }
-
     const openDeleteModal = (id: string, type: string) => {
         setItemToDelete({ id, type })
         setModalVisible(true)
@@ -191,14 +252,14 @@ export default function AdminConsoleWeb() {
                 setUsers((prev) => prev.filter((user) => user.uid !== id))
             }
 
-            if (typeof window !== "undefined") {
-                window.alert(`${type === "blog" ? "Post" : type === "pet" ? "Pet" : "Usuário"} excluído com sucesso!`)
-            }
+            showError(
+                `${type === "blog" ? "Post" : type === "pet" ? "Pet" : "Usuário"} excluído com sucesso!`,
+                "Sucesso",
+                "success",
+            )
         } catch (error) {
             console.error("Erro ao excluir:", error)
-            if (typeof window !== "undefined") {
-                window.alert(`Ocorreu um erro ao excluir o ${type === "blog" ? "post" : type === "pet" ? "pet" : "usuário"}.`)
-            }
+            showError(`Ocorreu um erro ao excluir o ${type === "blog" ? "post" : "pet"}.`, "Erro")
         } finally {
             setModalVisible(false)
             setItemToDelete(null)
@@ -215,230 +276,613 @@ export default function AdminConsoleWeb() {
         }
     }
 
+    const handleTransferDonation = async (donation: Donation, isAsaasAccount: boolean) => {
+        if (!donation.id) return
+
+        setTransferLoading(donation.id)
+
+        try {
+            if (isAsaasAccount) {
+                // Transferência automática via ASAAS
+                showError("Iniciando transferência automática...", "Processando", "info")
+
+                const result = await asaasService.processAutomaticTransfer(
+                    donation.id,
+                    donation.pixKey,
+                    donation.amount,
+                    `Doação para ${donation.ongName} - ${donation.donorName}`,
+                )
+
+                if (result.success) {
+                    // Atualizar a doação na lista local
+                    setDonations((prev) => prev.map((d) => (d.id === donation.id ? { ...d, status: "paid" as const } : d)))
+
+                    // Recarregar saldo
+                    await loadAsaasBalance()
+
+                    showError(result.message, "Transferência Realizada", "success")
+                } else {
+                    showError(result.message, "Erro na Transferência", "error")
+                }
+            } else {
+                // Marcar como transferido manualmente
+                await ongRepository.updateDonationStatus(donation.id, "paid")
+                setDonations((prev) => prev.map((d) => (d.id === donation.id ? { ...d, status: "paid" as const } : d)))
+                showError("Doação marcada como transferida manualmente.", "Sucesso", "success")
+            }
+        } catch (error) {
+            console.error("Erro ao processar transferência:", error)
+            showError("Erro ao processar transferência.", "Erro")
+        } finally {
+            setTransferLoading(null)
+        }
+    }
+
+    // Função para sincronizar status com ASAAS
+    const handleSyncStatus = async (donation: Donation) => {
+        if (!donation.id || !donation.asaasPaymentId) return
+
+        setPaymentLoading(donation.id)
+
+        try {
+            const result = await asaasService.syncDonationStatus(donation.id, donation.asaasPaymentId)
+
+            if (result.success) {
+                // Recarregar as doações para pegar o status atualizado
+                await fetchData()
+                showError(result.message, "Status Sincronizado", "success")
+            } else {
+                showError(result.message, "Erro na Sincronização", "error")
+            }
+        } catch (error) {
+            console.error("Erro ao sincronizar status:", error)
+            showError("Erro ao sincronizar status.", "Erro")
+        } finally {
+            setPaymentLoading(null)
+        }
+    }
+
+    // Função para ver detalhes do pagamento ASAAS
+    const handleViewPaymentDetails = async (donation: Donation) => {
+        if (!donation.asaasPaymentId) {
+            showError("Esta doação não possui ID de pagamento ASAAS.", "Sem Dados ASAAS", "warning")
+            return
+        }
+
+        setPaymentLoading(donation.id || "")
+
+        try {
+            const result = await asaasService.getPaymentDetails(donation.asaasPaymentId)
+
+            if (result.success && result.payment) {
+                setSelectedPayment({
+                    id: result.payment.id,
+                    status: result.payment.status,
+                    value: result.payment.value,
+                    paymentDate: result.payment.paymentDate,
+                    clientPaymentDate: result.payment.clientPaymentDate,
+                    description: result.payment.description,
+                    invoiceUrl: result.payment.invoiceUrl,
+                    bankSlipUrl: result.payment.bankSlipUrl,
+                    transactionReceiptUrl: result.payment.transactionReceiptUrl,
+                })
+                setPaymentDetailsModal(true)
+            } else {
+                showError(result.message, "Erro ao Buscar Detalhes", "error")
+            }
+        } catch (error) {
+            console.error("Erro ao buscar detalhes:", error)
+            showError("Erro ao buscar detalhes do pagamento.", "Erro")
+        } finally {
+            setPaymentLoading(null)
+        }
+    }
+
+    // Função para alterar status manualmente
+    const handleChangeStatus = async (donation: Donation, newStatus: "pending" | "paid" | "cancelled") => {
+        if (!donation.id) return
+
+        try {
+            await ongRepository.updateDonationStatus(donation.id, newStatus)
+            setDonations((prev) => prev.map((d) => (d.id === donation.id ? { ...d, status: newStatus } : d)))
+
+            const statusText = newStatus === "paid" ? "Pago" : newStatus === "cancelled" ? "Cancelado" : "Pendente"
+            showError(`Status alterado para: ${statusText}`, "Status Atualizado", "success")
+        } catch (error) {
+            console.error("Erro ao alterar status:", error)
+            showError("Erro ao alterar status da doação.", "Erro")
+        }
+    }
+
     // Abas do Admin Console
     const tabs: AdminTab[] = [
-        { id: "blog", title: "Blog", icon: BookOpen },
-        { id: "pets", title: "Pets", icon: Heart },
-        { id: "users", title: "Usuários", icon: Users },
-        { id: "settings", title: "Configurações", icon: Settings },
+        { id: "blog", title: "Blog", icon: "book-open" },
+        { id: "pets", title: "Pets", icon: "heart" },
+        { id: "users", title: "Usuários", icon: "users" },
+        { id: "donations", title: "Doações", icon: "dollar-sign" },
+        { id: "settings", title: "Configurações", icon: "settings" },
     ]
 
     if (!isAdmin) {
         return (
-            <div
-                className={`flex-1 flex items-center justify-center min-h-screen ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}
-            >
-                <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" style={{ color: colors.primary }} />
-                    <p className={`text-lg ${isDarkTheme ? "text-white" : "text-gray-800"}`}>Verificando permissões...</p>
-                </div>
-            </div>
+            <View className={`flex-1 items-center justify-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text
+                    className={`mt-4 text-lg ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                    style={Platform.select({
+                        ios: { fontFamily: "San Francisco" },
+                        android: { fontFamily: "Roboto" },
+                    })}
+                >
+                    Verificando permissões...
+                </Text>
+            </View>
         )
     }
 
     return (
-        <div className={`min-h-screen ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
+        <View className={`flex-1 ${isDarkTheme ? "bg-gray-900" : "bg-gray-50"}`}>
             {/* Header with gradient */}
-            <div
+            <LinearGradient
+                colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
                 className="pt-16 pb-4 px-4"
-                style={{
-                    background: isDarkTheme
-                        ? `linear-gradient(90deg, ${colors.primaryDark}, ${colors.secondaryDark})`
-                        : `linear-gradient(90deg, ${colors.primary}, ${colors.secondary})`,
-                }}
             >
-                <div className="flex items-center justify-between">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigation.goBack()}
-                        className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30"
+                <View className="flex-row items-center justify-between">
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
                     >
-                        <ArrowLeft size={20} className="text-white" />
-                    </Button>
-                    <h1 className="text-white text-xl font-bold">{t("Admin Console")}</h1>
-                    <div className="w-10" />
-                </div>
-                <div className="absolute right-0 top-20 flex items-center">
+                        <Feather name="arrow-left" size={20} color="white" />
+                    </TouchableOpacity>
+                    <Text className="text-white text-xl font-bold">{t("Admin Console")}</Text>
+                    <View className="w-10" />
+                </View>
+                <View
+                    style={{
+                        position: "absolute",
+                        right: 0,
+                        top: 20,
+                        flexDirection: "row",
+                        alignSelf: "flex-end",
+                        alignItems: "center",
+                    }}
+                >
                     <HeaderLayout title="Profile" />
-                </div>
-            </div>
+                </View>
+            </LinearGradient>
+
+            {/* ASAAS Balance Header - Apenas na aba de doações */}
+            {activeTab === "donations" && asaasBalance !== null && (
+                <View
+                    className={`${isDarkTheme ? "bg-gray-800" : "bg-white"} px-4 py-3 border-b ${isDarkTheme ? "border-gray-700" : "border-gray-200"}`}
+                >
+                    <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-green-100 items-center justify-center mr-3">
+                                <Feather name="dollar-sign" size={16} color="#10B981" />
+                            </View>
+                            <View>
+                                <Text className={`text-sm ${isDarkTheme ? "text-gray-400" : "text-gray-600"}`}>
+                                    Saldo ASAAS Disponível
+                                </Text>
+                                <Text className={`text-lg font-bold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                    R$ {asaasBalance.toFixed(2).replace(".", ",")}
+                                </Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={loadAsaasBalance}>
+                            <Feather name="refresh-cw" size={20} color={colors.primary} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
 
             {/* Tabs Navigation */}
-            <Card
-                className={`${isDarkTheme ? "bg-gray-800 border-gray-700" : "bg-white"} rounded-none border-x-0 border-t-0`}
+            <View
+                className={`${isDarkTheme ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
             >
-                <Card className="p-0">
-                    <ScrollArea className="w-full">
-                        <div className="flex py-2 px-4 space-x-2">
-                            {tabs.map((tab) => {
-                                const IconComponent = tab.icon
-                                return (
-                                    <Button
-                                        key={tab.id}
-                                        variant={activeTab === tab.id ? "secondary" : "ghost"}
-                                        onClick={() => handleTabChange(tab.id)}
-                                        className={`flex items-center space-x-2 whitespace-nowrap ${activeTab === tab.id ? (isDarkTheme ? "bg-gray-700" : "bg-gray-100") : "hover:bg-gray-100"
-                                            }`}
-                                    >
-                                        <IconComponent
-                                            size={18}
-                                            className={
-                                                activeTab === tab.id ? "text-primary" : isDarkTheme ? "text-gray-400" : "text-gray-500"
-                                            }
-                                        />
-                                        <span
-                                            className={`font-medium ${activeTab === tab.id
-                                                ? isDarkTheme
-                                                    ? "text-white"
-                                                    : "text-gray-800"
-                                                : isDarkTheme
-                                                    ? "text-gray-400"
-                                                    : "text-gray-500"
-                                                }`}
-                                        >
-                                            {tab.title}
-                                        </span>
-                                    </Button>
-                                )
-                            })}
-                        </div>
-                    </ScrollArea>
-                </Card>
-            </Card>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-2">
+                    {tabs.map((tab) => (
+                        <TouchableOpacity
+                            key={tab.id}
+                            onPress={() => handleTabChange(tab.id)}
+                            className={`flex-row items-center mx-2 px-4 py-2 rounded-full ${activeTab === tab.id ? (isDarkTheme ? "bg-gray-700" : "bg-gray-100") : "bg-transparent"
+                                }`}
+                        >
+                            <Feather
+                                name={tab.icon}
+                                size={18}
+                                color={
+                                    activeTab === tab.id ? colors.primary : isDarkTheme ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)"
+                                }
+                            />
+                            <Text
+                                className={`ml-2 font-medium ${activeTab === tab.id
+                                    ? isDarkTheme
+                                        ? "text-white"
+                                        : "text-gray-800"
+                                    : isDarkTheme
+                                        ? "text-gray-400"
+                                        : "text-gray-500"
+                                    }`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                {tab.title}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
 
             {/* Content Area */}
-            <div className="flex-1 animate-in fade-in-0 slide-in-from-bottom-4 duration-600">
+            <Animated.View
+                style={{
+                    flex: 1,
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }],
+                }}
+            >
                 {isLoading ? (
-                    <div className="flex-1 flex items-center justify-center py-20">
-                        <div className="text-center">
-                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" style={{ color: colors.primary }} />
-                            <p className={`${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>Carregando dados...</p>
-                        </div>
-                    </div>
+                    <View className="flex-1 items-center justify-center">
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text
+                            className={`mt-4 ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            Carregando dados...
+                        </Text>
+                    </View>
                 ) : (
-                    <div className="p-4">
+                    <>
                         {activeTab === "blog" && (
-                            <div className="space-y-4">
-                                {refreshing && (
-                                    <div className="flex justify-center py-4">
-                                        <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.primary }} />
-                                    </div>
+                            <FlatList
+                                data={blogPosts}
+                                keyExtractor={(item) => item.id || ""}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <BlogPostItem
+                                        post={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onEdit={() => handleEdit(item.id || "", "blog")}
+                                        onDelete={() => openDeleteModal(item.id || "", "blog")}
+                                    />
                                 )}
-                                {blogPosts.length === 0 ? (
-                                    <div className="flex-1 flex items-center justify-center py-20">
-                                        <div className="text-center">
-                                            <Inbox size={48} className={isDarkTheme ? "text-gray-600" : "text-gray-400"} />
-                                            <p className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}>
-                                                Nenhum post encontrado
-                                            </p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    blogPosts.map((post, index) => (
-                                        <BlogPostItem
-                                            key={post.id}
-                                            post={post}
-                                            index={index}
-                                            isDark={isDarkTheme}
-                                            colors={colors}
-                                            onEdit={() => handleEdit(post.id || "", "blog")}
-                                            onDelete={() => openDeleteModal(post.id || "", "blog")}
-                                        />
-                                    ))
-                                )}
-                            </div>
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhum post encontrado
+                                        </Text>
+                                    </View>
+                                }
+                            />
                         )}
 
                         {activeTab === "pets" && (
-                            <div className="space-y-4">
-                                {refreshing && (
-                                    <div className="flex justify-center py-4">
-                                        <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.primary }} />
-                                    </div>
+                            <FlatList
+                                data={pets}
+                                keyExtractor={(item) => item.id || ""}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <PetItem
+                                        pet={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onEdit={() => handleEdit(item.id || "", "pet")}
+                                        onDelete={() => openDeleteModal(item.id || "", "pet")}
+                                    />
                                 )}
-                                {pets.length === 0 ? (
-                                    <div className="flex-1 flex items-center justify-center py-20">
-                                        <div className="text-center">
-                                            <Inbox size={48} className={isDarkTheme ? "text-gray-600" : "text-gray-400"} />
-                                            <p className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}>
-                                                Nenhum pet encontrado
-                                            </p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    pets.map((pet, index) => (
-                                        <PetItem
-                                            key={pet.id}
-                                            pet={pet}
-                                            index={index}
-                                            isDark={isDarkTheme}
-                                            colors={colors}
-                                            onEdit={() => handleEdit(pet.id || "", "pet")}
-                                            onDelete={() => openDeleteModal(pet.id || "", "pet")}
-                                        />
-                                    ))
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="inbox" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhum pet encontrado
+                                        </Text>
+                                    </View>
+                                }
+                            />
+                        )}
+                        {activeTab === "users" && (
+                            <FlatList
+                                data={users}
+                                keyExtractor={(item) => item.uid || ""}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <UserItem
+                                        user={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onEdit={() => handleEdit(item.uid || "", "users")}
+                                        onDelete={() => openDeleteModal(item.uid || "", "users")}
+                                    />
                                 )}
-                            </div>
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="user" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhum usuário encontrado
+                                        </Text>
+                                    </View>
+                                }
+                            />
                         )}
 
-                        {activeTab === "users" && (
-                            <div className="space-y-4">
-                                {refreshing && (
-                                    <div className="flex justify-center py-4">
-                                        <Loader2 className="h-6 w-6 animate-spin" style={{ color: colors.primary }} />
-                                    </div>
+                        {activeTab === "donations" && (
+                            <FlatList
+                                data={donations}
+                                keyExtractor={(item) => item.id || ""}
+                                contentContainerStyle={{ display: "flex", flexDirection: "column", gap: "1rem", padding: 16 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[colors.primary]}
+                                        tintColor={colors.primary}
+                                    />
+                                }
+                                renderItem={({ item, index }) => (
+                                    <DonationItem
+                                        donation={item}
+                                        index={index}
+                                        isDark={isDarkTheme}
+                                        colors={colors}
+                                        onTransfer={(isAsaasAccount) => handleTransferDonation(item, isAsaasAccount)}
+                                        onSyncStatus={() => handleSyncStatus(item)}
+                                        onViewDetails={() => handleViewPaymentDetails(item)}
+                                        onChangeStatus={(status) => handleChangeStatus(item, status)}
+                                        isLoading={transferLoading === item.id}
+                                        isPaymentLoading={paymentLoading === item.id}
+                                    />
                                 )}
-                                {users.length === 0 ? (
-                                    <div className="flex-1 flex items-center justify-center py-20">
-                                        <div className="text-center">
-                                            <UserIcon size={48} className={isDarkTheme ? "text-gray-600" : "text-gray-400"} />
-                                            <p className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}>
-                                                Nenhum usuário encontrado
-                                            </p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    users.map((user, index) => (
-                                        <UserItem
-                                            key={user.uid}
-                                            user={user}
-                                            index={index}
-                                            isDark={isDarkTheme}
-                                            colors={colors}
-                                            onEdit={() => handleEdit(user.uid || "", "users")}
-                                            onDelete={() => openDeleteModal(user.uid || "", "users")}
-                                        />
-                                    ))
-                                )}
-                            </div>
+                                ListEmptyComponent={
+                                    <View className="flex-1 items-center justify-center py-20">
+                                        <Feather name="dollar-sign" size={48} color={isDarkTheme ? "#6B7280" : "#9CA3AF"} />
+                                        <Text
+                                            className={`mt-4 text-base ${isDarkTheme ? "text-gray-400" : "text-gray-500"}`}
+                                            style={Platform.select({
+                                                ios: { fontFamily: "San Francisco" },
+                                                android: { fontFamily: "Roboto" },
+                                            })}
+                                        >
+                                            Nenhuma doação encontrada
+                                        </Text>
+                                    </View>
+                                }
+                            />
                         )}
 
                         {activeTab === "settings" && <SettingsPanel isDark={isDarkTheme} colors={colors} />}
-                    </div>
+                        <ConfirmModal
+                            visible={modalVisible}
+                            message={`Tem certeza que deseja excluir este ${itemToDelete?.type === "blog" ? "post" : itemToDelete?.type === "pet" ? "pet" : "usuário"
+                                }?`}
+                            onConfirm={() => handleDelete(itemToDelete?.id || "", itemToDelete?.type || "")}
+                            onCancel={() => setModalVisible(false)}
+                        />
+                    </>
                 )}
-            </div>
+            </Animated.View>
+
+            {/* Payment Details Modal */}
+            <Modal
+                visible={paymentDetailsModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setPaymentDetailsModal(false)}
+            >
+                <View className="flex-1 bg-black/50 justify-end">
+                    <View
+                        className={`${isDarkTheme ? "bg-gray-800" : "bg-white"} rounded-t-3xl p-6`}
+                        style={{ maxHeight: "80%" }}
+                    >
+                        <View className="flex-row items-center justify-between mb-6">
+                            <Text
+                                className={`text-xl font-bold ${isDarkTheme ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                Detalhes do Pagamento ASAAS
+                            </Text>
+                            <TouchableOpacity onPress={() => setPaymentDetailsModal(false)}>
+                                <Feather name="x" size={24} color={isDarkTheme ? "#FFFFFF" : "#000000"} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {selectedPayment && (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                <View className="space-y-4">
+                                    {/* ID do Pagamento */}
+                                    <View>
+                                        <Text className={`text-sm font-medium ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>
+                                            ID do Pagamento
+                                        </Text>
+                                        <Text className={`text-base ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                            {selectedPayment.id}
+                                        </Text>
+                                    </View>
+
+                                    {/* Status */}
+                                    <View>
+                                        <Text className={`text-sm font-medium ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>
+                                            Status ASAAS
+                                        </Text>
+                                        <View className="flex-row items-center mt-1">
+                                            <View
+                                                className="px-3 py-1 rounded-full mr-2"
+                                                style={{
+                                                    backgroundColor: `${asaasService.getStatusColor(selectedPayment.status)}20`,
+                                                }}
+                                            >
+                                                <Text
+                                                    className="text-sm font-medium"
+                                                    style={{
+                                                        color: asaasService.getStatusColor(selectedPayment.status),
+                                                    }}
+                                                >
+                                                    {asaasService.getStatusDescription(selectedPayment.status)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+
+                                    {/* Valor */}
+                                    <View>
+                                        <Text className={`text-sm font-medium ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>
+                                            Valor
+                                        </Text>
+                                        <Text className={`text-lg font-bold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                            R$ {selectedPayment.value.toFixed(2).replace(".", ",")}
+                                        </Text>
+                                    </View>
+
+                                    {/* Data de Pagamento */}
+                                    {selectedPayment.paymentDate && (
+                                        <View>
+                                            <Text className={`text-sm font-medium ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>
+                                                Data de Pagamento
+                                            </Text>
+                                            <Text className={`text-base ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                                {new Date(selectedPayment.paymentDate).toLocaleString("pt-BR")}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {/* Data de Pagamento do Cliente */}
+                                    {selectedPayment.clientPaymentDate && (
+                                        <View>
+                                            <Text className={`text-sm font-medium ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>
+                                                Data de Pagamento do Cliente
+                                            </Text>
+                                            <Text className={`text-base ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                                {new Date(selectedPayment.clientPaymentDate).toLocaleString("pt-BR")}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {/* Descrição */}
+                                    {selectedPayment.description && (
+                                        <View>
+                                            <Text className={`text-sm font-medium ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>
+                                                Descrição
+                                            </Text>
+                                            <Text className={`text-base ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                                {selectedPayment.description}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {/* Links */}
+                                    {(selectedPayment.invoiceUrl ||
+                                        selectedPayment.bankSlipUrl ||
+                                        selectedPayment.transactionReceiptUrl) && (
+                                            <View>
+                                                <Text className={`text-sm font-medium mb-2 ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}>
+                                                    Links Disponíveis
+                                                </Text>
+                                                {selectedPayment.invoiceUrl && (
+                                                    <TouchableOpacity className="mb-2">
+                                                        <Text className="text-blue-500 underline">Fatura</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                                {selectedPayment.bankSlipUrl && (
+                                                    <TouchableOpacity className="mb-2">
+                                                        <Text className="text-blue-500 underline">Boleto</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                                {selectedPayment.transactionReceiptUrl && (
+                                                    <TouchableOpacity className="mb-2">
+                                                        <Text className="text-blue-500 underline">Comprovante</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        )}
+                                </View>
+                            </ScrollView>
+                        )}
+                    </View>
+                </View>
+            </Modal>
 
             {/* Floating Action Button */}
-            {activeTab !== "settings" && (
-                <Button
-                    onClick={handleAdd}
-                    className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
-                    style={{ backgroundColor: colors.secondary }}
+            {activeTab !== "settings" && activeTab !== "donations" && (
+                <TouchableOpacity
+                    onPress={handleAdd}
+                    className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
+                    style={{
+                        backgroundColor: colors.secondary,
+                        ...styles.fabShadow,
+                    }}
                 >
-                    <Plus size={24} className="text-white" />
-                </Button>
+                    <Feather name="plus" size={24} color="white" />
+                </TouchableOpacity>
             )}
 
-            {/* Confirm Modal */}
-            <ConfirmModal
-                visible={modalVisible}
-                message={`Tem certeza que deseja excluir este ${itemToDelete?.type === "blog" ? "post" : itemToDelete?.type === "pet" ? "pet" : "usuário"
-                    }?`}
-                onConfirm={() => handleDelete(itemToDelete?.id || "", itemToDelete?.type || "")}
-                onCancel={() => setModalVisible(false)}
+            {/* Error Modal */}
+            <ErrorModal
+                visible={errorModal.visible}
+                title={errorModal.title}
+                message={errorModal.message}
+                type={errorModal.type}
+                onClose={closeErrorModal}
             />
-        </div>
+        </View>
     )
 }
 
@@ -453,58 +897,111 @@ interface BlogPostItemProps {
 }
 
 function BlogPostItem({ post, index, isDark, colors, onEdit, onDelete }: BlogPostItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        // Staggered animation for each item
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
     return (
-        <Card
-            className={`overflow-hidden animate-in fade-in-0 slide-in-from-bottom-4 ${isDark ? "bg-gray-800 border-gray-700" : "bg-white"}`}
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
         >
-            <Card className="p-0">
-                <div className="flex">
-                    <img src={post.image || "/placeholder.svg"} alt={post.title} className="w-24 h-24 object-cover" />
-                    <div className="flex-1 p-3 flex flex-col justify-center">
-                        <div className="flex items-center justify-between">
-                            <h3 className={`text-base font-bold truncate ${isDark ? "text-white" : "text-gray-800"}`}>
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="flex-row">
+                    <Image source={{ uri: post.image }} className="w-24 h-24 object-cover" />
+                    <View className="flex-1 p-3 justify-center">
+                        <View className="flex-row items-center justify-between">
+                            <Text
+                                className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                                numberOfLines={1}
+                            >
                                 {post.title}
-                            </h3>
-                        </div>
-                        <p className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                            </Text>
+                        </View>
+                        <Text
+                            className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
                             {post.author} •{" "}
                             {post.date instanceof Date
                                 ? post.date.toLocaleDateString()
                                 : post.date?.toDate?.()?.toLocaleDateString() || "Data não disponível"}
-                        </p>
-                        <div className="flex items-center mt-2">
-                            <Badge
-                                variant="outline"
-                                className={`text-xs ${post.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                                    }`}
+                        </Text>
+                        <View className="flex-row items-center mt-2">
+                            <View
+                                className="px-2 py-1 rounded-full"
+                                style={{
+                                    backgroundColor: post.status === "published" ? `${colors.primary}20` : `${colors.error}20`,
+                                }}
                             >
-                                {post.status === "published" ? "Publicado" : "Rascunho"}
-                            </Badge>
-                        </div>
-                    </div>
-                    <div className="p-3 flex flex-col justify-center space-y-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onEdit}
-                            className="w-8 h-8 rounded-full"
-                            style={{ backgroundColor: `${colors.primary}15` }}
-                        >
-                            <Edit2 size={16} style={{ color: colors.primary }} />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onDelete}
-                            className="w-8 h-8 rounded-full"
-                            style={{ backgroundColor: `${colors.error}15` }}
-                        >
-                            <Trash2 size={16} style={{ color: colors.error }} />
-                        </Button>
-                    </div>
-                </div>
-            </Card>
-        </Card>
+                                <Text
+                                    className="text-xs font-medium"
+                                    style={{
+                                        color: post.status === "published" ? colors.primary : colors.error,
+                                    }}
+                                >
+                                    {post.status === "published" ? "Publicado" : "Rascunho"}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                    <View className="p-3 justify-center">
+                        <TouchableOpacity onPress={onEdit} className="mb-3">
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.primary}15` }}
+                            >
+                                <Feather name="edit-2" size={16} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onDelete}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.error}15` }}
+                            >
+                                <Feather name="trash-2" size={16} color={colors.error} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
     )
 }
 
@@ -519,6 +1016,33 @@ interface PetItemProps {
 }
 
 function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        // Staggered animation for each item
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
     const getStatusColor = () => {
         switch (pet.status) {
             case "available":
@@ -546,54 +1070,80 @@ function PetItem({ pet, index, isDark, colors, onEdit, onDelete }: PetItemProps)
     }
 
     return (
-        <Card
-            className={`overflow-hidden animate-in fade-in-0 slide-in-from-bottom-4 ${isDark ? "bg-gray-800 border-gray-700" : "bg-white"}`}
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
         >
-            <Card className="p-0">
-                <div className="flex">
-                    <img src={pet.images[0] || "/placeholder.svg"} alt={pet.name} className="w-24 h-24 object-cover" />
-                    <div className="flex-1 p-3 flex flex-col justify-center">
-                        <div className="flex items-center justify-between">
-                            <h3 className={`text-base font-bold truncate ${isDark ? "text-white" : "text-gray-800"}`}>{pet.name}</h3>
-                        </div>
-                        <p className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="flex-row">
+                    <Image source={{ uri: pet.images[0] }} className="w-24 h-24 object-cover" />
+                    <View className="flex-1 p-3 justify-center">
+                        <View className="flex-row items-center justify-between">
+                            <Text
+                                className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                                numberOfLines={1}
+                            >
+                                {pet.name}
+                            </Text>
+                        </View>
+                        <Text
+                            className={`text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
                             {pet.type} • {pet.breed} • {pet.age}
-                        </p>
-                        <div className="flex items-center mt-2">
-                            <Badge
-                                variant="outline"
-                                className="text-xs"
+                        </Text>
+                        <View className="flex-row items-center mt-2">
+                            <View
+                                className="px-2 py-1 rounded-full"
                                 style={{
                                     backgroundColor: `${getStatusColor()}20`,
                                 }}
                             >
-                                <span style={{ color: getStatusColor() }}>{getStatusText()}</span>
-                            </Badge>
-                        </div>
-                    </div>
-                    <div className="p-3 flex flex-col justify-center space-y-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onEdit}
-                            className="w-8 h-8 rounded-full"
-                            style={{ backgroundColor: `${colors.primary}15` }}
-                        >
-                            <Edit2 size={16} style={{ color: colors.primary }} />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onDelete}
-                            className="w-8 h-8 rounded-full"
-                            style={{ backgroundColor: `${colors.error}15` }}
-                        >
-                            <Trash2 size={16} style={{ color: colors.error }} />
-                        </Button>
-                    </div>
-                </div>
-            </Card>
-        </Card>
+                                <Text
+                                    className="text-xs font-medium"
+                                    style={{
+                                        color: getStatusColor(),
+                                    }}
+                                >
+                                    {getStatusText()}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                    <View className="p-3 justify-center">
+                        <TouchableOpacity onPress={onEdit} className="mb-3">
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.primary}15` }}
+                            >
+                                <Feather name="edit-2" size={16} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onDelete}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.error}15` }}
+                            >
+                                <Feather name="trash-2" size={16} color={colors.error} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
     )
 }
 
@@ -607,70 +1157,585 @@ interface UserItemProps {
 }
 
 function UserItem({ user, index, isDark, colors, onEdit, onDelete }: UserItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+
     const getLoginIcon = () => {
         if ("logginFormat" in user && user.logginFormat === "google") {
             return (
-                <div className="flex items-center justify-center w-6 h-6 bg-red-100 rounded-full">
-                    <span className="text-xs text-red-600">G</span>
-                </div>
+                <View className="flex items-center justify-center w-6 h-6 bg-red-100 rounded-full">
+                    <FontAwesome name="google" size={14} color="#EA4335" />
+                </View>
             )
         } else {
             return (
-                <div className="flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full">
-                    <Mail size={14} className="text-blue-600" />
-                </div>
+                <View className="flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full">
+                    <Feather name="mail" size={14} color="#1D4ED8" />
+                </View>
             )
         }
     }
 
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
     return (
-        <Card
-            className={`overflow-hidden animate-in fade-in-0 slide-in-from-bottom-4 ${isDark ? "bg-gray-800 border-gray-700" : "bg-white"}`}
-        // If you want animation delay on web, use a CSS variable or style only for web
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
         >
-            <Card className="p-4">
-                <div className="flex items-center">
-                    <UserIcon size={36} style={{ color: colors.primary }} />
-                    <div className="flex-1 ml-4">
-                        <h3 className={`text-base font-bold truncate ${isDark ? "text-white" : "text-gray-800"}`}>
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={
+                    Platform.OS === "ios" ? styles.iosShadow : Platform.OS === "android" ? styles.androidShadow : styles.webShadow
+                }
+            >
+                <View className="flex-row items-center p-4">
+                    <Feather name="user" size={36} color={colors.primary} />
+                    <View className="flex-1 ml-4">
+                        <Text
+                            className={`text-base font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                            numberOfLines={1}
+                        >
                             {user.displayName || user.email?.split("@")[0] || "Usuário sem nome"}
-                        </h3>
-                        <p className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>{user.email}</p>
-                        <div className="flex items-center mt-2 space-x-2">
+                        </Text>
+                        <Text
+                            className={`text-sm mt-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {user.email}
+                        </Text>
+                        <View className="flex-row items-center mt-2 space-x-2">
                             {getLoginIcon()}
-                            <span className="text-sm text-gray-500">
+                            <Text className="text-s ml-2 text-muted-foreground">
                                 {"logginFormat" in user && user.logginFormat === "google" ? "Login com Google" : "Login com Email"}
-                            </span>
+                            </Text>
                             {"role" in user && user.role === "admin" && (
-                                <Badge style={{ backgroundColor: colors.primary }}>
-                                    <span className="text-xs text-white font-semibold">Admin</span>
+                                <Badge style={{ backgroundColor: colors.primary, borderRadius: 50, marginLeft: 8 }}>
+                                    <Text className="text-s text-white font-semibold">Admin</Text>
                                 </Badge>
                             )}
-                        </div>
-                    </div>
-                    <div className="flex space-x-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onEdit}
-                            className="w-8 h-8 rounded-full"
-                            style={{ backgroundColor: `${colors.primary}15` }}
+                        </View>
+                    </View>
+                    <View className="flex-row space-x-2">
+                        <TouchableOpacity onPress={onEdit}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.primary}15` }}
+                            >
+                                <Feather name="edit-2" size={16} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onDelete}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center"
+                                style={{ backgroundColor: `${colors.error}15` }}
+                            >
+                                <Feather name="trash-2" size={16} color={colors.error} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
+    )
+}
+
+// Donation Item Component
+// Como não tem back-end implementado, não consigo acionar as funções de transferência, sincronização e mudança de status.
+
+interface DonationItemProps {
+    donation: Donation
+    index: number
+    isDark: boolean
+    colors: any
+    onTransfer: (isAsaasAccount: boolean) => void
+    onSyncStatus: () => void
+    onViewDetails: () => void
+    onChangeStatus: (status: "pending" | "paid" | "cancelled") => void
+    isLoading?: boolean
+    isPaymentLoading?: boolean
+}
+
+function DonationItem({
+    donation,
+    index,
+    isDark,
+    colors,
+    onTransfer,
+    onSyncStatus,
+    onViewDetails,
+    onChangeStatus,
+    isLoading = false,
+    isPaymentLoading = false,
+}: DonationItemProps) {
+    const [fadeAnim] = useState(new Animated.Value(0))
+    const [slideAnim] = useState(new Animated.Value(50))
+    const [showStatusMenu, setShowStatusMenu] = useState(false)
+
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    speed: 12,
+                    bounciness: 6,
+                    useNativeDriver: true,
+                }),
+            ]).start()
+        }, index * 100)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
+    const getStatusColor = () => {
+        switch (donation.status) {
+            case "paid":
+                return "#10B981" // Verde
+            case "pending":
+                return "#F59E0B" // Amarelo
+            case "cancelled":
+                return "#EF4444" // Vermelho
+            default:
+                return colors.primary
+        }
+    }
+
+    const getStatusText = () => {
+        switch (donation.status) {
+            case "paid":
+                return "Pago"
+            case "pending":
+                return "Pendente"
+            case "cancelled":
+                return "Cancelado"
+            default:
+                return donation.status
+        }
+    }
+
+    // Verificar se é conta ASAAS (exemplo: se a chave PIX contém "asaas" ou tem formato específico)
+    const isAsaasAccount =
+        donation.pixKey.toLowerCase().includes("asaas") ||
+        donation.pixKey.includes("@asaas.com") ||
+        donation.asaasPaymentId !== ""
+
+    const handleStatusChange = (status: "pending" | "paid" | "cancelled") => {
+        setShowStatusMenu(false)
+        onChangeStatus(status)
+    }
+
+    return (
+        <Animated.View
+            style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+            }}
+            className="mb-4"
+        >
+            <View
+                className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+            >
+                <View className="p-4">
+                    {/* Header com valor e status */}
+                    <View className="flex-row items-center justify-between mb-3">
+                        <Text
+                            className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
                         >
-                            <Edit2 size={16} style={{ color: colors.primary }} />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onDelete}
-                            className="w-8 h-8 rounded-full"
-                            style={{ backgroundColor: `${colors.error}15` }}
+                            R$ {donation.amount.toFixed(2).replace(".", ",")}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => setShowStatusMenu(true)}
+                            className="px-3 py-1 rounded-full"
+                            style={{
+                                backgroundColor: `${getStatusColor()}20`,
+                            }}
                         >
-                            <Trash2 size={16} style={{ color: colors.error }} />
-                        </Button>
-                    </div>
-                </div>
-            </Card>
-        </Card>
+                            <Text
+                                className="text-sm font-medium"
+                                style={{
+                                    color: getStatusColor(),
+                                }}
+                            >
+                                {getStatusText()}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Informações da ONG */}
+                    <View className="mb-3">
+                        <Text
+                            className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {donation.ongName}
+                        </Text>
+                        <Text
+                            className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            PIX: {donation.pixKey}
+                        </Text>
+                    </View>
+
+                    {/* Informações do doador */}
+                    <View className="mb-3">
+                        <Text
+                            className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            <Text className="font-medium">Doador:</Text> {donation.donorName}
+                        </Text>
+                        <Text
+                            className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {donation.donorEmail}
+                        </Text>
+                    </View>
+
+                    {/* Data */}
+                    <View className="mb-4">
+                        <Text
+                            className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {donation.createdAt.toLocaleDateString("pt-BR")} às {donation.createdAt.toLocaleTimeString("pt-BR")}
+                        </Text>
+                    </View>
+
+                    {/* Indicador de tipo de conta */}
+                    <View className="flex-row items-center justify-between mb-4">
+                        <View className="flex-row items-center">
+                            <View
+                                className="w-3 h-3 rounded-full mr-2"
+                                style={{
+                                    backgroundColor: isAsaasAccount ? "#10B981" : "#6B7280",
+                                }}
+                            />
+                            <Text
+                                className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}
+                                style={Platform.select({
+                                    ios: { fontFamily: "San Francisco" },
+                                    android: { fontFamily: "Roboto" },
+                                })}
+                            >
+                                {isAsaasAccount ? "Conta ASAAS" : "Conta Manual"}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Botões de ação para ASAAS */}
+                    {donation.asaasPaymentId && (
+                        <View className="flex-row space-x-2 mb-4">
+                            <TouchableOpacity onPress={onSyncStatus} className="flex-1" disabled={isPaymentLoading}>
+                                <View
+                                    style={{
+                                        backgroundColor: isPaymentLoading ? "#9CA3AF" : "#3B82F6",
+                                        borderRadius: 8,
+                                        paddingVertical: 10,
+                                        alignItems: "center",
+                                        flexDirection: "row",
+                                        justifyContent: "center",
+                                        opacity: isPaymentLoading ? 0.7 : 1,
+                                    }}
+                                >
+                                    {isPaymentLoading ? (
+                                        <ActivityIndicator size="small" color="white" style={{ marginRight: 6 }} />
+                                    ) : (
+                                        <Feather name="refresh-cw" size={14} color="white" style={{ marginRight: 6 }} />
+                                    )}
+                                    <Text
+                                        style={{
+                                            color: "white",
+                                            fontSize: 12,
+                                            fontWeight: "600",
+                                        }}
+                                    >
+                                        {isPaymentLoading ? "Sincronizando..." : "Sincronizar"}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={onViewDetails} className="flex-1" disabled={isPaymentLoading}>
+                                <View
+                                    style={{
+                                        backgroundColor: isPaymentLoading ? "#9CA3AF" : "#8B5CF6",
+                                        borderRadius: 8,
+                                        paddingVertical: 10,
+                                        alignItems: "center",
+                                        flexDirection: "row",
+                                        justifyContent: "center",
+                                        opacity: isPaymentLoading ? 0.7 : 1,
+                                    }}
+                                >
+                                    {isPaymentLoading ? (
+                                        <ActivityIndicator size="small" color="white" style={{ marginRight: 6 }} />
+                                    ) : (
+                                        <Feather name="eye" size={14} color="white" style={{ marginRight: 6 }} />
+                                    )}
+                                    <Text
+                                        style={{
+                                            color: "white",
+                                            fontSize: 12,
+                                            fontWeight: "600",
+                                        }}
+                                    >
+                                        {isPaymentLoading ? "Carregando..." : "Ver Detalhes"}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Botões de ação principais */}
+                    {donation.status === "pending" && (
+                        <View className="flex-row space-x-3">
+                            {isAsaasAccount ? (
+                                <TouchableOpacity onPress={() => onTransfer(true)} className="flex-1" disabled={isLoading}>
+                                    <LinearGradient
+                                        colors={isLoading ? ["#9CA3AF", "#6B7280"] : ["#10B981", "#059669"]}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={{
+                                            borderRadius: 8,
+                                            paddingVertical: 12,
+                                            alignItems: "center",
+                                            flexDirection: "row",
+                                            justifyContent: "center",
+                                            opacity: isLoading ? 0.7 : 1,
+                                        }}
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator size="small" color="white" style={{ marginRight: 6 }} />
+                                        ) : (
+                                            <Feather name="zap" size={16} color="white" style={{ marginRight: 6 }} />
+                                        )}
+                                        <Text
+                                            style={{
+                                                color: "white",
+                                                fontSize: 14,
+                                                fontWeight: "600",
+                                            }}
+                                        >
+                                            {isLoading ? "Processando..." : "Transferir Auto"}
+                                        </Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity onPress={() => onTransfer(false)} className="flex-1" disabled={isLoading}>
+                                    <View
+                                        style={{
+                                            backgroundColor: isLoading ? "#9CA3AF" : isDark ? "#374151" : "#F3F4F6",
+                                            borderRadius: 8,
+                                            paddingVertical: 12,
+                                            alignItems: "center",
+                                            flexDirection: "row",
+                                            justifyContent: "center",
+                                            opacity: isLoading ? 0.7 : 1,
+                                        }}
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator
+                                                size="small"
+                                                color={isDark ? "#FFFFFF" : "#1F2937"}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                        ) : (
+                                            <Feather
+                                                name="check"
+                                                size={16}
+                                                color={isDark ? "#FFFFFF" : "#1F2937"}
+                                                style={{ marginRight: 6 }}
+                                            />
+                                        )}
+                                        <Text
+                                            style={{
+                                                color: isDark ? "#FFFFFF" : "#1F2937",
+                                                fontSize: 14,
+                                                fontWeight: "600",
+                                            }}
+                                        >
+                                            {isLoading ? "Processando..." : "Marcar como Pago"}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+
+                    {donation.status === "paid" && (
+                        <View
+                            style={{
+                                backgroundColor: "#10B98120",
+                                borderRadius: 8,
+                                paddingVertical: 12,
+                                alignItems: "center",
+                                flexDirection: "row",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Feather name="check-circle" size={16} color="#10B981" style={{ marginRight: 6 }} />
+                            <Text
+                                style={{
+                                    color: "#10B981",
+                                    fontSize: 14,
+                                    fontWeight: "600",
+                                }}
+                            >
+                                Transferência Concluída
+                            </Text>
+                        </View>
+                    )}
+
+                    {donation.status === "cancelled" && (
+                        <View
+                            style={{
+                                backgroundColor: "#EF444420",
+                                borderRadius: 8,
+                                paddingVertical: 12,
+                                alignItems: "center",
+                                flexDirection: "row",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Feather name="x-circle" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                            <Text
+                                style={{
+                                    color: "#EF4444",
+                                    fontSize: 14,
+                                    fontWeight: "600",
+                                }}
+                            >
+                                Doação Cancelada
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+
+            {/* Status Change Modal */}
+            <Modal
+                visible={showStatusMenu}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowStatusMenu(false)}
+            >
+                <TouchableOpacity
+                    className="flex-1 bg-black/50 justify-center items-center"
+                    activeOpacity={1}
+                    onPress={() => setShowStatusMenu(false)}
+                >
+                    <View
+                        className={`${isDark ? "bg-gray-800" : "bg-white"} rounded-2xl p-6 mx-8 min-w-64`}
+                        style={{ maxWidth: 300 }}
+                    >
+                        <Text
+                            className={`text-lg font-bold mb-4 text-center ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            Alterar Status
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => handleStatusChange("pending")}
+                            className="flex-row items-center p-3 rounded-lg mb-2"
+                            style={{ backgroundColor: "#F59E0B20" }}
+                        >
+                            <View className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: "#F59E0B" }} />
+                            <Text className={`flex-1 ${isDark ? "text-white" : "text-gray-800"}`}>Pendente</Text>
+                            {donation.status === "pending" && <Feather name="check" size={16} color="#F59E0B" />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => handleStatusChange("paid")}
+                            className="flex-row items-center p-3 rounded-lg mb-2"
+                            style={{ backgroundColor: "#10B98120" }}
+                        >
+                            <View className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: "#10B981" }} />
+                            <Text className={`flex-1 ${isDark ? "text-white" : "text-gray-800"}`}>Pago</Text>
+                            {donation.status === "paid" && <Feather name="check" size={16} color="#10B981" />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => handleStatusChange("cancelled")}
+                            className="flex-row items-center p-3 rounded-lg mb-4"
+                            style={{ backgroundColor: "#EF444420" }}
+                        >
+                            <View className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: "#EF4444" }} />
+                            <Text className={`flex-1 ${isDark ? "text-white" : "text-gray-800"}`}>Cancelado</Text>
+                            {donation.status === "cancelled" && <Feather name="check" size={16} color="#EF4444" />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setShowStatusMenu(false)}
+                            className="p-3 rounded-lg"
+                            style={{ backgroundColor: isDark ? "#374151" : "#F3F4F6" }}
+                        >
+                            <Text className={`text-center font-medium ${isDark ? "text-white" : "text-gray-800"}`}>Cancelar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+        </Animated.View>
     )
 }
 
@@ -681,148 +1746,153 @@ interface SettingsPanelProps {
 }
 
 function SettingsPanel({ isDark, colors }: SettingsPanelProps) {
+    const isIOS = Platform.OS === "ios"
+    const isAndroid = Platform.OS === "android"
+
     const settingsSections = [
         {
             id: "notifications",
             title: "Notificações",
-            icon: Bell,
+            icon: "bell",
             items: [
                 {
                     id: "push",
                     title: "Configurar notificações push",
-                    icon: Bell,
-                    action: () => {
-                        if (typeof window !== "undefined") {
-                            window.alert("Configurações de Notificações: Funcionalidade em desenvolvimento")
-                        }
-                    },
+                    icon: "bell",
+                    action: () => Alert.alert("Configurações de Notificações", "Funcionalidade em desenvolvimento"),
                 },
                 {
                     id: "email",
                     title: "Configurar emails automáticos",
-                    icon: Mail,
-                    action: () => {
-                        if (typeof window !== "undefined") {
-                            window.alert("Configurações de Email: Funcionalidade em desenvolvimento")
-                        }
-                    },
+                    icon: "mail",
+                    action: () => Alert.alert("Configurações de Email", "Funcionalidade em desenvolvimento"),
                 },
             ],
         },
         {
             id: "appearance",
             title: "Aparência",
-            icon: Layout,
+            icon: "layout",
             items: [
                 {
                     id: "theme",
                     title: "Personalizar tema do aplicativo",
-                    icon: Layout,
-                    action: () => {
-                        if (typeof window !== "undefined") {
-                            window.alert("Configurações de Tema: Funcionalidade em desenvolvimento")
-                        }
-                    },
+                    icon: "layout",
+                    action: () => Alert.alert("Configurações de Tema", "Funcionalidade em desenvolvimento"),
                 },
                 {
                     id: "logo",
                     title: "Alterar logo e imagens",
-                    icon: Layout,
-                    action: () => {
-                        if (typeof window !== "undefined") {
-                            window.alert("Configurações de Logo: Funcionalidade em desenvolvimento")
-                        }
-                    },
+                    icon: "image",
+                    action: () => Alert.alert("Configurações de Logo", "Funcionalidade em desenvolvimento"),
                 },
             ],
         },
         {
             id: "system",
             title: "Sistema",
-            icon: Settings,
+            icon: "settings",
             items: [
                 {
                     id: "backup",
                     title: "Backup e restauração",
-                    icon: Database,
-                    action: () => {
-                        if (typeof window !== "undefined") {
-                            window.alert("Backup: Funcionalidade em desenvolvimento")
-                        }
-                    },
+                    icon: "database",
+                    action: () => Alert.alert("Backup", "Funcionalidade em desenvolvimento"),
                 },
                 {
                     id: "logs",
                     title: "Logs do sistema",
-                    icon: FileText,
-                    action: () => {
-                        if (typeof window !== "undefined") {
-                            window.alert("Logs: Funcionalidade em desenvolvimento")
-                        }
-                    },
+                    icon: "file-text",
+                    action: () => Alert.alert("Logs", "Funcionalidade em desenvolvimento"),
                 },
                 {
                     id: "info",
                     title: "Informações do aplicativo",
-                    icon: Info,
-                    action: () => {
-                        if (typeof window !== "undefined") {
-                            window.alert("Versão: Versão atual: 1.0.0")
-                        }
-                    },
+                    icon: "info",
+                    action: () => Alert.alert("Versão", "Versão atual: 1.0.0"),
                 },
             ],
         },
     ]
 
     return (
-        <ScrollArea className="h-full">
-            <div className="space-y-6">
-                {settingsSections.map((section) => {
-                    const SectionIcon = section.icon
-                    return (
-                        <div key={section.id}>
-                            <div className="flex items-center mb-3">
-                                <div
-                                    className="w-8 h-8 rounded-full flex items-center justify-center mr-2"
-                                    style={{ backgroundColor: `${colors.primary}15` }}
-                                >
-                                    <SectionIcon size={16} style={{ color: colors.primary }} />
-                                </div>
-                                <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-800"}`}>{section.title}</h2>
-                            </div>
+        <ScrollView className="flex-1 p-4">
+            {settingsSections.map((section) => (
+                <View key={section.id} className="mb-6">
+                    <View className="flex-row items-center mb-3">
+                        <View
+                            className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                            style={{ backgroundColor: `${colors.primary}15` }}
+                        >
+                            <Feather name={section.icon as any} size={16} color={colors.primary} />
+                        </View>
+                        <Text
+                            className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                            style={Platform.select({
+                                ios: { fontFamily: "San Francisco" },
+                                android: { fontFamily: "Roboto" },
+                            })}
+                        >
+                            {section.title}
+                        </Text>
+                    </View>
 
-                            <Card className={`${isDark ? "bg-gray-800 border-gray-700" : "bg-white"}`}>
-                                <Card className="p-0">
-                                    {section.items.map((item, index) => {
-                                        const ItemIcon = item.icon
-                                        return (
-                                            <Button
-                                                key={item.id}
-                                                variant="ghost"
-                                                onClick={item.action}
-                                                className={`w-full justify-between p-4 h-auto ${index < section.items.length - 1 ? "border-b border-gray-200" : ""
-                                                    }`}
-                                            >
-                                                <div className="flex items-center">
-                                                    <div
-                                                        className="w-10 h-10 rounded-full flex items-center justify-center mr-3"
-                                                        style={{ backgroundColor: `${colors.primary}10` }}
-                                                    >
-                                                        <ItemIcon size={18} style={{ color: colors.primary }} />
-                                                    </div>
-                                                    <span className={`${isDark ? "text-white" : "text-gray-800"}`}>{item.title}</span>
-                                                </div>
-                                                <ChevronRight size={20} className={isDark ? "text-gray-600" : "text-gray-400"} />
-                                            </Button>
-                                        )
-                                    })}
-                                </Card>
-                            </Card>
-                        </div>
-                    )
-                })}
-            </div>
-        </ScrollArea>
+                    <View
+                        className={`rounded-xl overflow-hidden ${isDark ? "bg-gray-800" : "bg-white"}`}
+                        style={isIOS ? styles.iosShadow : isAndroid ? styles.androidShadow : styles.webShadow}
+                    >
+                        {section.items.map((item, index) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                onPress={item.action}
+                                className={`flex-row items-center justify-between p-4 ${index < section.items.length - 1 ? "border-b border-gray-200" : ""
+                                    }`}
+                            >
+                                <View className="flex-row items-center">
+                                    <View
+                                        className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                                        style={{ backgroundColor: `${colors.primary}10` }}
+                                    >
+                                        <Feather name={item.icon as any} size={18} color={colors.primary} />
+                                    </View>
+                                    <Text
+                                        className={`${isDark ? "text-white" : "text-gray-800"}`}
+                                        style={Platform.select({
+                                            ios: { fontFamily: "San Francisco" },
+                                            android: { fontFamily: "Roboto" },
+                                        })}
+                                    >
+                                        {item.title}
+                                    </Text>
+                                </View>
+                                <Feather name="chevron-right" size={20} color={isDark ? "#6B7280" : "#9CA3AF"} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            ))}
+        </ScrollView>
     )
 }
+
+const styles = StyleSheet.create({
+    iosShadow: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+    },
+    androidShadow: {
+        elevation: 3,
+    },
+    webShadow: {
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    },
+    fabShadow: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+})
