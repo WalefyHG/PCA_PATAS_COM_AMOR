@@ -8,9 +8,10 @@ import { NavigationContainer } from "@react-navigation/native"
 import { ActivityIndicator, View, Text } from "react-native"
 import { ThemeProvider, useThemeContext } from "../presentation/contexts/ThemeContext"
 import { AuthProvider, useAuth } from "../presentation/contexts/AuthContext"
-import { useEffect, useState } from "react" // Adicionado useState
+import { OngProvider } from "../presentation/contexts/OngContext"
+import { useEffect, useState } from "react"
 import { NavigationIndependentTree } from "@react-navigation/native"
-import AsyncStorage from "@react-native-async-storage/async-storage" // Adicionado AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 // Screens
 import LoginScreen from "../presentation/screens/LoginScreen"
@@ -23,7 +24,7 @@ import { useNavigation } from "expo-router"
 import ExpoNotificationService from "../repositories/NotificationRepository"
 
 const Stack = createNativeStackNavigator()
-const PERSISTENCE_KEY = "NAVIGATION_STATE_V1" // Chave para persistência
+const PERSISTENCE_KEY = "NAVIGATION_STATE_V1"
 
 // Componente de navegação condicional baseado no estado de autenticação
 function NavigationContent() {
@@ -130,10 +131,9 @@ export default function RouterLayout() {
         }
 
         if (!isNavigationReady) {
-            // Apenas restaura se ainda não estiver pronto
             restoreState()
         }
-    }, [isNavigationReady]) // Dependência para re-executar se o estado de prontidão mudar
+    }, [isNavigationReady])
 
     if (!isNavigationReady) {
         return (
@@ -147,17 +147,19 @@ export default function RouterLayout() {
     return (
         <ThemeProvider>
             <AuthProvider>
-                <NavigationIndependentTree>
-                    <NavigationContainer
-                        initialState={initialState} // Aplica o estado inicial carregado
-                        onStateChange={(state) => AsyncStorage.setItem(PERSISTENCE_KEY, JSON.stringify(state))} // Salva o estado a cada mudança
-                    >
-                        <SafeAreaProvider>
-                            <Toastable />
-                            <NavigationContent />
-                        </SafeAreaProvider>
-                    </NavigationContainer>
-                </NavigationIndependentTree>
+                <OngProvider>
+                    <NavigationIndependentTree>
+                        <NavigationContainer
+                            initialState={initialState}
+                            onStateChange={(state) => AsyncStorage.setItem(PERSISTENCE_KEY, JSON.stringify(state))}
+                        >
+                            <SafeAreaProvider>
+                                <Toastable />
+                                <NavigationContent />
+                            </SafeAreaProvider>
+                        </NavigationContainer>
+                    </NavigationIndependentTree>
+                </OngProvider>
             </AuthProvider>
         </ThemeProvider>
     )
