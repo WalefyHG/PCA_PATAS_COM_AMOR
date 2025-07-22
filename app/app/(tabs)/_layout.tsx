@@ -28,6 +28,7 @@ import RegisterOng from "@/app/presentation/screens/RegisterOng"
 import { DonationScreen } from "@/app/presentation/screens/Donation"
 import MyOngs from "@/app/presentation/screens/OngsList"
 import OngDetails from "@/app/presentation/screens/OngsDetails"
+import Notifications from "@/app/presentation/screens/Notifications"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -209,6 +210,7 @@ const AppLayout = () => {
             <Stack.Screen name="RegisterOng" component={RegisterOng} options={{ title: t("Register ONG"), headerShown: false }} />
             <Stack.Screen name="OngList" component={MyOngs} options={{ title: t("ONG List"), headerShown: false }} />
             <Stack.Screen name="OngDetails" component={OngDetails} options={{ title: t("ONG Details"), headerShown: false }} />
+            <Stack.Screen name="Notifications" component={Notifications} options={{ title: t("Notifications"), headerShown: false }} />
             <Stack.Screen name="ChatList" component={ChatList} options={{ title: t("Chat"), headerShown: false }} />
         </Stack.Navigator>
     )

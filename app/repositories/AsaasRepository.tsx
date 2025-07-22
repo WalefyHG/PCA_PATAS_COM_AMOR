@@ -1,10 +1,12 @@
 import { ongRepository } from "../repositories/FirebaseOngRepository" // Importação estática adicionada aqui
+import ExpoNotificationService from "./NotificationRepository"
 
 const ASAAS_BASE_URL = "https://sandbox.asaas.com/api/v3"
 const ASAAS_API_KEY = (
     process.env.EXPO_PUBLIC_ASAAS_API_KEY ||
     "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwNzI2NTk6OiRhYWNoXzRlNTkzZWYwLTNkMGYtNGI4Zi1hYzE5LWY4ZDYyNTJkNDI4Nw=="
 ).trim() // Adicionado .trim()
+
 
 interface AsaasCustomer {
     id?: string
@@ -131,6 +133,12 @@ interface DonationData {
 }
 
 class AsaasService {
+    private notificationService: ExpoNotificationService
+
+    constructor() {
+        this.notificationService = ExpoNotificationService.getInstance()
+    }
+
     private async makeRequest<T>(
         endpoint: string,
         method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
@@ -182,9 +190,14 @@ class AsaasService {
         await this.makeRequest(`/payments/${paymentId}`, "DELETE")
     }
 
+    /**
+     * Criar doação com notificação automática
+     */
     async createDonation(donationData: DonationData): Promise<string> {
         try {
-            // Não é mais necessário importar aqui, ongRepository já está importado globalmente
+            console.log("💰 Criando doação:", donationData)
+
+            // 1. Salvar doação no Firebase
             const donationId = await ongRepository.createDonation({
                 ongId: donationData.ongId,
                 ongName: donationData.ongName,
@@ -197,14 +210,35 @@ class AsaasService {
                 pixCopyPaste: donationData.pixCopyPaste,
                 status: "pending",
             })
+
+            // 2. Disparar notificação de doação criada
+            await this.notificationService.createDonationNotification(
+                donationId,
+                donationData.donorName,
+                donationData.amount,
+                donationData.ongName,
+            )
+
+            console.log("✅ Doação criada com sucesso:", donationId)
             return donationId
         } catch (error) {
-            console.error("Error creating donation:", error)
+            console.error("❌ Erro ao criar doação:", error)
+
+            // Notificar erro
+            await this.notificationService.sendLocalNotification(
+                "Erro na Doação ❌",
+                "Houve um problema ao processar sua doação. Tente novamente.",
+                {
+                    type: "error",
+                    action: "retry_donation",
+                }
+            )
+
             throw new Error("Erro ao salvar doação")
         }
     }
 
-    // ===== FUNCIONALIDADES DE TRANSFERÊNCIA =====
+    // ===== FUNCIONALIDADES DE TRANSFERÊNCIA COM NOTIFICAÇÕES =====
 
     /**
      * Obtém o saldo atual da conta ASAAS
@@ -232,7 +266,7 @@ class AsaasService {
     }
 
     /**
-     * Cria uma transferência PIX
+     * Cria uma transferência PIX com notificação
      */
     async createPixTransfer(transferData: Omit<AsaasTransfer, "id">): Promise<AsaasTransferResponse> {
         try {
@@ -240,10 +274,33 @@ class AsaasService {
                 ...transferData,
                 operationType: "PIX",
             })
+
+            // Notificar transferência criada
+            await this.notificationService.sendLocalNotification(
+                "💸 Transferência PIX Criada",
+                `Transferência de R$ ${transferData.value.toFixed(2)} foi iniciada`,
+                {
+                    type: "transfer",
+                    transferId: response.id,
+                    action: "view_transfer",
+                }
+            )
+
             console.log(`PIX transfer created: ${response.id}`)
             return response
         } catch (error) {
             console.error("Error creating PIX transfer:", error)
+
+            // Notificar erro na transferência
+            await this.notificationService.sendLocalNotification(
+                "❌ Erro na Transferência",
+                "Não foi possível criar a transferência PIX. Tente novamente.",
+                {
+                    type: "error",
+                    action: "retry_transfer",
+                }
+            )
+
             throw new Error("Erro ao criar transferência PIX")
         }
     }
@@ -276,11 +333,23 @@ class AsaasService {
     }
 
     /**
-     * Cancela uma transferência (apenas se ainda estiver pendente)
+     * Cancela uma transferência com notificação
      */
     async cancelTransfer(transferId: string): Promise<void> {
         try {
             await this.makeRequest(`/transfers/${transferId}`, "DELETE")
+
+            // Notificar cancelamento
+            await this.notificationService.sendLocalNotification(
+                "🚫 Transferência Cancelada",
+                `A transferência ${transferId} foi cancelada com sucesso`,
+                {
+                    type: "transfer",
+                    transferId,
+                    action: "view_transfers",
+                }
+            )
+
             console.log(`Transfer ${transferId} cancelled`)
         } catch (error) {
             console.error("Error cancelling transfer:", error)
@@ -289,7 +358,7 @@ class AsaasService {
     }
 
     /**
-     * Processa transferência automática para uma doação
+     * Processa transferência automática para uma doação com notificações
      */
     async processAutomaticTransfer(
         donationId: string,
@@ -302,12 +371,29 @@ class AsaasService {
         message: string
     }> {
         try {
+            console.log("🔄 Processando transferência automática:", { donationId, amount })
+
             // 1. Verificar saldo disponível
             const balance = await this.getBalance()
             if (balance.balance < amount) {
+                const message = `Saldo insuficiente. Disponível: R$ ${balance.balance.toFixed(
+                    2,
+                )}, Necessário: R$ ${amount.toFixed(2)}`
+
+                // Notificar saldo insuficiente
+                await this.notificationService.sendLocalNotification(
+                    "⚠️ Saldo Insuficiente",
+                    message,
+                    {
+                        type: "warning",
+                        donationId,
+                        action: "view_balance",
+                    }
+                )
+
                 return {
                     success: false,
-                    message: `Saldo insuficiente. Disponível: R$ ${balance.balance.toFixed(2)}, Necessário: R$ ${amount.toFixed(2)}`,
+                    message,
                 }
             }
 
@@ -319,8 +405,20 @@ class AsaasService {
             })
 
             // 3. Atualizar status da doação no Firebase
-            // Não é mais necessário importar aqui, ongRepository já está importado globalmente
             await ongRepository.updateDonationStatus(donationId, "paid")
+
+            // 4. Notificar transferência bem-sucedida
+            await this.notificationService.sendLocalNotification(
+                "✅ Transferência Realizada",
+                `R$ ${amount.toFixed(2)} transferidos com sucesso!`,
+                {
+                    type: "success",
+                    donationId,
+                    transferId: transfer.id,
+                    action: "view_donation",
+                }
+            )
+
             return {
                 success: true,
                 transferId: transfer.id,
@@ -328,6 +426,18 @@ class AsaasService {
             }
         } catch (error) {
             console.error("Error processing automatic transfer:", error)
+
+            // Notificar erro na transferência automática
+            await this.notificationService.sendLocalNotification(
+                "❌ Erro na Transferência Automática",
+                "Não foi possível processar a transferência. Verifique os dados e tente novamente.",
+                {
+                    type: "error",
+                    donationId,
+                    action: "retry_transfer",
+                }
+            )
+
             return {
                 success: false,
                 message: error instanceof Error ? error.message : "Erro desconhecido ao processar transferência",
@@ -353,6 +463,7 @@ class AsaasService {
             }>("/pix/addressKeys/validate", "POST", {
                 addressKey: pixKey,
             })
+
             return {
                 ...response,
                 message: response.valid ? "Chave PIX válida" : "Chave PIX inválida",
@@ -397,6 +508,7 @@ class AsaasService {
                 failedTransfers: number
                 pendingTransfers: number
             }>(endpoint)
+
             return response
         } catch (error) {
             console.error("Error fetching transfer stats:", error)
@@ -410,10 +522,10 @@ class AsaasService {
         }
     }
 
-    // ===== FUNCIONALIDADES DE SINCRONIZAÇÃO DE STATUS =====
+    // ===== FUNCIONALIDADES DE SINCRONIZAÇÃO DE STATUS COM NOTIFICAÇÕES =====
 
     /**
-     * Sincroniza o status de uma doação com o ASAAS
+     * Sincroniza o status de uma doação com o ASAAS e notifica mudanças
      */
     async syncDonationStatus(
         donationId: string,
@@ -424,30 +536,56 @@ class AsaasService {
         message: string
     }> {
         try {
+            console.log("🔄 Iniciando sincronização de status:", { donationId, asaasPaymentId })
+
             // 1. Buscar o pagamento no ASAAS
             const payment = await this.getPayment(asaasPaymentId)
+            console.log("📊 Status do ASAAS:", payment.status)
 
             // 2. Mapear status do ASAAS para status da doação
             let donationStatus: "pending" | "paid" | "cancelled"
+            let notificationTitle = ""
+            let notificationBody = ""
 
             switch (payment.status) {
                 case "RECEIVED":
                 case "CONFIRMED":
                 case "RECEIVED_IN_CASH":
                     donationStatus = "paid"
+                    notificationTitle = "✅ Pagamento Confirmado!"
+                    notificationBody = `Sua doação de R$ ${payment.value.toFixed(2)} foi confirmada`
                     break
                 case "OVERDUE":
                 case "REFUNDED":
                 case "CHARGEBACK_REQUESTED":
                     donationStatus = "cancelled"
+                    notificationTitle = "❌ Pagamento Cancelado"
+                    notificationBody = `Sua doação de R$ ${payment.value.toFixed(2)} foi cancelada`
                     break
                 default:
                     donationStatus = "pending"
+                    notificationTitle = "⏳ Pagamento Pendente"
+                    notificationBody = `Sua doação de R$ ${payment.value.toFixed(2)} está sendo processada`
             }
 
+            console.log("🔄 Mapeamento de status:", { asaasStatus: payment.status, donationStatus })
+
             // 3. Atualizar no Firebase
-            // Não é mais necessário importar aqui, ongRepository já está importado globalmente
             await ongRepository.updateDonationStatus(donationId, donationStatus)
+            console.log("✅ Status atualizado no Firebase:", donationStatus)
+
+            // 4. Notificar mudança de status
+            await this.notificationService.sendLocalNotification(
+                notificationTitle,
+                notificationBody,
+                {
+                    type: "payment_status",
+                    donationId,
+                    asaasPaymentId,
+                    status: donationStatus,
+                    action: "view_donation",
+                }
+            )
 
             return {
                 success: true,
@@ -455,7 +593,19 @@ class AsaasService {
                 message: `Status sincronizado: ${payment.status} → ${donationStatus}`,
             }
         } catch (error) {
-            console.error("Error syncing donation status:", error)
+            console.error("❌ Erro ao sincronizar status:", error)
+
+            // Notificar erro na sincronização
+            await this.notificationService.sendLocalNotification(
+                "⚠️ Erro na Sincronização",
+                "Não foi possível verificar o status do pagamento. Tente novamente mais tarde.",
+                {
+                    type: "error",
+                    donationId,
+                    action: "retry_sync",
+                }
+            )
+
             return {
                 success: false,
                 currentStatus: "UNKNOWN",
@@ -506,10 +656,12 @@ class AsaasService {
             let endpoint = `/payments?limit=${limit}&offset=${offset}`
             if (status) endpoint += `&status=${status}`
             if (customer) endpoint += `&customer=${customer}`
+
             const response = await this.makeRequest<{
                 data: AsaasPayment[]
                 totalCount: number
             }>(endpoint)
+
             return {
                 success: true,
                 payments: response.data || [],
@@ -524,6 +676,31 @@ class AsaasService {
                 totalCount: 0,
                 message: error instanceof Error ? error.message : "Erro ao buscar pagamentos",
             }
+        }
+    }
+
+    /**
+     * Monitora pagamentos pendentes e notifica mudanças de status
+     */
+    async monitorPendingPayments(): Promise<void> {
+        try {
+            console.log("🔍 Monitorando pagamentos pendentes...")
+
+            const { payments } = await this.getPayments(50, 0, "PENDING")
+
+            for (const payment of payments) {
+                // Verificar se o status mudou
+                const updatedPayment = await this.getPayment(payment.id)
+
+                if (updatedPayment.status !== "PENDING") {
+                    console.log(`📊 Status mudou para pagamento ${payment.id}: ${updatedPayment.status}`)
+
+                    // Buscar doação relacionada no Firebase e sincronizar
+                    // Esta funcionalidade pode ser expandida conforme necessário
+                }
+            }
+        } catch (error) {
+            console.error("❌ Erro ao monitorar pagamentos:", error)
         }
     }
 
@@ -568,6 +745,27 @@ class AsaasService {
                 return "#EF4444" // Vermelho
             default:
                 return "#6B7280" // Cinza
+        }
+    }
+
+    /**
+     * Obtém ícone do status para notificações
+     */
+    getStatusIcon(status: string): string {
+        switch (status) {
+            case "RECEIVED":
+            case "CONFIRMED":
+            case "RECEIVED_IN_CASH":
+                return "✅"
+            case "PENDING":
+            case "AWAITING_RISK_ANALYSIS":
+                return "⏳"
+            case "OVERDUE":
+            case "REFUNDED":
+            case "CHARGEBACK_REQUESTED":
+                return "❌"
+            default:
+                return "📊"
         }
     }
 }

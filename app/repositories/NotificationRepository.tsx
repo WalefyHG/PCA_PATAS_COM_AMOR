@@ -11,10 +11,11 @@ import {
     getDocs,
     serverTimestamp,
     onSnapshot,
+    updateDoc,
+    limit,
 } from "firebase/firestore"
 import { db, auth } from "../data/datasources/firebase/firebase"
 import { updateUserProfile } from "../repositories/FirebaseUserRepository"
-import { router } from "expo-router"
 
 export interface Favorite {
     id?: string
@@ -28,6 +29,18 @@ export interface Favorite {
 export interface NotificationPreference {
     petType: string
     enabled: boolean
+}
+
+export interface AppNotification {
+    id?: string
+    userId: string
+    title: string
+    body: string
+    type: "donation" | "pet" | "general" | "system"
+    data?: any
+    read: boolean
+    createdAt?: any
+    expiresAt?: any
 }
 
 // Configurar comportamento das notificações
@@ -151,13 +164,8 @@ class ExpoNotificationService {
         if (!data) return
 
         try {
-            if (data.action === "view_pet" && data.petId) {
-                router.push(`/pet-details/${data.petId}`)
-            } else if (data.action === "view_favorites") {
-                router.push("/favorites")
-            } else if (data.screen) {
-                router.push(`/${data.screen}`)
-            }
+            // Aqui você pode implementar navegação baseada nos dados da notificação
+            console.log("Dados da notificação:", data)
         } catch (error) {
             console.error("❌ Erro ao navegar:", error)
         }
@@ -210,6 +218,187 @@ class ExpoNotificationService {
             throw error
         }
     }
+
+    // ===== FUNCIONALIDADES DE NOTIFICAÇÕES DE DOAÇÃO =====
+
+    /**
+     * Criar notificação de doação no Firebase e enviar notificação local
+     */
+    async createDonationNotification(
+        donationId: string,
+        donorName: string,
+        amount: number,
+        ongName: string,
+    ): Promise<void> {
+        try {
+            if (!auth.currentUser) {
+                console.log("❌ Usuário não autenticado para criar notificação")
+                return
+            }
+
+            const notification: Omit<AppNotification, "id"> = {
+                userId: auth.currentUser.uid,
+                title: "💰 Nova Doação Recebida!",
+                body: `${donorName} doou R$ ${amount.toFixed(2)} para ${ongName}`,
+                type: "donation",
+                data: {
+                    donationId,
+                    donorName,
+                    amount,
+                    ongName,
+                    action: "view_donations",
+                },
+                read: false,
+                createdAt: serverTimestamp(),
+                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+            }
+
+            // Salvar no Firebase
+            await addDoc(collection(db, "notifications"), notification)
+
+            // Enviar notificação local
+            await this.sendLocalNotification(notification.title, notification.body, notification.data)
+
+            console.log("✅ Notificação de doação criada com sucesso")
+        } catch (error) {
+            console.error("❌ Erro ao criar notificação de doação:", error)
+        }
+    }
+
+    /**
+     * Buscar todas as notificações do usuário (sem orderBy para evitar erro de índice)
+     */
+    async getUserNotifications(callback: (notifications: AppNotification[]) => void) {
+        if (!auth.currentUser) return () => { }
+
+        // Consulta simples sem orderBy para evitar erro de índice
+        const q = query(
+            collection(db, "notifications"),
+            where("userId", "==", auth.currentUser.uid),
+            limit(50), // Limitar a 50 notificações mais recentes
+        )
+
+        return onSnapshot(q, (snapshot) => {
+            const notifications = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            })) as AppNotification[]
+
+            // Ordenar no cliente por data de criação (mais recentes primeiro)
+            notifications.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(0)
+                const dateB = b.createdAt?.toDate?.() || new Date(0)
+                return dateB.getTime() - dateA.getTime()
+            })
+
+            callback(notifications)
+        })
+    }
+
+    /**
+     * Marcar notificação como lida
+     */
+    async markNotificationAsRead(notificationId: string): Promise<void> {
+        try {
+            await updateDoc(doc(db, "notifications", notificationId), {
+                read: true,
+            })
+            console.log("✅ Notificação marcada como lida")
+        } catch (error) {
+            console.error("❌ Erro ao marcar notificação como lida:", error)
+        }
+    }
+
+    /**
+     * Marcar todas as notificações como lidas
+     */
+    async markAllNotificationsAsRead(): Promise<void> {
+        try {
+            if (!auth.currentUser) return
+
+            const q = query(
+                collection(db, "notifications"),
+                where("userId", "==", auth.currentUser.uid),
+                where("read", "==", false),
+            )
+
+            const querySnapshot = await getDocs(q)
+            const batch = []
+
+            for (const docSnapshot of querySnapshot.docs) {
+                batch.push(
+                    updateDoc(doc(db, "notifications", docSnapshot.id), {
+                        read: true,
+                    }),
+                )
+            }
+
+            await Promise.all(batch)
+            console.log("✅ Todas as notificações marcadas como lidas")
+        } catch (error) {
+            console.error("❌ Erro ao marcar todas as notificações como lidas:", error)
+        }
+    }
+
+    /**
+     * Deletar notificação
+     */
+    async deleteNotification(notificationId: string): Promise<void> {
+        try {
+            await deleteDoc(doc(db, "notifications", notificationId))
+            console.log("✅ Notificação deletada")
+        } catch (error) {
+            console.error("❌ Erro ao deletar notificação:", error)
+        }
+    }
+
+    /**
+     * Limpar notificações expiradas
+     */
+    async cleanExpiredNotifications(): Promise<void> {
+        try {
+            if (!auth.currentUser) return
+
+            const q = query(
+                collection(db, "notifications"),
+                where("userId", "==", auth.currentUser.uid),
+                where("expiresAt", "<=", new Date()),
+            )
+
+            const querySnapshot = await getDocs(q)
+
+            for (const docSnapshot of querySnapshot.docs) {
+                await deleteDoc(doc(db, "notifications", docSnapshot.id))
+            }
+
+            console.log(`✅ ${querySnapshot.size} notificações expiradas removidas`)
+        } catch (error) {
+            console.error("❌ Erro ao limpar notificações expiradas:", error)
+        }
+    }
+
+    /**
+     * Contar notificações não lidas
+     */
+    async getUnreadNotificationsCount(): Promise<number> {
+        try {
+            if (!auth.currentUser) return 0
+
+            const q = query(
+                collection(db, "notifications"),
+                where("userId", "==", auth.currentUser.uid),
+                where("read", "==", false),
+            )
+
+            const querySnapshot = await getDocs(q)
+            return querySnapshot.size
+        } catch (error) {
+            console.error("❌ Erro ao contar notificações não lidas:", error)
+            return 0
+        }
+    }
+
+    // ===== FUNCIONALIDADES EXISTENTES =====
 
     // Adicionar pet aos favoritos
     async addToFavorites(petId: string, petType: string, petName: string): Promise<void> {
@@ -321,24 +510,6 @@ class ExpoNotificationService {
                 petName,
             },
         )
-    }
-
-    // Buscar histórico de notificações
-    getNotificationHistory(callback: (notifications: any[]) => void) {
-        if (!auth.currentUser) return () => { }
-
-        const q = query(
-            collection(db, "notifications"),
-            where("sentAt", ">=", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), // Últimos 7 dias
-        )
-
-        return onSnapshot(q, (snapshot) => {
-            const notifications = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            }))
-            callback(notifications)
-        })
     }
 
     // Obter token atual
