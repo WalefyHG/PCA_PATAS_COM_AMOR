@@ -98,7 +98,7 @@ export default function Home() {
   }
 
   const handlePetPress = (pet: Pet) => {
-    navigation.navigate("AdoptionDetails" as never, { pet } as never)
+    navigation.navigate("AdoptDetails" as never, { pet } as never)
   }
 
   const handlePostPress = (post: BlogPost) => {
@@ -131,6 +131,7 @@ export default function Home() {
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
+      marginBottom: 20,
     },
     welcomeHeader: {
       flexDirection: "row",
@@ -160,8 +161,9 @@ export default function Home() {
       color: isDarkTheme ? "#9CA3AF" : "#6B7280",
     },
     userName: {
-      fontSize: 16,
-      color: isDarkTheme ? "#9CA3AF" : "#6B7280",
+      fontSize: 20,
+      fontWeight: "bold",
+      color: isDarkTheme ? "#FFFFFF" : "#1F2937",
     },
     modeIndicator: {
       flexDirection: "row",
@@ -300,7 +302,7 @@ export default function Home() {
           paddingHorizontal: 16
         }}
       >
-        <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
+        <View style={{ position: "absolute", right: 0, top: 15, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
           <HeaderLayout title="Profile" />
         </View>
       </LinearGradient>
@@ -320,15 +322,13 @@ export default function Home() {
                 </View>
               )}
               <View style={styles.welcomeText}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                  <Text style={styles.greeting}>{getGreeting()},</Text>
-                  <Text style={styles.userName}>{user?.displayName}</Text>
-                </View>
-                <Text style={styles.welcomeDescription}>
-                  "Encontre seu novo melhor amigo e faça a diferença na vida de um animal."
-                </Text>
+                <Text style={styles.greeting}>{getGreeting()},</Text>
+                <Text style={styles.userName}>{user?.displayName}</Text>
               </View>
             </View>
+            <Text style={styles.welcomeDescription}>
+              "Encontre seu novo melhor amigo e faça a diferença na vida de um animal."
+            </Text>
           </View>
 
           {/* Card de Navegação */}
