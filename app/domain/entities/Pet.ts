@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore"
+import { ReactNode } from "react"
 
 export interface Pet {
     photos: any

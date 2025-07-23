@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useCallback } from "react"
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, Image } from "react-native"
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, Image, Platform } from "react-native"
 import { useFocusEffect, useNavigation } from "@react-navigation/native"
 import { Feather } from "@expo/vector-icons"
 import { useThemeContext } from "../../contexts/ThemeContext"
@@ -14,12 +14,14 @@ import * as petRepository from "@/app/repositories/FirebasePetRepository"
 import * as blogRepository from "@/app/repositories/FirebaseBlogRepository"
 import type { Pet } from "../../../domain/entities/Pet"
 import type { BlogPost } from "../../../domain/entities/Blog"
+import NavigationCard from "../../components/NavigationCards"
 
 const Home: React.FC = () => {
   const navigation = useNavigation<any>()
   const { isDarkTheme, colors } = useThemeContext()
   const { user } = useAuth()
   const { isOngMode, activeOng, getCurrentProfile } = useOng()
+  const isWeb = Platform.OS === "web"
 
   const [refreshing, setRefreshing] = useState(false)
   const [recentPets, setRecentPets] = useState<Pet[]>([])
@@ -47,6 +49,10 @@ const Home: React.FC = () => {
     setRefreshing(true)
     await loadData()
     setRefreshing(false)
+  }
+
+  const navigateToScreen = (screenName: string) => {
+    navigation.navigate(screenName)
   }
 
   const handleViewAllPets = () => {
@@ -248,7 +254,7 @@ const Home: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <NavBar title={isOngMode ? activeOng?.name || "ONG" : "PetConnect"} showProfileSwitcher={true} />
+      <NavBar title={"Patas Com Amor"} showProfileSwitcher={true} />
 
       <ScrollView
         style={styles.content}
@@ -284,9 +290,39 @@ const Home: React.FC = () => {
           </View>
         </View>
 
-        <NavigationCards title={""} icon={""} onPress={function (): void {
-          throw new Error("Function not implemented.")
-        }} platform={""} />
+        {/* Card de Navegação */}
+        <View style={{
+          flexDirection: isWeb ? 'row' : 'row',
+          flexWrap: isWeb ? 'wrap' : 'wrap',
+          justifyContent: isWeb ? 'center' : 'space-between',
+          paddingHorizontal: isWeb ? 20 : 16,
+          marginBottom: 16,
+        }}>
+          <NavigationCard
+            title="Adote"
+            icon="heart"
+            onPress={() => navigateToScreen("Adopt")}
+            platform={Platform.OS}
+          />
+          <NavigationCard
+            title="Blog"
+            icon="book-open"
+            onPress={() => navigateToScreen("News")}
+            platform={Platform.OS}
+          />
+          <NavigationCard
+            title="Perfil"
+            icon="user"
+            onPress={() => navigateToScreen("Profile")}
+            platform={Platform.OS}
+          />
+          <NavigationCard
+            title="Configurações"
+            icon="settings"
+            onPress={() => navigateToScreen("Settings")}
+            platform={Platform.OS}
+          />
+        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -302,7 +338,7 @@ const Home: React.FC = () => {
               {recentPets.map((pet) => (
                 <TouchableOpacity key={pet.id} style={styles.petCard} onPress={() => handlePetPress(pet)}>
                   <Image
-                    source={{ uri: pet.photos?.[0] ?? "https://via.placeholder.com/200x120.png?text=Pet" }}
+                    source={{ uri: pet.images?.[0] ?? "https://via.placeholder.com/200x120.png?text=Pet" }}
                     style={styles.petImage}
                   />
                   <View style={styles.petInfo}>
@@ -336,7 +372,7 @@ const Home: React.FC = () => {
               {recentPosts.map((post) => (
                 <TouchableOpacity key={post.id} style={styles.postCard} onPress={() => handlePostPress(post)}>
                   <Image
-                    source={{ uri: post.imageUrl || "/placeholder.svg?height=100&width=280" }}
+                    source={{ uri: post.image || "/placeholder.svg?height=100&width=280" }}
                     style={styles.postImage}
                   />
                   <View style={styles.postInfo}>
