@@ -1,6 +1,8 @@
 import { Timestamp } from "firebase/firestore"
 
 export interface BlogPost {
+    imageUrl: string
+    createdAt: any
     id?: string
     title: string
     content: string

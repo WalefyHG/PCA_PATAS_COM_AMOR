@@ -1,6 +1,8 @@
 import { Timestamp } from "firebase/firestore"
+import { ReactNode } from "react"
 
 export interface Pet {
+    species: ReactNode
     id?: string
     name: string
     age: string
