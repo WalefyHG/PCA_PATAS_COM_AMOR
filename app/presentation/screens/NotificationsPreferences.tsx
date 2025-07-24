@@ -20,19 +20,8 @@ import ExpoNotificationService, { type NotificationPreference } from "../../repo
 import { auth } from "../../data/datasources/firebase/firebase"
 import { getUserProfile } from "../../repositories/FirebaseUserRepository"
 import { useNavigation } from "@react-navigation/native"
+import { useThemeContext } from "../contexts/ThemeContext"
 
-// Mock theme context (adapte para seu contexto real)
-const useThemeContext = () => ({
-    isDarkTheme: false,
-    colors: {
-        primary: "#6366F1",
-        secondary: "#8B5CF6",
-        primaryDark: "#4F46E5",
-        secondaryDark: "#7C3AED",
-        success: "#10B981",
-        error: "#EF4444",
-    },
-})
 
 const PET_TYPES = [
     { type: "Cão", icon: "heart", description: "Receber notificações sobre cães disponíveis para adoção" },

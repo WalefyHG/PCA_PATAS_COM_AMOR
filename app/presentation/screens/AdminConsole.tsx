@@ -437,7 +437,6 @@ export default function AdminConsole() {
                     >
                         <Feather name="arrow-left" size={20} color="white" />
                     </TouchableOpacity>
-                    <Text className="text-white text-xl font-bold">{t("Admin Console")}</Text>
                     <View className="w-10" />
                 </View>
                 <View

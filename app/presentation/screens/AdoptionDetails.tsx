@@ -236,10 +236,6 @@ export default function PetAdoptionDetail() {
                 </LinearGradient>
             </Animated.View>
 
-            <View style={styles.headerLayoutContainer}>
-                <HeaderLayout title="Adoção" />
-            </View>
-
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 onScroll={handleScroll}
