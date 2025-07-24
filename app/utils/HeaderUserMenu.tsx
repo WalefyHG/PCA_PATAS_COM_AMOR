@@ -8,6 +8,8 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
 import { useThemeContext } from "../presentation/contexts/ThemeContext"
 import ExpoNotificationService from "../repositories/NotificationRepository"
+import { useOng } from "../presentation/contexts/OngContext"
+import ProfileSwitcher from "../presentation/components/ProfileSwitcher"
 
 function getInitials(name: string) {
     return name
@@ -17,13 +19,25 @@ function getInitials(name: string) {
         .toUpperCase()
 }
 
-export default function HeaderUserMenu() {
+interface HeaderUserMenuProps {
+    showLabel?: boolean
+    size?: "small" | "medium" | "large"
+}
+
+
+export default function HeaderUserMenu({ showLabel = true, size = "medium" }: HeaderUserMenuProps) {
     const router = useNavigation();
     const [user, setUser] = useState<User | null>(null)
     const [isVisible, setIsVisible] = useState(false)
     const avatarRef = useRef<any>(null)
     const [unreadCount, setUnreadCount] = useState(0)
     const { toggleTheme, isDarkTheme, colors, setTheme } = useThemeContext()
+    const { userOngs, activeOng, isOngMode, switchToOng, switchToPersonal, getCurrentProfile } = useOng()
+    const navigation = useNavigation<any>()
+    const [profileSwitcherVisible, setProfileSwitcherVisible] = useState(false)
+
+
+    const currentProfile = getCurrentProfile()
 
     // Animation values
     const [scaleAnim] = useState(new Animated.Value(1))
@@ -50,6 +64,7 @@ export default function HeaderUserMenu() {
             setUnreadCount(unreadNotifications.length)
         })
 
+
         return () => {
             if (unsubscribePromise) {
                 unsubscribePromise.then((unsubscribe: () => void) => {
@@ -69,6 +84,11 @@ export default function HeaderUserMenu() {
         const unsubscribe = onAuthStateChanged(auth, setUser)
         return unsubscribe
     }, [])
+
+    const openProfileSwitcher = () => {
+        setIsVisible(false)
+        setProfileSwitcherVisible(true)
+    }
 
     const initials = getInitials(user?.displayName || user?.email || "U")
 
@@ -110,9 +130,218 @@ export default function HeaderUserMenu() {
         })
     }
 
+    const getAvatarSize = () => {
+        switch (size) {
+            case "small":
+                return 32
+            case "medium":
+                return 40
+            case "large":
+                return 48
+            default:
+                return 40
+        }
+    }
+
+    const getFontSize = () => {
+        switch (size) {
+            case "small":
+                return 12
+            case "medium":
+                return 14
+            case "large":
+                return 16
+            default:
+                return 14
+        }
+    }
+
     const spin = rotateAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ["0deg", "180deg"],
+    })
+
+    const styles = StyleSheet.create({
+        container: {
+            marginRight: 16,
+            position: "relative",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+        },
+        themeButton: {
+            padding: 8,
+            borderRadius: 12,
+        },
+        avatarWrapper: {
+            zIndex: 10,
+        },
+        avatar: {
+            width: getAvatarSize(),
+            height: getAvatarSize(),
+            borderRadius: getAvatarSize() / 2,
+            marginRight: showLabel ? 8 : 0,
+            alignItems: "center",
+            justifyContent: "center",
+            ...Platform.select({
+                ios: {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                },
+                android: {
+                    elevation: 4,
+                },
+            }),
+        },
+        avatarLabel: {
+            fontWeight: "bold",
+            fontSize: 16,
+            color: "#fff",
+        },
+        popoverContent: {
+            padding: 16,
+            minWidth: 240,
+            borderRadius: 16,
+        },
+        iosShadow: {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+        },
+        androidShadow: {
+            elevation: 6,
+        },
+        menuAvatar: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        menuAvatarLabel: {
+            fontWeight: "bold",
+            fontSize: 12,
+            color: "#fff",
+        },
+        userName: {
+            fontSize: 15,
+            fontWeight: "600",
+            marginBottom: 2,
+            maxWidth: 160,
+        },
+        userEmail: {
+            fontSize: 12,
+            maxWidth: 160,
+        },
+        separator: {
+            height: 1,
+            marginVertical: 12,
+        },
+        menuItem: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 10,
+        },
+        menuIconContainer: {
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 12,
+        },
+        menuText: {
+            fontSize: 14,
+            fontWeight: "500",
+        },
+        container2: {
+            flexDirection: "row",
+            alignItems: "center",
+        },
+        profileButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 20,
+            backgroundColor: isDarkTheme ? "#374151" : "#F3F4F6",
+        },
+        avatar2: {
+            width: getAvatarSize(),
+            height: getAvatarSize(),
+            borderRadius: getAvatarSize() / 2,
+            marginRight: showLabel ? 8 : 0,
+        },
+        avatarPlaceholder: {
+            width: getAvatarSize(),
+            height: getAvatarSize(),
+            borderRadius: getAvatarSize() / 2,
+            backgroundColor: colors.primary,
+            justifyContent: "center",
+            alignItems: "center",
+            marginRight: showLabel ? 8 : 0,
+        },
+        profileText: {
+            fontSize: getFontSize(),
+            fontWeight: "500",
+            color: isDarkTheme ? "#FFFFFF" : "#1F2937",
+            marginRight: 4,
+        },
+        badge: {
+            position: "absolute",
+            bottom: -2,
+            right: showLabel ? 20 : -2,
+            width: 16,
+            height: 16,
+            borderRadius: 8,
+            backgroundColor: colors.primary,
+            justifyContent: "center",
+            alignItems: "center",
+            borderWidth: 2,
+            borderColor: isDarkTheme ? "#111827" : "#FFFFFF",
+        },
+        profileItem: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: 12,
+            borderRadius: 12,
+            marginBottom: 8,
+            borderWidth: 2,
+        },
+        profileItemLeft: {
+            flexDirection: "row",
+            alignItems: "center",
+            flex: 1,
+        },
+        profileAvatar: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            marginRight: 12,
+        },
+        profileAvatarPlaceholder: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            justifyContent: "center",
+            alignItems: "center",
+            marginRight: 12,
+        },
+        profileInfo: {
+            flex: 1,
+        },
+        profileName: {
+            fontSize: 16,
+            fontWeight: "500",
+            marginBottom: 2,
+        },
+        profileType: {
+            fontSize: 12,
+        },
     })
 
     return (
@@ -120,32 +349,33 @@ export default function HeaderUserMenu() {
 
             {/* Avatar Button */}
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                <TouchableOpacity
-                    ref={avatarRef}
-                    onPress={openPopover}
-                    onPressIn={handlePressIn}
-                    onPressOut={handlePressOut}
-                    style={styles.avatarWrapper}
-                >
-                    <LinearGradient
-                        colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.avatar}
-                    >
-                        {user?.photoURL ? (
-                            <Image
-                                source={{ uri: user.photoURL }}
-                                style={styles.avatar}
-                                resizeMode="cover"
-                            />
+                <TouchableOpacity style={styles.container2} onPress={openPopover} onPressIn={handlePressIn} onPressOut={handlePressOut} ref={avatarRef}>
+                    <View style={styles.profileButton}>
+                        {currentProfile.photoURL ? (
+                            <Image source={{ uri: currentProfile.photoURL }} style={styles.avatar2} />
                         ) : (
-                            <Text style={styles.avatarLabel}>
-                                {initials || "U"}
-                            </Text>
-                        )
-                        }
-                    </LinearGradient>
+                            <View style={styles.avatarPlaceholder}>
+                                <Feather
+                                    name={currentProfile.type === "ong" ? "heart" : "user"}
+                                    size={getAvatarSize() * 0.5}
+                                    color="#FFFFFF"
+                                />
+                            </View>
+                        )}
+                        {showLabel && (
+                            <>
+                                <Text style={styles.profileText} numberOfLines={1}>
+                                    {currentProfile.name}
+                                </Text>
+                                <Feather name="chevron-down" size={16} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />
+                            </>
+                        )}
+                        {isOngMode && (
+                            <View style={styles.badge}>
+                                <Feather name="heart" size={8} color="#FFFFFF" />
+                            </View>
+                        )}
+                    </View>
                 </TouchableOpacity>
             </Animated.View>
 
@@ -228,6 +458,27 @@ export default function HeaderUserMenu() {
                         <Text style={[styles.menuText, { color: isDarkTheme ? "#FFFFFF" : "#1F2937" }]}>Configurações</Text>
                     </TouchableOpacity>
 
+                    {/* Mudar de Conta */}
+
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                            openProfileSwitcher()
+                        }}
+                    >
+                        <View
+                            style={[
+                                styles.menuIconContainer,
+                                { backgroundColor: isDarkTheme ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.05)" },
+                            ]}
+                        >
+                            <Feather name="users" size={16} color={isDarkTheme ? "#FFFFFF" : colors.primary} />
+                        </View>
+                        <Text style={[styles.menuText, { color: isDarkTheme ? "#FFFFFF" : "#1F2937" }]}>
+                            Mudar Conta
+                        </Text>
+                    </TouchableOpacity>
+
                     {/* Notifications */}
                     <TouchableOpacity
                         style={styles.menuItem}
@@ -292,103 +543,10 @@ export default function HeaderUserMenu() {
 
                 </View>
             </Popover>
+            <ProfileSwitcher
+                modalVisible={profileSwitcherVisible}
+                setModalVisible={setProfileSwitcherVisible}
+            />
         </View>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        marginRight: 16,
-        position: "relative",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-    },
-    themeButton: {
-        padding: 8,
-        borderRadius: 12,
-    },
-    avatarWrapper: {
-        zIndex: 10,
-    },
-    avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        alignItems: "center",
-        justifyContent: "center",
-        ...Platform.select({
-            ios: {
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
-    },
-    avatarLabel: {
-        fontWeight: "bold",
-        fontSize: 16,
-        color: "#fff",
-    },
-    popoverContent: {
-        padding: 16,
-        minWidth: 240,
-        borderRadius: 16,
-    },
-    iosShadow: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-    },
-    androidShadow: {
-        elevation: 6,
-    },
-    menuAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    menuAvatarLabel: {
-        fontWeight: "bold",
-        fontSize: 12,
-        color: "#fff",
-    },
-    userName: {
-        fontSize: 15,
-        fontWeight: "600",
-        marginBottom: 2,
-        maxWidth: 160,
-    },
-    userEmail: {
-        fontSize: 12,
-        maxWidth: 160,
-    },
-    separator: {
-        height: 1,
-        marginVertical: 12,
-    },
-    menuItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 10,
-    },
-    menuIconContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: "center",
-        justifyContent: "center",
-        marginRight: 12,
-    },
-    menuText: {
-        fontSize: 14,
-        fontWeight: "500",
-    },
-})

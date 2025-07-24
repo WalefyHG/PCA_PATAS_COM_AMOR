@@ -10,16 +10,17 @@ import { useOng } from "@/app/presentation/contexts/OngContext"
 import { useNavigation } from "@react-navigation/native"
 
 interface ProfileSwitcherProps {
+    modalVisible: boolean
+    setModalVisible: (visible: boolean) => void
     showLabel?: boolean
     size?: "small" | "medium" | "large"
 }
 
-const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ showLabel = true, size = "medium" }) => {
+const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ modalVisible, setModalVisible, showLabel = true, size = "small" }) => {
     const { isDarkTheme, colors } = useThemeContext()
     const { user } = useAuth()
     const { userOngs, activeOng, isOngMode, switchToOng, switchToPersonal, getCurrentProfile } = useOng()
     const navigation = useNavigation<any>()
-    const [modalVisible, setModalVisible] = useState(false)
 
     const currentProfile = getCurrentProfile()
 
@@ -244,34 +245,6 @@ const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ showLabel = true, siz
 
     return (
         <>
-            <TouchableOpacity style={styles.container} onPress={() => setModalVisible(true)}>
-                <View style={styles.profileButton}>
-                    {currentProfile.photoURL ? (
-                        <Image source={{ uri: currentProfile.photoURL }} style={styles.avatar} />
-                    ) : (
-                        <View style={styles.avatarPlaceholder}>
-                            <Feather
-                                name={currentProfile.type === "ong" ? "heart" : "user"}
-                                size={getAvatarSize() * 0.5}
-                                color="#FFFFFF"
-                            />
-                        </View>
-                    )}
-                    {showLabel && (
-                        <>
-                            <Text style={styles.profileText} numberOfLines={1}>
-                                {currentProfile.name}
-                            </Text>
-                            <Feather name="chevron-down" size={16} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />
-                        </>
-                    )}
-                    {isOngMode && (
-                        <View style={styles.badge}>
-                            <Feather name="heart" size={8} color="#FFFFFF" />
-                        </View>
-                    )}
-                </View>
-            </TouchableOpacity>
 
             <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
                 <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>

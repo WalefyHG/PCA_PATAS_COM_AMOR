@@ -7,7 +7,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useThemeContext } from "../contexts/ThemeContext"
 import { useAuth } from "../contexts/AuthContext"
 import { useOng } from "@/app/presentation/contexts/OngContext"
-import ProfileSwitcher from "./ProfileSwitcher"
+import HeaderLayout from "@/app/utils/HeaderLayout"
 
 interface NavBarProps {
     title: string
@@ -116,7 +116,7 @@ const NavBar: React.FC<NavBarProps> = ({
                         </View>
                     )}
 
-                    {showProfileSwitcher && <ProfileSwitcher size="small" />}
+                    {showProfileSwitcher && <HeaderLayout size="small" />}
 
                     {rightComponent}
                 </View>

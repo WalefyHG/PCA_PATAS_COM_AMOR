@@ -187,6 +187,7 @@ const Home: React.FC = () => {
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
+      marginBottom: 16,
     },
     petImage: {
       width: "100%",
@@ -217,6 +218,7 @@ const Home: React.FC = () => {
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 3,
+      marginBottom: 16,
     },
     postImage: {
       width: "100%",
@@ -369,18 +371,26 @@ const Home: React.FC = () => {
 
           {recentPosts.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-              {recentPosts.map((post) => (
-                <TouchableOpacity key={post.id} style={styles.postCard} onPress={() => handlePostPress(post)}>
-                  <Image
-                    source={{ uri: post.image || "/placeholder.svg?height=100&width=280" }}
-                    style={styles.postImage}
-                  />
-                  <View style={styles.postInfo}>
-                    <Text style={styles.postTitle}>{post.title}</Text>
-                    <Text style={styles.postDate}>{post.createdAt?.toLocaleDateString("pt-BR")}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {recentPosts.map((post) => {
+                const postDate =
+                  post.date && typeof post.date === "object" && "seconds" in post.date
+                    ? new Date((post.date as any).seconds * 1000)
+                    : post.date instanceof Date
+                      ? post.date
+                      : new Date()
+                return (
+                  <TouchableOpacity key={post.id} style={styles.postCard} onPress={() => handlePostPress(post)}>
+                    <Image
+                      source={{ uri: post.image }}
+                      style={styles.postImage}
+                    />
+                    <View style={styles.postInfo}>
+                      <Text style={styles.postTitle}>{post.title || "Título não disponível"}</Text>
+                      <Text style={styles.postDate}>{postDate.toLocaleDateString("pt-BR")}</Text>
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>

@@ -9,9 +9,10 @@ interface HeaderLayoutProps {
     showBack?: boolean
     showSearch?: boolean
     onSearch?: () => void
+    size?: "small" | "medium" | "large"
 }
 
-export default function HeaderLayout({ title, showBack = false, showSearch = false, onSearch }: HeaderLayoutProps) {
+export default function HeaderLayout({ title, showBack = false, showSearch = false, onSearch, size = "small" }: HeaderLayoutProps) {
     const navigation = useNavigation<any>()
     const { isDarkTheme, colors } = useThemeContext()
 
@@ -25,7 +26,7 @@ export default function HeaderLayout({ title, showBack = false, showSearch = fal
                     <Feather name="search" size={20} color={isDarkTheme ? "#fff" : colors.primary} />
                 </TouchableOpacity>
             )}
-            <HeaderUserMenu />
+            <HeaderUserMenu showLabel={true} size={size} />
         </View>
     )
 }
