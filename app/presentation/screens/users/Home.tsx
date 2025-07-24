@@ -64,11 +64,11 @@ const Home: React.FC = () => {
   }
 
   const handlePetPress = (pet: Pet) => {
-    navigation.navigate("AdoptionDetails" as never, { pet } as never)
+    navigation.navigate("AdoptDetails" as never, { petId: pet.id } as never)
   }
 
   const handlePostPress = (post: BlogPost) => {
-    navigation.navigate("NewsDetails" as never, { post } as never)
+    navigation.navigate("NewsDetails" as never, { postId: post.id } as never)
   }
 
   const getGreeting = () => {

@@ -10,6 +10,7 @@ import { onAuthStateChanged } from "firebase/auth"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
 import HeaderLayout from "@/app/utils/HeaderLayout"
+import ModernLoading from "../../components/ModernLoading"
 
 interface User {
   uid: string
@@ -119,21 +120,12 @@ export default function Profile() {
 
   if (loading || !authReady) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: isDarkTheme ? "#111827" : "#f9fafb" }]}>
-        <LinearGradient
-          colors={[colors.primary, colors.secondary, colors.primary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ borderRadius: 12, padding: 24, alignItems: "center" }}
-        >
-          <View style={styles.loadingDots}>
-            {[colors.primary, colors.secondary, colors.primary].map((color, index) => (
-              <Animated.View key={index} style={[styles.loadingDot, { backgroundColor: "white", opacity: 0.8 }]} />
-            ))}
-          </View>
-          <Text style={[styles.loadingText, { color: "white" }]}>Carregando perfil...</Text>
-        </LinearGradient>
-      </View>
+      <ModernLoading
+        isDarkTheme={isDarkTheme}
+        colors={colors}
+        loading={loading}
+        authReady={authReady}
+      />
     )
   }
 
