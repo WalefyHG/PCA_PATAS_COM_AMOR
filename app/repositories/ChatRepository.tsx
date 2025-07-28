@@ -1,16 +1,4 @@
-import {
-    ref,
-    set,
-    get,
-    push,
-    update,
-    onValue,
-    serverTimestamp,
-    query,
-    orderByChild,
-    equalTo,
-    off,
-} from "firebase/database"
+import { ref, set, get, push, update, onValue, query, orderByChild, equalTo, off } from "firebase/database"
 import { database as db, auth } from "../data/datasources/firebase/firebase"
 import ExpoNotificationService from "../repositories/NotificationRepository"
 
@@ -34,9 +22,11 @@ export interface Chat {
     adopterId: string
     adopterName: string
     adopterAvatar?: string
+    adopterType?: "user" | "ong" | "clinic"
     ownerId: string
     ownerName: string
     ownerAvatar?: string
+    ownerType?: "user" | "ong" | "clinic"
     lastMessage?: string
     lastMessageTime?: any
     unreadCount: number
@@ -61,7 +51,7 @@ class ChatService {
         this.notificationService = ExpoNotificationService.getInstance()
     }
 
-    async createOrGetChat(petId: string, petData: any, ownerData: any): Promise<string> {
+    async createOrGetChat(petId: string, petData: any, ownerData: any, currentAccount?: any): Promise<string> {
         if (!auth.currentUser) throw new Error("Usuário não autenticado")
         const adopterId = auth.currentUser.uid
 
@@ -89,11 +79,13 @@ class ChatService {
             petName: petData.name,
             petImage: petData.images[0],
             adopterId,
-            adopterName: auth.currentUser.displayName || "Usuário",
-            adopterAvatar: auth.currentUser.photoURL || "",
+            adopterName: currentAccount?.profileName || auth.currentUser.displayName || "Usuário",
+            adopterAvatar: currentAccount?.profileImage || auth.currentUser.photoURL || "",
+            adopterType: currentAccount?.type || "user",
             ownerId: ownerData.uid,
             ownerName: ownerData.displayName || ownerData.first_name || "Dono",
             ownerAvatar: ownerData.photoURL || "",
+            ownerType: petData.createdByType || "user",
             unreadCount: 0,
             adopterUnreadCount: 0,
             ownerUnreadCount: 0,
@@ -216,7 +208,7 @@ class ChatService {
 
             // Adiciona chats do adopter que não estejam já no ownerChats (compara pelo id)
             adopterChats.forEach((chat) => {
-                if (!combined.find(c => c.id === chat.id)) {
+                if (!combined.find((c) => c.id === chat.id)) {
                     combined.push(chat)
                 }
             })
@@ -257,7 +249,7 @@ class ChatService {
     }
 
     async getUnreadCount(chatId: string) {
-        return get(ref(db, `chats/${chatId}/unreadCount`)).then(snapshot => {
+        return get(ref(db, `chats/${chatId}/unreadCount`)).then((snapshot) => {
             return snapshot.exists() ? snapshot.val() : 0
         })
     }

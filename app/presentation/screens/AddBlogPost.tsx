@@ -17,14 +17,12 @@ import {
     Dimensions,
 } from "react-native"
 import { useThemeContext } from "../contexts/ThemeContext"
+import { useAccount } from "../contexts/AccountContext"
 import { Feather } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
 import { LinearGradient } from "expo-linear-gradient"
-import {
-    isUserAdmin,
-    uploadToCloudinary,
-} from "../../data/datasources/firebase/firebase"
+import { isUserAdmin, uploadToCloudinary } from "../../data/datasources/firebase/firebase"
 import {
     createBlogPost,
     getBlogPostById,
@@ -43,6 +41,7 @@ const isWebPlatform = Platform.OS === "web"
 
 export default function AddBlogPost() {
     const { isDarkTheme, colors } = useThemeContext()
+    const { currentAccount } = useAccount()
     const navigation = useNavigation<any>()
     const route = useRoute<any>()
     const { postId } = route.params || {}
@@ -204,8 +203,20 @@ export default function AddBlogPost() {
             let imageUrl = image
 
             // Se a imagem for local (não começa com http), fazer upload
-            if (image) {
+            if (image && !image.startsWith("http")) {
                 imageUrl = await uploadToCloudinary(image)
+            }
+
+            // Usar dados da conta ativa para autor
+            const authorName = currentAccount.profileName || auth.currentUser.displayName || "Usuário"
+            const authorAvatar = currentAccount.profileImage || auth.currentUser.photoURL || ""
+
+            // Adicionar prefixo baseado no tipo de conta
+            let displayAuthorName = authorName
+            if (currentAccount.type === "ong") {
+                displayAuthorName = `🏠 ${authorName}`
+            } else if (currentAccount.type === "clinic") {
+                displayAuthorName = `🏥 ${authorName}`
             }
 
             const postData: BlogPost = {
@@ -214,9 +225,9 @@ export default function AddBlogPost() {
                 excerpt,
                 category,
                 image: imageUrl,
-                author: auth.currentUser.displayName || "Usuário",
+                author: displayAuthorName,
                 authorId: auth.currentUser.uid,
-                authorAvatar: auth.currentUser.photoURL || "",
+                authorAvatar: authorAvatar,
                 status,
                 readTime: `${readTime} min`,
             }
@@ -224,14 +235,18 @@ export default function AddBlogPost() {
             if (isEditing) {
                 await updateBlogPost(postId, postData)
                 if (Platform.OS !== "web") {
-                    Alert.alert("Sucesso", "Post atualizado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
+                    Alert.alert("Sucesso", "Post atualizado com sucesso!", [
+                        { text: "OK", onPress: () => navigation.navigate("News") },
+                    ])
                 } else {
                     navigation.navigate("News")
                 }
             } else {
                 await createBlogPost(postData)
                 if (Platform.OS !== "web") {
-                    Alert.alert("Sucesso", "Post criado com sucesso!", [{ text: "OK", onPress: () => navigation.navigate("News") }])
+                    Alert.alert("Sucesso", "Post criado com sucesso!", [
+                        { text: "OK", onPress: () => navigation.navigate("News") },
+                    ])
                 } else {
                     navigation.navigate("News")
                 }
@@ -289,6 +304,33 @@ export default function AddBlogPost() {
                             },
                         ]}
                     >
+                        {/* Author Info */}
+                        <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
+                            <Text style={[styles.sectionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Publicando como</Text>
+                            <View style={styles.authorInfo}>
+                                <Image
+                                    source={{
+                                        uri:
+                                            currentAccount.profileImage ||
+                                            `https://ui-avatars.com/api/?name=${encodeURIComponent(currentAccount.profileName)}&background=random`,
+                                    }}
+                                    style={styles.authorAvatar}
+                                />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.authorName, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                        {currentAccount.profileName}
+                                    </Text>
+                                    <Text style={[styles.authorType, { color: colors.primary }]}>
+                                        {currentAccount.type === "user"
+                                            ? "👤 Usuário"
+                                            : currentAccount.type === "ong"
+                                                ? "🏠 ONG"
+                                                : "🏥 Clínica"}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+
                         {/* Image Upload Section */}
                         <View style={styles.imageSection}>
                             <Text style={[styles.label, { color: isDarkTheme ? "white" : "#374151" }]}>Imagem do Post *</Text>
@@ -541,10 +583,10 @@ export default function AddBlogPost() {
                                     <Text style={styles.submitButtonText}>{isEditing ? "Atualizando..." : "Publicando..."}</Text>
                                 </View>
                             ) : (
-                                <TouchableOpacity style={styles.submitButtonContent} onPress={handleSubmit}>
+                                <View style={styles.submitButtonContent}>
                                     <Feather name="send" size={isSmallScreen ? 18 : 20} color="white" />
                                     <Text style={styles.submitButtonText}>{isEditing ? "Atualizar Post" : "Publicar Post"}</Text>
-                                </TouchableOpacity>
+                                </View>
                             )}
                         </TouchableOpacity>
                     </Animated.View>
@@ -614,6 +656,25 @@ const styles = StyleSheet.create({
         fontSize: isSmallScreen ? 16 : 18,
         fontWeight: "700",
         marginBottom: isSmallScreen ? 12 : 16,
+    },
+    authorInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    authorAvatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        marginRight: 12,
+    },
+    authorName: {
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    authorType: {
+        fontSize: 14,
+        fontWeight: "500",
+        marginTop: 2,
     },
     label: {
         fontSize: isSmallScreen ? 15 : 16,

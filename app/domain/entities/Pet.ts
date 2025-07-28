@@ -11,17 +11,21 @@ export interface Pet {
     color: string
     description: string
     history: string
+    location: string
     images: string[]
     requirements: string[]
-    location: string
-    contactPhone?: string
-    contactEmail?: string
     vaccinated: boolean
     neutered: boolean
     specialNeeds: boolean
     specialNeedsDescription?: string
-    status: "available" | "adopted" | "pending"
-    createdAt?: Timestamp | Date
-    updatedAt?: Timestamp | Date
-    createdBy?: string
+    contactPhone?: string
+    contactEmail?: string
+    status: "available" | "pending" | "adopted"
+    createdBy: string
+    createdByName?: string
+    createdByType?: "user" | "ong" | "clinic"
+    createdByProfileId?: string
+    createdByAvatar?: string
+    createdAt?: Timestamp
+    updatedAt?: Timestamp
 }

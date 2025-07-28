@@ -21,6 +21,7 @@ import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "../data/datasources/firebase/firebase"
 import { useNavigation } from "expo-router"
 import ExpoNotificationService from "../repositories/NotificationRepository"
+import AccountSwitcher from "../presentation/components/AccountSwitcher"
 
 const Stack = createNativeStackNavigator()
 const PERSISTENCE_KEY = "NAVIGATION_STATE_V1" // Chave para persistência

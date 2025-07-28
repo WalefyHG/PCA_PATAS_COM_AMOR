@@ -1,34 +1,31 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
-import { View, Text, ScrollView, Alert, Platform, Animated } from "react-native"
-import { useThemeContext } from "../../contexts/ThemeContext"
-import { Feather } from "@expo/vector-icons"
-import { auth, isUserAdmin } from "../../../data/datasources/firebase/firebase"
-import { signOut } from "firebase/auth"
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Platform, Animated } from "react-native"
 import { useNavigation } from "@react-navigation/native"
+import { Feather } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
-import { SettingActionItem, SettingLinkItem, SettingsSection, SettingToggleItem } from "./SettingsUtils"
-import HeaderLayout from "@/app/utils/HeaderLayout"
-import { DeleteAccountModal } from "../../components/DeletedModal"
+import { useThemeContext } from "../../contexts/ThemeContext"
+import { useAuth } from "../../contexts/AuthContext"
+import AccountSwitcher from "../../components/AccountSwitcher"
+import { signOut } from "firebase/auth"
+import { auth } from "../../../data/datasources/firebase/firebase"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export default function Settings() {
-  const { toggleTheme, isDarkTheme, colors } = useThemeContext()
+  const { isDarkTheme, colors, toggleTheme } = useThemeContext()
+  const { user } = useAuth()
   const navigation = useNavigation<any>()
-  const isWeb = Platform.OS === "web"
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [settings, setSettings] = useState({
-    notifications: true,
-    emailUpdates: true,
-    locationServices: false,
-  })
-
-  // Animated values
   const [fadeAnim] = useState(new Animated.Value(0))
   const [slideAnim] = useState(new Animated.Value(30))
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [vibrationEnabled, setVibrationEnabled] = useState(true)
 
   useEffect(() => {
+    // Start animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -38,290 +35,398 @@ export default function Settings() {
       Animated.spring(slideAnim, {
         toValue: 0,
         speed: 12,
-        bounciness: 4,
+        bounciness: 6,
         useNativeDriver: true,
       }),
     ]).start()
+
+    // Load settings
+    loadSettings()
   }, [])
 
-  const handleLogout = async () => {
+  const loadSettings = async () => {
     try {
-      await signOut(auth)
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Login" }],
-      })
+      const notifications = await AsyncStorage.getItem("notifications_enabled")
+      const sound = await AsyncStorage.getItem("sound_enabled")
+      const vibration = await AsyncStorage.getItem("vibration_enabled")
+
+      if (notifications !== null) setNotificationsEnabled(JSON.parse(notifications))
+      if (sound !== null) setSoundEnabled(JSON.parse(sound))
+      if (vibration !== null) setVibrationEnabled(JSON.parse(vibration))
     } catch (error) {
-      Alert.alert("Erro", "Não foi possível sair. Tente novamente.")
+      console.error("Error loading settings:", error)
     }
   }
 
-  const handleAccountDeleted = () => {
-    // Navegar para tela de login após conta ser deletada
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Login" }],
-    })
+  const saveSettings = async (key: string, value: boolean) => {
+    try {
+      await AsyncStorage.setItem(key, JSON.stringify(value))
+    } catch (error) {
+      console.error("Error saving settings:", error)
+    }
   }
 
-  const toggleSetting = (key: keyof typeof settings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }))
+  const handleLogout = () => {
+    Alert.alert("Sair da Conta", "Tem certeza que deseja sair da sua conta?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sair",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth)
+            // Clear any stored data
+            await AsyncStorage.clear()
+          } catch (error) {
+            console.error("Error signing out:", error)
+            Alert.alert("Erro", "Não foi possível sair da conta.")
+          }
+        },
+      },
+    ])
   }
 
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const adminStatus = await isUserAdmin(auth.currentUser?.uid || "")
-        setIsAdmin(adminStatus)
-      } catch (error) {
-        console.error("Error checking admin status:", error)
-        setIsAdmin(false)
-      }
-    }
+  const SettingItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    rightComponent,
+    showArrow = true,
+  }: {
+    icon: string
+    title: string
+    subtitle?: string
+    onPress?: () => void
+    rightComponent?: React.ReactNode
+    showArrow?: boolean
+  }) => (
+    <TouchableOpacity
+      style={[styles.settingItem, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}
+      onPress={onPress}
+      disabled={!onPress}
+    >
+      <View style={[styles.settingIcon, { backgroundColor: `${colors.primary}20` }]}>
+        <Feather name={icon as any} size={20} color={colors.primary} />
+      </View>
+      <View style={styles.settingContent}>
+        <Text style={[styles.settingTitle, { color: isDarkTheme ? "#FFFFFF" : "#1F2937" }]}>{title}</Text>
+        {subtitle && (
+          <Text style={[styles.settingSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>{subtitle}</Text>
+        )}
+      </View>
+      {rightComponent ||
+        (showArrow && <Feather name="chevron-right" size={20} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />)}
+    </TouchableOpacity>
+  )
 
-    if (auth.currentUser) {
-      checkAdminStatus()
-    }
-  }, [])
+  const SectionHeader = ({ title }: { title: string }) => (
+    <Text style={[styles.sectionHeader, { color: isDarkTheme ? "#D1D5DB" : "#374151" }]}>{title}</Text>
+  )
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDarkTheme ? "#111827" : "#f3f4f6" }}>
+    <View style={[styles.container, { backgroundColor: isDarkTheme ? "#111827" : "#F9FAFB" }]}>
       {/* Header */}
       <LinearGradient
         colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={{
-          paddingTop: Platform.select({ ios: 60, android: 40, web: 80 }),
-          paddingBottom: 40,
-          paddingHorizontal: isWeb ? "20%" : 24,
-        }}
+        style={styles.header}
       >
-        <View
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 20,
-            flexDirection: "row",
-            alignSelf: "flex-end",
-            alignItems: "center",
-          }}
-        >
-          <HeaderLayout title="Configurações" />
-        </View>
-
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <View
-            style={{
-              backgroundColor: "rgba(255,255,255,0.2)",
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: 16,
-            }}
-          >
-            <Feather name="settings" size={24} color="white" />
-          </View>
-          <View>
-            <Text
-              style={{
-                color: "white",
-                fontSize: 24,
-                fontWeight: "bold",
-                ...Platform.select({
-                  ios: { fontFamily: "San Francisco" },
-                  android: { fontFamily: "Roboto" },
-                }),
-              }}
-            >
-              Configurações
-            </Text>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.8)",
-                fontSize: 14,
-                ...Platform.select({
-                  ios: { fontFamily: "San Francisco" },
-                  android: { fontFamily: "Roboto" },
-                }),
-              }}
-            >
-              Gerencie suas preferências
-            </Text>
-          </View>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Configurações</Text>
+          <Text style={styles.headerSubtitle}>Gerencie suas preferências e conta</Text>
         </View>
       </LinearGradient>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          padding: isWeb ? 24 : 16,
-          paddingHorizontal: isWeb ? "20%" : 16,
-          paddingBottom: 40,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View
           style={{
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
           }}
         >
-          {/* Appearance Section */}
-          <SettingsSection title="Aparência" icon="sun">
-            <SettingToggleItem
-              icon="moon"
-              title="Modo Escuro"
-              value={isDarkTheme}
-              onToggle={toggleTheme}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-          </SettingsSection>
+          {/* Account Switcher Section */}
+          <SectionHeader title="CONTAS" />
+          <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}>
+            <AccountSwitcher />
+          </View>
 
-          {/* Admin Section */}
-          {isAdmin && (
-            <SettingsSection title="Administração" icon="shield">
-              <SettingLinkItem
-                icon="shield"
-                title="Painel Admin"
-                onPress={() =>
-                  Platform.OS === "web" ? navigation.navigate("AdminConsoleWeb") : navigation.navigate("AdminConsole")
-                }
-                colors={colors}
-                isDark={isDarkTheme}
-              />
-            </SettingsSection>
-          )}
-
-          {/* Chat Section */}
-          <SettingsSection title="Chat" icon="message-circle">
-            <SettingLinkItem
-              icon="message-circle"
-              title="Lista de Chats"
-              onPress={() => navigation.navigate("ChatList")}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-          </SettingsSection>
-
-          {/* Notifications Section */}
-          <SettingsSection title="Notificações" icon="bell">
-            <SettingToggleItem
-              icon="bell"
-              title="Notificações Push"
-              value={settings.notifications}
-              onToggle={() => toggleSetting("notifications")}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-            <SettingToggleItem
-              icon="mail"
-              title="Atualizações por Email"
-              value={settings.emailUpdates}
-              onToggle={() => toggleSetting("emailUpdates")}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-          </SettingsSection>
-
-          {/* Privacy Section */}
-          <SettingsSection title="Privacidade" icon="lock">
-            <SettingToggleItem
-              icon="map-pin"
-              title="Serviços de Localização"
-              value={settings.locationServices}
-              onToggle={() => toggleSetting("locationServices")}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-          </SettingsSection>
-
-          {/* Account Section */}
-          <SettingsSection title="Conta" icon="user">
-            <SettingLinkItem
-              icon="shield"
-              title="Permissões"
-              onPress={() => navigation.navigate("PermissionsManager")}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-            <SettingLinkItem
-              icon="heart"
-              title="Notificação de Pets Favoritos"
-              onPress={() => navigation.navigate("NotificationsPreferences")}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-            <SettingLinkItem
+          {/* Account Management */}
+          <SectionHeader title="GERENCIAR CONTA" />
+          <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}>
+            <SettingItem
               icon="user"
               title="Editar Perfil"
-              onPress={() => navigation.navigate("EditProfile")}
-              colors={colors}
-              isDark={isDarkTheme}
+              subtitle="Altere suas informações pessoais"
+              onPress={() => navigation.navigate("AddUsers", { userId: user?.uid })}
             />
-            <SettingLinkItem
-              icon="users"
-              title="Gerenciar ONGs"
-              onPress={() => navigation.navigate("OngList")}
-              colors={colors}
-              isDark={isDarkTheme}
+            <SettingItem
+              icon="bell"
+              title="Notificações"
+              subtitle="Configure suas preferências de notificação"
+              onPress={() => navigation.navigate("NotificationsPreferences")}
             />
-            <SettingLinkItem
-              icon="lock"
-              title="Alterar Senha"
-              onPress={() => navigation.navigate("ChangePassword")}
-              colors={colors}
-              isDark={isDarkTheme}
+            <SettingItem
+              icon="shield"
+              title="Privacidade e Segurança"
+              subtitle="Gerencie suas configurações de privacidade"
+              onPress={() => navigation.navigate("PermissionsManager")}
             />
-            <SettingLinkItem
-              icon="trash-2"
-              title="Excluir Conta"
-              onPress={() => setShowDeleteModal(true)}
-              colors={colors}
-              isDark={isDarkTheme}
-            />
-            <SettingActionItem
-              icon="log-out"
-              title="Sair da Conta"
-              onPress={() =>
-                Alert.alert("Sair", "Tem certeza que deseja sair?", [
-                  { text: "Cancelar", style: "cancel" },
-                  { text: "Sair", onPress: handleLogout },
-                ])
-              }
-              color="#EF4444"
-              isDark={isDarkTheme}
-              colors={undefined}
-            />
-          </SettingsSection>
+          </View>
 
-          {/* App Version */}
-          <Text
-            style={{
-              textAlign: "center",
-              marginTop: 32,
-              color: isDarkTheme ? "#6b7280" : "#9ca3af",
-              fontSize: 12,
-              ...Platform.select({
-                ios: { fontFamily: "San Francisco" },
-                android: { fontFamily: "Roboto" },
-              }),
-            }}
-          >
-            Versão 1.0.0 · Patas com Amor
-          </Text>
+          {/* App Preferences */}
+          <SectionHeader title="PREFERÊNCIAS DO APP" />
+          <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}>
+            <SettingItem
+              icon="moon"
+              title="Tema Escuro"
+              subtitle="Ative o modo escuro para economizar bateria"
+              rightComponent={
+                <Switch
+                  value={isDarkTheme}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: "#D1D5DB", true: colors.primary }}
+                  thumbColor={isDarkTheme ? "#FFFFFF" : "#F3F4F6"}
+                />
+              }
+              showArrow={false}
+            />
+            <SettingItem
+              icon="bell"
+              title="Notificações Push"
+              subtitle="Receba notificações sobre pets e doações"
+              rightComponent={
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={(value) => {
+                    setNotificationsEnabled(value)
+                    saveSettings("notifications_enabled", value)
+                  }}
+                  trackColor={{ false: "#D1D5DB", true: colors.primary }}
+                  thumbColor={notificationsEnabled ? "#FFFFFF" : "#F3F4F6"}
+                />
+              }
+              showArrow={false}
+            />
+            <SettingItem
+              icon="volume-2"
+              title="Sons"
+              subtitle="Reproduzir sons para notificações"
+              rightComponent={
+                <Switch
+                  value={soundEnabled}
+                  onValueChange={(value) => {
+                    setSoundEnabled(value)
+                    saveSettings("sound_enabled", value)
+                  }}
+                  trackColor={{ false: "#D1D5DB", true: colors.primary }}
+                  thumbColor={soundEnabled ? "#FFFFFF" : "#F3F4F6"}
+                />
+              }
+              showArrow={false}
+            />
+            <SettingItem
+              icon="smartphone"
+              title="Vibração"
+              subtitle="Vibrar para notificações importantes"
+              rightComponent={
+                <Switch
+                  value={vibrationEnabled}
+                  onValueChange={(value) => {
+                    setVibrationEnabled(value)
+                    saveSettings("vibration_enabled", value)
+                  }}
+                  trackColor={{ false: "#D1D5DB", true: colors.primary }}
+                  thumbColor={vibrationEnabled ? "#FFFFFF" : "#F3F4F6"}
+                />
+              }
+              showArrow={false}
+            />
+          </View>
+
+          {/* Content Management */}
+          <SectionHeader title="GERENCIAR CONTEÚDO" />
+          <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}>
+            <SettingItem
+              icon="heart"
+              title="Minhas ONGs"
+              subtitle="Gerencie suas organizações cadastradas"
+              onPress={() => navigation.navigate("OngList")}
+            />
+            <SettingItem
+              icon="activity"
+              title="Minhas Clínicas"
+              subtitle="Gerencie suas clínicas veterinárias"
+              onPress={() => navigation.navigate("ClinicsList")}
+            />
+            <SettingItem
+              icon="message-circle"
+              title="Meus Chats"
+              subtitle="Visualize suas conversas sobre adoções"
+              onPress={() => navigation.navigate("ChatList")}
+            />
+            <SettingItem
+              icon="file-text"
+              title="Minhas Postagens"
+              subtitle="Gerencie seus posts no blog"
+              onPress={() => navigation.navigate("AddBlogPost")}
+            />
+          </View>
+
+          {/* Support */}
+          <SectionHeader title="SUPORTE" />
+          <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}>
+            <SettingItem
+              icon="help-circle"
+              title="Central de Ajuda"
+              subtitle="Encontre respostas para suas dúvidas"
+              onPress={() => {
+                // Implementar navegação para ajuda
+                Alert.alert("Em breve", "Central de ajuda será implementada em breve.")
+              }}
+            />
+            <SettingItem
+              icon="mail"
+              title="Contato"
+              subtitle="Entre em contato com nossa equipe"
+              onPress={() => {
+                // Implementar contato
+                Alert.alert("Contato", "Entre em contato através do email: suporte@petadopt.com")
+              }}
+            />
+            <SettingItem
+              icon="star"
+              title="Avaliar App"
+              subtitle="Deixe sua avaliação na loja de apps"
+              onPress={() => {
+                // Implementar avaliação
+                Alert.alert("Obrigado!", "Sua avaliação é muito importante para nós.")
+              }}
+            />
+          </View>
+
+          {/* Admin Tools (if admin) */}
+          {user && (
+            <>
+              <SectionHeader title="FERRAMENTAS ADMIN" />
+              <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}>
+                <SettingItem
+                  icon="settings"
+                  title="Console Admin"
+                  subtitle="Acesse ferramentas administrativas"
+                  onPress={() => navigation.navigate(Platform.OS === "web" ? "AdminConsoleWeb" : "AdminConsole")}
+                />
+              </View>
+            </>
+          )}
+
+          {/* Logout */}
+          <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF", marginBottom: 40 }]}>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <View style={[styles.settingIcon, { backgroundColor: "#FEE2E2" }]}>
+                <Feather name="log-out" size={20} color="#EF4444" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingTitle, { color: "#EF4444" }]}>Sair da Conta</Text>
+                <Text style={[styles.settingSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                  Desconectar de sua conta atual
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </ScrollView>
-
-      {/* Modal de Deletar Conta */}
-      <DeleteAccountModal
-        visible={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onAccountDeleted={handleAccountDeleted}
-      />
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 8,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 32,
+    marginBottom: 12,
+    marginLeft: 4,
+    letterSpacing: 0.5,
+  },
+  section: {
+    borderRadius: 16,
+    marginBottom: 8,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+      },
+    }),
+  },
+  settingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  settingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  settingSubtitle: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+})

@@ -5,17 +5,18 @@ import { useRoute, type RouteProp } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import { Feather } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
-import HeaderLayout from "@/app/utils/HeaderLayout";
-import { useThemeContext } from "@/app/presentation/contexts/ThemeContext";
+import HeaderLayout from "@/app/utils/HeaderLayout"
+import { useThemeContext } from "@/app/presentation/contexts/ThemeContext"
+import AccountSwitcher from "@/app/presentation/components/AccountSwitcher"
 
 // Screens
-import User from './users/index';
-import Profile from './profile/[id]';
-import Settings from './settings/index';
-import News from './news/index';
-import Adopt from "@/app/presentation/screens/Adopt";
-import AddBlogPost from "@/app/presentation/screens/AddBlogPost";
-import AdminConsole from "@/app/presentation/screens/AdminConsole";
+import User from "./users/index"
+import Profile from "./profile/[id]"
+import Settings from "./settings/index"
+import News from "./news/index"
+import Adopt from "@/app/presentation/screens/Adopt"
+import AddBlogPost from "@/app/presentation/screens/AddBlogPost"
+import AdminConsole from "@/app/presentation/screens/AdminConsole"
 import BlogPostDetail from "@/app/presentation/screens/NewsDetails"
 import PetAdoptionDetail from "@/app/presentation/screens/AdoptionDetails"
 import AddPet from "@/app/presentation/screens/AddPet"
@@ -25,6 +26,9 @@ import NotificationPreferences from "@/app/presentation/screens/NotificationsPre
 import PermissionManager from "@/app/presentation/screens/PermissionManage"
 import ChatList from "@/app/presentation/screens/chat/ChatList"
 import RegisterOng from "@/app/presentation/screens/RegisterOng"
+import RegisterClinic from "@/app/presentation/screens/RegisterClinic"
+import ClinicsList from "@/app/presentation/screens/ClinicsList"
+import ClinicDetails from "@/app/presentation/screens/ClinicDetails"
 import { DonationScreen } from "@/app/presentation/screens/Donation"
 import MyOngs from "@/app/presentation/screens/OngsList"
 import OngDetails from "@/app/presentation/screens/OngsDetails"
@@ -139,7 +143,7 @@ const TabLayout = () => {
     const { isDarkTheme, colors } = useThemeContext()
     const screenOptions = {
         headerRight: () => <HeaderLayout />,
-        headerTitleAlign: "left" as "left",
+        headerTitleAlign: "left" as const,
         headerStyle: {
             backgroundColor: isDarkTheme ? colors.primaryDark : colors.primary,
             elevation: 0,
@@ -154,21 +158,20 @@ const TabLayout = () => {
     }
 
     return (
-        <Tab.Navigator
-            screenOptions={screenOptions}
-            tabBar={(props) => <CustomTabBar {...props} />}
-        >
-            <Tab.Screen name="User" component={User} options={{ title: t("Users"), headerShown: false }} />
-            <Tab.Screen
-                name="Profile"
-                component={Profile}
-                initialParams={{ id: route.params?.id ?? null }}
-                options={{ title: t("Profile"), headerShown: false }}
-            />
-            <Tab.Screen name="Donate" component={DonationScreen} options={{ title: t("Donation"), headerShown: false }} />
-            <Tab.Screen name="Settings" component={Settings} options={{ title: t("Settings"), headerShown: false }} />
-            <Tab.Screen name="News" component={News} options={{ title: t("News"), headerShown: false }} />
-        </Tab.Navigator>
+        <View style={{ flex: 1 }}>
+            <Tab.Navigator screenOptions={screenOptions} tabBar={(props) => <CustomTabBar {...props} />}>
+                <Tab.Screen name="User" component={User} options={{ title: t("Users"), headerShown: false }} />
+                <Tab.Screen
+                    name="Profile"
+                    component={Profile}
+                    initialParams={{ id: route.params?.id ?? null }}
+                    options={{ title: t("Profile"), headerShown: false }}
+                />
+                <Tab.Screen name="Donate" component={DonationScreen} options={{ title: t("Donation"), headerShown: false }} />
+                <Tab.Screen name="Settings" component={Settings} options={{ title: t("Settings"), headerShown: false }} />
+                <Tab.Screen name="News" component={News} options={{ title: t("News"), headerShown: false }} />
+            </Tab.Navigator>
+        </View>
     )
 }
 
@@ -177,7 +180,7 @@ const AppLayout = () => {
     const { isDarkTheme, colors } = useThemeContext()
     const screenOptions = {
         headerRight: () => <HeaderLayout />,
-        headerTitleAlign: "left" as "left",
+        headerTitleAlign: "left" as const,
         headerStyle: {
             backgroundColor: isDarkTheme ? colors.primaryDark : colors.primary,
             elevation: 0,
@@ -195,22 +198,81 @@ const AppLayout = () => {
         <Stack.Navigator screenOptions={screenOptions}>
             <Stack.Screen name="(tabs)" component={TabLayout} options={{ headerShown: false }} />
             <Stack.Screen name="Adopt" component={Adopt} options={{ title: t("Adopt"), headerShown: false }} />
-            <Stack.Screen name="AddBlogPost" component={AddBlogPost} options={{ title: t("Add Blog Post"), headerShown: false }} />
+            <Stack.Screen
+                name="AddBlogPost"
+                component={AddBlogPost}
+                options={{ title: t("Add Blog Post"), headerShown: false }}
+            />
             {Platform.OS === "android" ? (
-                <Stack.Screen name="AdminConsole" component={AdminConsole} options={{ title: t("Admin Console"), headerShown: false }} />
+                <Stack.Screen
+                    name="AdminConsole"
+                    component={AdminConsole}
+                    options={{ title: t("Admin Console"), headerShown: false }}
+                />
             ) : (
-                <Stack.Screen name="AdminConsoleWeb" component={AdminConsoleWeb} options={{ title: t("Admin Console"), headerShown: false }} />
+                <Stack.Screen
+                    name="AdminConsoleWeb"
+                    component={AdminConsoleWeb}
+                    options={{ title: t("Admin Console"), headerShown: false }}
+                />
             )}
-            <Stack.Screen name="NewsDetails" component={BlogPostDetail} options={{ title: t("News Details"), headerShown: false }} />
-            <Stack.Screen name="AdoptDetails" component={PetAdoptionDetail} options={{ title: t("Adopt Details"), headerShown: false }} />
+            <Stack.Screen
+                name="NewsDetails"
+                component={BlogPostDetail}
+                options={{ title: t("News Details"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="AdoptDetails"
+                component={PetAdoptionDetail}
+                options={{ title: t("Adopt Details"), headerShown: false }}
+            />
             <Stack.Screen name="AddPet" component={AddPet} options={{ title: t("Add Pet"), headerShown: false }} />
-            <Stack.Screen name="AddUsers" component={AddEditUserScreen} options={{ title: t("Add User"), headerShown: false }} />
-            <Stack.Screen name="NotificationsPreferences" component={NotificationPreferences} options={{ title: t("Notification Preferences"), headerShown: false }} />
-            <Stack.Screen name="PermissionsManager" component={PermissionManager} options={{ title: t("Permission Manager"), headerShown: false }} />
-            <Stack.Screen name="RegisterOng" component={RegisterOng} options={{ title: t("Register ONG"), headerShown: false }} />
+            <Stack.Screen
+                name="AddUsers"
+                component={AddEditUserScreen}
+                options={{ title: t("Add User"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="NotificationsPreferences"
+                component={NotificationPreferences}
+                options={{ title: t("Notification Preferences"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="PermissionsManager"
+                component={PermissionManager}
+                options={{ title: t("Permission Manager"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="RegisterOng"
+                component={RegisterOng}
+                options={{ title: t("Register ONG"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="RegisterClinic"
+                component={RegisterClinic}
+                options={{ title: t("Register Clinic"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="ClinicsList"
+                component={ClinicsList}
+                options={{ title: t("Clinics List"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="ClinicDetails"
+                component={ClinicDetails}
+                options={{ title: t("Clinic Details"), headerShown: false }}
+            />
             <Stack.Screen name="OngList" component={MyOngs} options={{ title: t("ONG List"), headerShown: false }} />
-            <Stack.Screen name="OngDetails" component={OngDetails} options={{ title: t("ONG Details"), headerShown: false }} />
-            <Stack.Screen name="Notifications" component={Notifications} options={{ title: t("Notifications"), headerShown: false }} />
+            <Stack.Screen
+                name="OngDetails"
+                component={OngDetails}
+                options={{ title: t("ONG Details"), headerShown: false }}
+            />
+            <Stack.Screen
+                name="Notifications"
+                component={Notifications}
+                options={{ title: t("Notifications"), headerShown: false }}
+            />
             <Stack.Screen name="ChatList" component={ChatList} options={{ title: t("Chat"), headerShown: false }} />
         </Stack.Navigator>
     )
@@ -253,4 +315,4 @@ const styles = StyleSheet.create({
     },
 })
 
-export default AppLayout;
+export default AppLayout

@@ -6,6 +6,7 @@ import { auth, isUserAdmin } from "../../data/datasources/firebase/firebase"
 import { onAuthStateChanged, signOut, type User } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
 import ExpoNotificationService from "../../repositories/NotificationRepository"
+import { AccountProvider } from "./AccountContext"
 
 interface AuthContextType {
   user: User | null
@@ -77,5 +78,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  return <AuthContext.Provider value={{ user, isAdmin, isLoading, logout }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, isAdmin, isLoading, logout }}>
+      <AccountProvider>{children}</AccountProvider>
+    </AuthContext.Provider>
+  )
 }

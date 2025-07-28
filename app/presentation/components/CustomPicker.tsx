@@ -14,8 +14,8 @@ interface PickerItem {
 
 interface CustomPickerProps {
     items: PickerItem[]
-    selectedValue: string
-    onValueChange: (value: string) => void
+    selectedValue: string | string[]
+    onValueChange: (value: string | string[]) => void
     placeholder?: string
     disabled?: boolean
     searchable?: boolean
