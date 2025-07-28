@@ -1,400 +1,592 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { View, Text, Image, ScrollView, TouchableOpacity, Platform, Animated, StyleSheet } from "react-native"
-import { useThemeContext } from "../contexts/ThemeContext"
-import { Feather } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
+import { useState, useCallback } from "react"
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    Image,
+    RefreshControl,
+    ActivityIndicator,
+    Dimensions,
+    Platform,
+    Alert,
+} from "react-native"
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { LinearGradient } from "expo-linear-gradient"
-import { isWeb } from "@gluestack-ui/nativewind-utils/IsWeb"
-import HeaderLayout from "../../utils/HeaderLayout"
-import { use } from "i18next"
-import { getPets, Pet } from "../../repositories/FirebasePetRepository"
+import { Feather } from "@expo/vector-icons"
+import { useThemeContext } from "../contexts/ThemeContext"
+import { useAccount } from "../contexts/AccountContext"
+import { getPets, type Pet } from "../../repositories/FirebasePetRepository"
+import SmartSearch from "../components/SmartSearch"
+import FavoriteButton from "../components/FavoriteButton"
 
-const styles = StyleSheet.create({
-    iosShadow: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-    },
-    androidShadow: {
-        elevation: 4,
-    },
-    webShadow: {
-        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    },
-    adoptButton: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    fabShadow: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-});
+const { width } = Dimensions.get("window")
+const isSmallScreen = width < 380
+const isMediumScreen = width >= 380 && width < 768
+const isLargeScreen = width >= 768
 
-export default function Adopt() {
+interface SearchFilters {
+    type?: string
+    size?: string
+    age?: string
+    location?: string
+    status?: string
+    vaccinated?: boolean
+    neutered?: boolean
+    specialNeeds?: boolean
+}
+
+export default function EnhancedAdopt() {
     const { isDarkTheme, colors } = useThemeContext()
-    const router = useNavigation<any>();
-    const isWeb = Platform.OS === "web"
+    const { currentAccount } = useAccount()
+    const navigation = useNavigation<any>()
 
-    // Animated values
-    const [fadeAnim] = useState(new Animated.Value(0))
-    const [slideAnim] = useState(new Animated.Value(30))
+    const [pets, setPets] = useState<Pet[]>([])
+    const [filteredPets, setFilteredPets] = useState<Pet[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [activeFilters, setActiveFilters] = useState<SearchFilters>({})
 
-    const isIOS = Platform.OS === "ios"
-    const isAndroid = Platform.OS === "android"
-
-    const [pets, setPets] = useState<Pet[]>()
-
-    const handleAdd = () => {
-        router.navigate("AddPet")
+    const loadPets = async () => {
+        try {
+            const petsData = await getPets()
+            setPets(petsData)
+            setFilteredPets(petsData)
+        } catch (error) {
+            console.error("Erro ao carregar pets:", error)
+            Alert.alert("Erro", "Não foi possível carregar os pets.")
+        } finally {
+            setIsLoading(false)
+        }
     }
 
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                speed: 12,
-                bounciness: 6,
-                useNativeDriver: true,
-            }),
-        ]).start()
-    }, [])
+    const onRefresh = async () => {
+        setRefreshing(true)
+        await loadPets()
+        setRefreshing(false)
+    }
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const fetchPets = await getPets();
-            if (fetchPets) {
-                setPets(fetchPets);
-            }
-        };
-        fetchData();
-    }, [])
+    useFocusEffect(
+        useCallback(() => {
+            loadPets()
+        }, []),
+    )
+
+    const handleSearch = (query: string, filters: SearchFilters) => {
+        setSearchQuery(query)
+        setActiveFilters(filters)
+
+        let filtered = pets
+
+        // Text search
+        if (query.trim()) {
+            filtered = filtered.filter(
+                (pet) =>
+                    pet.name.toLowerCase().includes(query.toLowerCase()) ||
+                    pet.breed.toLowerCase().includes(query.toLowerCase()) ||
+                    pet.description.toLowerCase().includes(query.toLowerCase()) ||
+                    pet.location.toLowerCase().includes(query.toLowerCase()),
+            )
+        }
+
+        // Apply filters
+        if (filters.type) {
+            filtered = filtered.filter((pet) => pet.type === filters.type)
+        }
+        if (filters.size) {
+            filtered = filtered.filter((pet) => pet.size === filters.size)
+        }
+        if (filters.status) {
+            filtered = filtered.filter((pet) => pet.status === filters.status)
+        }
+        if (filters.vaccinated !== undefined) {
+            filtered = filtered.filter((pet) => pet.vaccinated === filters.vaccinated)
+        }
+        if (filters.neutered !== undefined) {
+            filtered = filtered.filter((pet) => pet.neutered === filters.neutered)
+        }
+        if (filters.specialNeeds !== undefined) {
+            filtered = filtered.filter((pet) => pet.specialNeeds === filters.specialNeeds)
+        }
+
+        setFilteredPets(filtered)
+    }
+
+    const getTypeDisplayName = (type: string) => {
+        const names = {
+            dog: "🐕 Cão",
+            cat: "🐱 Gato",
+            bird: "🐦 Pássaro",
+            rabbit: "🐰 Coelho",
+            other: "🐾 Outro",
+        }
+        return names[type as keyof typeof names] || type
+    }
+
+    const getSizeDisplayName = (size: string) => {
+        const names = {
+            small: "Pequeno",
+            medium: "Médio",
+            large: "Grande",
+            "extra-large": "Extra Grande",
+        }
+        return names[size as keyof typeof names] || size
+    }
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "available":
+                return "#10B981"
+            case "pending":
+                return "#F59E0B"
+            case "adopted":
+                return "#EF4444"
+            default:
+                return colors.primary
+        }
+    }
+
+    const renderPetCard = (pet: Pet) => (
+        <TouchableOpacity
+            key={pet.id}
+            style={[
+                styles.petCard,
+                {
+                    backgroundColor: isDarkTheme ? "#1F2937" : "white",
+                    width: isLargeScreen ? "48%" : isMediumScreen ? "48%" : "100%",
+                },
+            ]}
+            onPress={() => navigation.navigate("AdoptionDetails", { petId: pet.id })}
+        >
+            <View style={styles.imageContainer}>
+                <Image source={{ uri: pet.images[0] || "/placeholder.svg?height=200&width=300" }} style={styles.petImage} />
+
+                {/* Status Badge */}
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(pet.status) }]}>
+                    <Text style={styles.statusText}>
+                        {pet.status === "available" ? "Disponível" : pet.status === "pending" ? "Pendente" : "Adotado"}
+                    </Text>
+                </View>
+
+                {/* Favorite Button */}
+                <View style={styles.favoriteButton}>
+                    <FavoriteButton petId={pet.id!} petType={pet.type} petName={pet.name} />
+                </View>
+
+                {/* Image Count */}
+                {pet.images.length > 1 && (
+                    <View style={styles.imageCount}>
+                        <Feather name="image" size={12} color="white" />
+                        <Text style={styles.imageCountText}>{pet.images.length}</Text>
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.petInfo}>
+                <View style={styles.petHeader}>
+                    <Text style={[styles.petName, { color: isDarkTheme ? "white" : "#374151" }]}>{pet.name}</Text>
+                    <Text style={[styles.petAge, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>{pet.age}</Text>
+                </View>
+
+                <View style={styles.petDetails}>
+                    <Text style={[styles.petBreed, { color: colors.primary }]}>
+                        {getTypeDisplayName(pet.type)} • {pet.breed}
+                    </Text>
+                    <Text style={[styles.petSize, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                        Porte {getSizeDisplayName(pet.size)}
+                    </Text>
+                </View>
+
+                <Text style={[styles.petDescription, { color: isDarkTheme ? "#D1D5DB" : "#374151" }]} numberOfLines={2}>
+                    {pet.description}
+                </Text>
+
+                <View style={styles.petLocation}>
+                    <Feather name="map-pin" size={14} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />
+                    <Text style={[styles.locationText, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]} numberOfLines={1}>
+                        {pet.location}
+                    </Text>
+                </View>
+
+                {/* Health Info */}
+                <View style={styles.healthInfo}>
+                    {pet.vaccinated && (
+                        <View style={[styles.healthBadge, { backgroundColor: "#10B981" }]}>
+                            <Feather name="shield" size={10} color="white" />
+                            <Text style={styles.healthBadgeText}>Vacinado</Text>
+                        </View>
+                    )}
+                    {pet.neutered && (
+                        <View style={[styles.healthBadge, { backgroundColor: "#3B82F6" }]}>
+                            <Feather name="heart" size={10} color="white" />
+                            <Text style={styles.healthBadgeText}>Castrado</Text>
+                        </View>
+                    )}
+                    {pet.specialNeeds && (
+                        <View style={[styles.healthBadge, { backgroundColor: "#F59E0B" }]}>
+                            <Feather name="star" size={10} color="white" />
+                            <Text style={styles.healthBadgeText}>Especial</Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Creator Info */}
+                <View style={styles.creatorInfo}>
+                    <View style={[styles.creatorAvatar, { backgroundColor: colors.primary }]}>
+                        <Text style={styles.creatorInitial}>{pet.createdByName?.charAt(0).toUpperCase() || "?"}</Text>
+                    </View>
+                    <Text style={[styles.creatorName, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                        Por {pet.createdByName || "Usuário"}
+                    </Text>
+                </View>
+            </View>
+        </TouchableOpacity>
+    )
+
+    const renderEmptyState = () => (
+        <View style={styles.emptyState}>
+            <Feather name="search" size={64} color={isDarkTheme ? "#4B5563" : "#D1D5DB"} />
+            <Text style={[styles.emptyTitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                {searchQuery || Object.keys(activeFilters).length > 0 ? "Nenhum pet encontrado" : "Nenhum pet disponível"}
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: isDarkTheme ? "#6B7280" : "#9CA3AF" }]}>
+                {searchQuery || Object.keys(activeFilters).length > 0
+                    ? "Tente ajustar sua busca ou filtros"
+                    : "Seja o primeiro a cadastrar um pet!"}
+            </Text>
+            {!searchQuery && Object.keys(activeFilters).length === 0 && (
+                <TouchableOpacity
+                    style={[styles.addFirstPetButton, { backgroundColor: colors.primary }]}
+                    onPress={() => navigation.navigate("AddPet")}
+                >
+                    <Feather name="plus" size={20} color="white" />
+                    <Text style={styles.addFirstPetText}>Cadastrar Pet</Text>
+                </TouchableOpacity>
+            )}
+        </View>
+    )
+
+    if (isLoading) {
+        return (
+            <View style={[styles.loadingContainer, { backgroundColor: isDarkTheme ? "#111827" : "#F9FAFB" }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: isDarkTheme ? "white" : "#374151" }]}>Carregando pets...</Text>
+            </View>
+        )
+    }
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDarkTheme ? '#1a202c' : '#f8fafc' }}>
-            {/* Header with gradient */}
+        <View style={[styles.container, { backgroundColor: isDarkTheme ? "#111827" : "#F9FAFB" }]}>
+            {/* Enhanced Header */}
             <LinearGradient
                 colors={isDarkTheme ? [colors.primaryDark, colors.secondaryDark] : [colors.primary, colors.secondary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={{
-                    paddingTop: Platform.select({ ios: 64, android: 40, web: 80 }),
-                    paddingBottom: 32,
-                    paddingHorizontal: 16
-                }}
+                style={styles.header}
             >
-                <View className="flex-row items-center justify-between">
-                    <TouchableOpacity
-                        onPress={() => router.goBack()}
-                        className="w-12 h-12 rounded-full bg-white/20 items-center justify-center"
-                    >
-                        <Feather name="arrow-left" size={20} color="white" />
-                    </TouchableOpacity>
-                    <View className="w-10" />
-                </View>
-                <View style={{ position: "absolute", right: 0, top: 20, flexDirection: 'row', alignSelf: "flex-end", alignItems: 'center' }}>
-                    <HeaderLayout title="Profile" />
-                </View>
-                <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                    <Feather name="heart" size={40} color="white" />
-                    <Text style={{
-                        color: 'white',
-                        fontSize: 24,
-                        fontWeight: 'bold',
-                        marginTop: 8,
-                        ...Platform.select({
-                            ios: { fontFamily: "San Francisco" },
-                            android: { fontFamily: "Roboto" },
-                        }),
-                    }}>
-                        Adote um Amigo
-                    </Text>
-                    <Text style={{
-                        color: 'rgba(255,255,255,0.8)',
-                        fontSize: 16,
-                        marginTop: 4,
-                        textAlign: 'center',
-                        ...Platform.select({
-                            ios: { fontFamily: "San Francisco" },
-                            android: { fontFamily: "Roboto" },
-                        }),
-                    }}>
-                        Encontre um novo companheiro para sua família
-                    </Text>
+                <View style={styles.headerContent}>
+                    <View style={styles.headerTitleContainer}>
+                        <Text style={styles.headerTitle}>Adoção</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {filteredPets.length} {filteredPets.length === 1 ? "pet disponível" : "pets disponíveis"}
+                        </Text>
+                    </View>
+
+                    {currentAccount && (
+                        <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("AddPet")}>
+                            <Feather name="plus" size={20} color="white" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </LinearGradient>
 
             <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[colors.primary]}
+                        tintColor={colors.primary}
+                    />
+                }
                 showsVerticalScrollIndicator={false}
-                style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 32 }}
             >
-                <Animated.View
-                    style={{
-                        opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }],
-                        flexDirection: isWeb ? 'row' : 'column',
-                        flexWrap: isWeb ? 'wrap' : 'nowrap',
-                        justifyContent: isWeb ? 'center' : 'flex-start',
-                        padding: 16
-                    }}
-                >
-                    {pets?.map((pet, index) => (
-                        <View
-                            key={pet.id}
-                            style={{
-                                width: isWeb ? 300 : '100%',
-                                maxWidth: isWeb ? 300 : 500,
-                                marginBottom: 24,
-                                marginHorizontal: isWeb ? 8 : 0,
-                                alignSelf: isWeb ? 'flex-start' : 'center'
-                            }}
-                        >
-                            <PetCard pet={pet} index={index} isDark={isDarkTheme} colors={colors} />
-                        </View>
-                    ))}
-                </Animated.View>
+                {/* Smart Search */}
+                <View style={styles.searchContainer}>
+                    <SmartSearch
+                        onSearch={handleSearch}
+                        placeholder="Buscar pets por nome, raça, localização..."
+                        showFilters={true}
+                    />
+                </View>
+
+                {/* Results */}
+                {filteredPets.length > 0 ? (
+                    <View
+                        style={[
+                            styles.petsGrid,
+                            {
+                                flexDirection: isLargeScreen || isMediumScreen ? "row" : "column",
+                                flexWrap: isLargeScreen || isMediumScreen ? "wrap" : "nowrap",
+                                justifyContent: isLargeScreen || isMediumScreen ? "space-between" : "flex-start",
+                            },
+                        ]}
+                    >
+                        {filteredPets.map(renderPetCard)}
+                    </View>
+                ) : (
+                    renderEmptyState()
+                )}
             </ScrollView>
-            <TouchableOpacity
-                onPress={handleAdd}
-                className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
-                style={{
-                    backgroundColor: colors.secondary,
-                    ...styles.fabShadow,
-                }}
-            >
-                <Feather name="plus" size={24} color="white" />
-            </TouchableOpacity>
         </View>
     )
 }
 
-interface PetCardProps {
-    pet: Pet
-    index: number
-    isDark: boolean
-    colors: any
-}
-
-function PetCard({ pet, index, isDark, colors }: PetCardProps) {
-    const [fadeAnim] = useState(new Animated.Value(0))
-    const [scaleAnim] = useState(new Animated.Value(0.95))
-    const [heartAnim] = useState(new Animated.Value(1))
-    const router = useNavigation<any>();
-    const [liked, setLiked] = useState(false)
-
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            Animated.parallel([
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: true,
-                }),
-                Animated.spring(scaleAnim, {
-                    toValue: 1,
-                    friction: 8,
-                    useNativeDriver: true,
-                }),
-            ]).start()
-        }, index * 150)
-
-        return () => clearTimeout(timeout)
-    }, [])
-
-    const handleAdopt = () => {
-        router.navigate("AdoptDetails", { petId: pet?.id })
-    }
-
-    const handleLike = () => {
-        setLiked(!liked)
-        Animated.sequence([
-            Animated.timing(heartAnim, {
-                toValue: 1.3,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-            Animated.timing(heartAnim, {
-                toValue: 1,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-        ]).start()
-    }
-
-    return (
-        <Animated.View
-            style={{
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }],
-            }}
-        >
-            <View
-                style={[
-                    {
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                        backgroundColor: isDark ? '#2d3748' : 'white',
-                    },
-                    Platform.select({
-                        ios: styles.iosShadow,
-                        android: styles.iosShadow, // Use iOS shadow as fallback for Android
-                        ...(isWeb ? styles.webShadow : {}),
-                    })
-                ]}
-            >
-                <View style={{ position: 'relative' }}>
-                    <Image
-                        source={{ uri: pet.images[0] }}
-                        style={{ width: '100%', height: 200 }}
-                        resizeMode="cover"
-                    />
-                    <View style={{ position: 'absolute', top: 12, right: 12 }}>
-                        <TouchableOpacity
-                            onPress={handleLike}
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: liked
-                                    ? '#ef4444'
-                                    : isDark
-                                        ? 'rgba(45, 55, 72, 0.7)'
-                                        : 'rgba(255, 255, 255, 0.7)'
-                            }}
-                        >
-                            <Animated.View style={{ transform: [{ scale: heartAnim }] }}>
-                                <Feather
-                                    name={liked ? "heart" : "heart"}
-                                    size={20}
-                                    color={liked ? "white" : colors.secondary}
-                                />
-                            </Animated.View>
-                        </TouchableOpacity>
-                    </View>
-                    <View
-                        style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            paddingHorizontal: 16,
-                            paddingVertical: 8,
-                            backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)'
-                        }}
-                    >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <View
-                                style={{
-                                    width: 24,
-                                    height: 24,
-                                    borderRadius: 12,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginRight: 8,
-                                    backgroundColor: pet.type === "Cachorro"
-                                        ? `${colors.primary}40`
-                                        : `${colors.secondary}40`
-                                }}
-                            >
-                                <Feather
-                                    name={pet.type === "Cachorro" ? "github" : "gitlab"}
-                                    size={14}
-                                    color={pet.type === "Cachorro" ? colors.primary : colors.secondary}
-                                />
-                            </View>
-                            <Text
-                                style={{
-                                    fontSize: 12,
-                                    fontWeight: '500',
-                                    color: isDark ? 'white' : '#1a202c',
-                                    ...Platform.select({
-                                        ios: { fontFamily: "San Francisco" },
-                                        android: { fontFamily: "Roboto" },
-                                    }),
-                                }}
-                            >
-                                {pet.type} • {pet.breed} • {pet.age}
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-
-                <View style={{ padding: 16 }}>
-                    <Text
-                        style={{
-                            fontSize: 20,
-                            fontWeight: 'bold',
-                            marginBottom: 8,
-                            color: isDark ? 'white' : '#1a202c',
-                            ...Platform.select({
-                                ios: { fontFamily: "San Francisco" },
-                                android: { fontFamily: "Roboto" },
-                            }),
-                        }}
-                    >
-                        {pet.name}
-                    </Text>
-
-                    <Text
-                        style={{
-                            fontSize: 14,
-                            marginBottom: 16,
-                            color: isDark ? '#cbd5e0' : '#4a5568',
-                            ...Platform.select({
-                                ios: { fontFamily: "San Francisco" },
-                                android: { fontFamily: "Roboto" },
-                            }),
-                        }}
-                    >
-                        {pet.description}
-                    </Text>
-
-                    <TouchableOpacity
-                        onPress={handleAdopt}
-                        style={{
-                            paddingVertical: 12,
-                            borderRadius: 12,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: colors.primary,
-                            ...styles.adoptButton,
-                        }}
-                    >
-                        <Text
-                            style={{
-                                color: 'white',
-                                fontWeight: '600',
-                                marginRight: 8,
-                                ...Platform.select({
-                                    ios: { fontFamily: "San Francisco" },
-                                    android: { fontFamily: "Roboto" },
-                                }),
-                            }}
-                        >
-                            Quero Adotar
-                        </Text>
-                        <Feather name="heart" size={16} color="white" />
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </Animated.View>
-    )
-}
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        fontWeight: "500",
+    },
+    header: {
+        paddingTop: Platform.OS === "ios" ? 64 : Platform.OS === "android" ? 48 : 24,
+        paddingBottom: 20,
+        paddingHorizontal: 20,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+    },
+    headerContent: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    headerTitleContainer: {
+        flex: 1,
+    },
+    headerTitle: {
+        color: "white",
+        fontSize: 24,
+        fontWeight: "700",
+    },
+    headerSubtitle: {
+        color: "rgba(255, 255, 255, 0.8)",
+        fontSize: 14,
+        marginTop: 2,
+    },
+    addButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: "rgba(255, 255, 255, 0.2)",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 20,
+    },
+    searchContainer: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
+    },
+    petsGrid: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        gap: 16,
+    },
+    petCard: {
+        borderRadius: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        overflow: "hidden",
+        ...Platform.select({
+            ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
+    },
+    imageContainer: {
+        position: "relative",
+        height: 200,
+    },
+    petImage: {
+        width: "100%",
+        height: "100%",
+        resizeMode: "cover",
+    },
+    statusBadge: {
+        position: "absolute",
+        top: 12,
+        left: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    statusText: {
+        color: "white",
+        fontSize: 11,
+        fontWeight: "600",
+    },
+    favoriteButton: {
+        position: "absolute",
+        top: 12,
+        right: 12,
+    },
+    imageCount: {
+        position: "absolute",
+        bottom: 12,
+        right: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 10,
+        gap: 3,
+    },
+    imageCountText: {
+        color: "white",
+        fontSize: 11,
+        fontWeight: "600",
+    },
+    petInfo: {
+        padding: 16,
+    },
+    petHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 8,
+    },
+    petName: {
+        fontSize: 18,
+        fontWeight: "700",
+        flex: 1,
+    },
+    petAge: {
+        fontSize: 14,
+        fontWeight: "500",
+    },
+    petDetails: {
+        marginBottom: 8,
+    },
+    petBreed: {
+        fontSize: 14,
+        fontWeight: "600",
+        marginBottom: 2,
+    },
+    petSize: {
+        fontSize: 12,
+        fontWeight: "500",
+    },
+    petDescription: {
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 12,
+    },
+    petLocation: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 12,
+        gap: 6,
+    },
+    locationText: {
+        fontSize: 12,
+        flex: 1,
+    },
+    healthInfo: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 6,
+        marginBottom: 12,
+    },
+    healthBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 10,
+        gap: 3,
+    },
+    healthBadgeText: {
+        color: "white",
+        fontSize: 10,
+        fontWeight: "600",
+    },
+    creatorInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    creatorAvatar: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    creatorInitial: {
+        color: "white",
+        fontSize: 12,
+        fontWeight: "600",
+    },
+    creatorName: {
+        fontSize: 12,
+        fontWeight: "500",
+    },
+    emptyState: {
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 60,
+        paddingHorizontal: 40,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: "600",
+        marginTop: 16,
+        marginBottom: 8,
+        textAlign: "center",
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        textAlign: "center",
+        lineHeight: 20,
+        marginBottom: 24,
+    },
+    addFirstPetButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 25,
+        gap: 8,
+    },
+    addFirstPetText: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "600",
+    },
+})
