@@ -3,10 +3,11 @@ import { View, TouchableOpacity, StyleSheet, Text, Platform, Animated, Pressable
 import Popover from "react-native-popover-view"
 import { LinearGradient } from "expo-linear-gradient"
 import { Feather } from "@expo/vector-icons"
-import { auth } from "../config/firebase"
+import { auth } from "../data/datasources/firebase/firebase"
 import { onAuthStateChanged, signOut, User } from "firebase/auth"
 import { useNavigation } from "@react-navigation/native"
-import { useThemeContext } from "./ThemeContext"
+import { useThemeContext } from "../presentation/contexts/ThemeContext"
+import ExpoNotificationService from "../repositories/NotificationRepository"
 
 function getInitials(name: string) {
     return name
@@ -21,12 +22,48 @@ export default function HeaderUserMenu() {
     const [user, setUser] = useState<User | null>(null)
     const [isVisible, setIsVisible] = useState(false)
     const avatarRef = useRef<any>(null)
-
+    const [unreadCount, setUnreadCount] = useState(0)
     const { toggleTheme, isDarkTheme, colors, setTheme } = useThemeContext()
 
     // Animation values
     const [scaleAnim] = useState(new Animated.Value(1))
     const [rotateAnim] = useState(new Animated.Value(0))
+
+    useEffect(() => {
+        // Carregar contagem de notificações não lidas
+        const loadUnreadCount = async () => {
+            try {
+                const notificationService = ExpoNotificationService.getInstance()
+                const count = await notificationService.getUnreadNotificationsCount()
+                setUnreadCount(count)
+            } catch (error) {
+                console.error("Erro ao carregar contagem de notificações:", error)
+            }
+        }
+
+        loadUnreadCount()
+
+        // Atualizar contagem em tempo real
+        const notificationService = ExpoNotificationService.getInstance()
+        let unsubscribePromise = notificationService.getUserNotifications((notifications) => {
+            const unreadNotifications = notifications.filter((n) => !n.read)
+            setUnreadCount(unreadNotifications.length)
+        })
+
+        return () => {
+            if (unsubscribePromise) {
+                unsubscribePromise.then((unsubscribe: () => void) => {
+                    if (typeof unsubscribe === "function") {
+                        unsubscribe()
+                    }
+                })
+            }
+        }
+    }, [])
+
+    const handleNotificationsPress = () => {
+        router.navigate("Notifications" as never)
+    }
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, setUser)
@@ -189,6 +226,32 @@ export default function HeaderUserMenu() {
                             <Feather name="settings" size={16} color={colors.secondary} />
                         </View>
                         <Text style={[styles.menuText, { color: isDarkTheme ? "#FFFFFF" : "#1F2937" }]}>Configurações</Text>
+                    </TouchableOpacity>
+
+                    {/* Notifications */}
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                            setIsVisible(false)
+                            router.navigate({ name: "Notifications" } as never)
+                        }}
+                    >
+                        <View
+                            style={[
+                                styles.menuIconContainer,
+                                { backgroundColor: isDarkTheme ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.05)" },
+                            ]}
+                        >
+                            <Feather name="bell" size={16} color={isDarkTheme ? "#FFFFFF" : colors.primary} />
+                        </View>
+                        <Text style={[styles.menuText, { color: isDarkTheme ? "#FFFFFF" : "#1F2937" }]}>
+                            Notificações
+                            {unreadCount > 0 && (
+                                <Text style={{ color: colors.primary, fontWeight: "bold" }}>
+                                    {" (" + (unreadCount > 99 ? "99+" : unreadCount) + ")"}
+                                </Text>
+                            )}
+                        </Text>
                     </TouchableOpacity>
 
                     {/* Theme toogle button */}

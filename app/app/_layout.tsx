@@ -2,28 +2,29 @@
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { SafeAreaProvider } from "react-native-safe-area-context"
-import Toastable from "../components/Toastable"
+import Toastable from "../presentation/components/Toastable"
 import "../../global.css"
-import { type LinkingOptions, NavigationContainer } from "@react-navigation/native"
+import { NavigationContainer } from "@react-navigation/native"
 import { ActivityIndicator, View, Text } from "react-native"
-import { ThemeProvider, useThemeContext } from "../utils/ThemeContext"
-import { AuthProvider, useAuth } from "../utils/AuthContext"
-import { useEffect } from "react"
+import { ThemeProvider, useThemeContext } from "../presentation/contexts/ThemeContext"
+import { AuthProvider, useAuth } from "../presentation/contexts/AuthContext"
+import { useEffect, useState } from "react" // Adicionado useState
 import { NavigationIndependentTree } from "@react-navigation/native"
+import AsyncStorage from "@react-native-async-storage/async-storage" // Adicionado AsyncStorage
 
 // Screens
-import LoginScreen from "../screens/LoginScreen"
-import RegisterScreen from "../screens/RegisterScreen"
+import LoginScreen from "../presentation/screens/LoginScreen"
+import RegisterScreen from "../presentation/screens/RegisterScreen"
 import AppLayout from "./(tabs)/_layout"
-import ForgotPasswordScreen from "../screens/ForgotPassword"
+import ForgotPasswordScreen from "../presentation/screens/ForgotPassword"
 import { onAuthStateChanged } from "firebase/auth"
-import { auth } from "../config/firebase"
+import { auth } from "../data/datasources/firebase/firebase"
 import { useNavigation } from "expo-router"
-import ExpoNotificationService from "../utils/NotificationsServices"
+import ExpoNotificationService from "../repositories/NotificationRepository"
+import AccountSwitcher from "../presentation/components/AccountSwitcher"
 
 const Stack = createNativeStackNavigator()
-
-// Configuração de deep linking
+const PERSISTENCE_KEY = "NAVIGATION_STATE_V1" // Chave para persistência
 
 // Componente de navegação condicional baseado no estado de autenticação
 function NavigationContent() {
@@ -111,11 +112,47 @@ function NavigationContent() {
 
 // Componente principal que envolve a aplicação com os provedores necessários
 export default function RouterLayout() {
+    const [isNavigationReady, setIsNavigationReady] = useState(false)
+    const [initialState, setInitialState] = useState<any>()
+
+    useEffect(() => {
+        const restoreState = async () => {
+            try {
+                const savedStateString = await AsyncStorage.getItem(PERSISTENCE_KEY)
+                const state = savedStateString ? JSON.parse(savedStateString) : undefined
+                if (state !== undefined) {
+                    setInitialState(state)
+                }
+            } catch (e) {
+                console.error("Failed to restore navigation state", e)
+            } finally {
+                setIsNavigationReady(true)
+            }
+        }
+
+        if (!isNavigationReady) {
+            // Apenas restaura se ainda não estiver pronto
+            restoreState()
+        }
+    }, [isNavigationReady]) // Dependência para re-executar se o estado de prontidão mudar
+
+    if (!isNavigationReady) {
+        return (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#ffffff" }}>
+                <ActivityIndicator size="large" color="#0000ff" />
+                <Text style={{ marginTop: 16, fontSize: 16, color: "#1f2937" }}>Preparando navegação...</Text>
+            </View>
+        )
+    }
+
     return (
         <ThemeProvider>
             <AuthProvider>
                 <NavigationIndependentTree>
-                    <NavigationContainer>
+                    <NavigationContainer
+                        initialState={initialState} // Aplica o estado inicial carregado
+                        onStateChange={(state) => AsyncStorage.setItem(PERSISTENCE_KEY, JSON.stringify(state))} // Salva o estado a cada mudança
+                    >
                         <SafeAreaProvider>
                             <Toastable />
                             <NavigationContent />

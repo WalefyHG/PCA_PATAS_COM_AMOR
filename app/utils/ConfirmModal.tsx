@@ -17,7 +17,7 @@ import Animated, {
     withTiming,
     Easing,
 } from "react-native-reanimated";
-import { useThemeContext } from "../utils/ThemeContext";
+import { useThemeContext } from "../presentation/contexts/ThemeContext";
 
 const { width } = Dimensions.get("window");
 

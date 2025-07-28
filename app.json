@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "test expo",
-    "slug": "test-expo",
+    "name": "Patas Com Amor",
+    "slug": "patas-com-amor",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,6 +17,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "icon": "./assets/images/icon.png",
       "package": "com.app.pca",
       "googleServicesFile": "./android/app/google-services.json"
     },

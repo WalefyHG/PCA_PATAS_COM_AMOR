@@ -6,7 +6,7 @@ import { ApplicationProvider, IconRegistry } from "@ui-kitten/components";
 import { EvaIconsPack } from '@ui-kitten/eva-icons';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PaperProvider } from "react-native-paper";
-import { ThemeProvider, useThemeContext } from "./utils/ThemeContext";
+import { ThemeProvider, useThemeContext } from "./presentation/contexts/ThemeContext";
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
