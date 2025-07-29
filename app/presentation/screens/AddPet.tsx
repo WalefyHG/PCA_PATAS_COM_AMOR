@@ -63,6 +63,9 @@ export default function AddPetEnhanced() {
         contactEmail: "",
         status: "available",
         createdBy: "",
+        // Add missing properties for Pet type
+        photos: [],
+        species: "",
     })
 
     const [isSubmitting, setIsSubmitting] = useState(false)
