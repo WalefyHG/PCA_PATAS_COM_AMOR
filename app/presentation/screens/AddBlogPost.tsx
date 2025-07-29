@@ -217,7 +217,7 @@ export default function AddBlogPost() {
                 await updateBlogPost(postId, postData)
                 if (Platform.OS !== "web") {
                     Alert.alert("Sucesso", "Post atualizado com sucesso!", [
-                        { text: "OK", onPress: () => navigation.navigate("News") },
+                        { text: "OK", onPress: () => navigation.goBack() },
                     ])
                 } else {
                     navigation.navigate("News")
@@ -226,7 +226,7 @@ export default function AddBlogPost() {
                 await createBlogPost(postData)
                 if (Platform.OS !== "web") {
                     Alert.alert("Sucesso", "Post criado com sucesso!", [
-                        { text: "OK", onPress: () => navigation.navigate("News") },
+                        { text: "OK", onPress: () => navigation.goBack() },
                     ])
                 } else {
                     navigation.navigate("News")
