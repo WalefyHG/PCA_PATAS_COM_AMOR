@@ -307,7 +307,7 @@ export default function Settings() {
           </View>
 
           {/* Admin Tools (if admin) */}
-          {user && (
+          {user?.role === "admin" && (
             <>
               <SectionHeader title="FERRAMENTAS ADMIN" />
               <View style={[styles.section, { backgroundColor: isDarkTheme ? "#1F2937" : "#FFFFFF" }]}>

@@ -1,431 +1,391 @@
 "use client"
 
-import { useState, useRef } from "react"
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Image,
-    ScrollView,
-    Modal,
-    Animated,
-    Platform,
-    Dimensions,
-    Alert,
-} from "react-native"
+import { useState } from "react"
+import { View, Text, TouchableOpacity, Image, Modal, Platform, StyleSheet, Dimensions } from "react-native"
 import { Feather } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
-import { LinearGradient } from "expo-linear-gradient"
 import { useThemeContext } from "../contexts/ThemeContext"
 
 const { width } = Dimensions.get("window")
 const isSmallScreen = width < 380
 
 interface EnhancedImageUploadProps {
-    images: string[]
-    onImagesChange: (images: string[]) => void
-    maxImages?: number
-    title?: string
+    onImageSelected?: (uri: string) => void
+    onFileSelected?: (file: File) => void
+    currentImage?: string
+    size?: number
 }
 
 export default function EnhancedImageUpload({
-    images,
-    onImagesChange,
-    maxImages = 5,
-    title = "Fotos do Pet",
+    onImageSelected,
+    onFileSelected,
+    currentImage,
+    size = isSmallScreen ? 120 : 140,
 }: EnhancedImageUploadProps) {
     const { isDarkTheme, colors } = useThemeContext()
-    const [showModal, setShowModal] = useState(false)
-    const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
-    const scaleAnim = useRef(new Animated.Value(1)).current
-    const fadeAnim = useRef(new Animated.Value(0)).current
+    const [showImageModal, setShowImageModal] = useState(false)
+    const [isWebcamActive, setIsWebcamActive] = useState(false)
+    const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null)
 
-    const animateImageAdd = () => {
-        Animated.sequence([
-            Animated.timing(scaleAnim, {
-                toValue: 1.1,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-                toValue: 1,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-        ]).start()
-    }
-
-    const showImageOptions = () => {
-        setShowModal(true)
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-        }).start()
-    }
-
-    const hideModal = () => {
-        Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-        }).start(() => setShowModal(false))
-    }
-
-    const takePhoto = async () => {
+    // Mobile camera function (Android/iOS)
+    const takePhotoWithCamera = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync()
+
         if (status !== "granted") {
-            Alert.alert("Permissão necessária", "Precisamos de permissão para acessar sua câmera.")
+            alert("Precisamos de permissão para acessar sua câmera.")
             return
         }
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.8,
+            quality: 0.7,
+            aspect: [1, 1],
         })
 
         if (!result.canceled) {
-            const newImages = [...images, result.assets[0].uri].slice(0, maxImages)
-            onImagesChange(newImages)
-            animateImageAdd()
+            onImageSelected?.(result.assets[0].uri)
         }
-        hideModal()
+        setShowImageModal(false)
     }
 
-    const pickFromGallery = async () => {
+    // Mobile gallery function (Android/iOS)
+    const pickImageFromGallery = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
         if (status !== "granted") {
-            Alert.alert("Permissão necessária", "Precisamos de permissão para acessar sua galeria.")
+            alert("Precisamos de permissão para acessar sua galeria de fotos.")
             return
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: false,
-            quality: 0.8,
-            allowsMultipleSelection: true,
+            allowsEditing: true,
+            quality: 0.7,
+            aspect: [1, 1],
         })
 
         if (!result.canceled) {
-            const newImageUris = result.assets.map((asset) => asset.uri)
-            const updatedImages = [...images, ...newImageUris].slice(0, maxImages)
-            onImagesChange(updatedImages)
-            animateImageAdd()
+            onImageSelected?.(result.assets[0].uri)
         }
-        hideModal()
+        setShowImageModal(false)
     }
 
-    const removeImage = (index: number) => {
-        const newImages = images.filter((_, i) => i !== index)
-        onImagesChange(newImages)
+    // Web webcam function
+    const startWebcam = async () => {
+        if (Platform.OS !== "web") return
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480 },
+            })
+            setWebcamStream(stream)
+            setIsWebcamActive(true)
+            setShowImageModal(false)
+        } catch (error) {
+            console.error("Erro ao acessar webcam:", error)
+            alert("Não foi possível acessar a webcam.")
+        }
     }
 
-    const moveImage = (fromIndex: number, toIndex: number) => {
-        const newImages = [...images]
-        const [movedImage] = newImages.splice(fromIndex, 1)
-        newImages.splice(toIndex, 0, movedImage)
-        onImagesChange(newImages)
+    // Web file upload function
+    const uploadFileFromWeb = () => {
+        if (Platform.OS !== "web") return
+
+        const input = document.createElement("input")
+        input.type = "file"
+        input.accept = "image/*"
+
+        input.onchange = (event: any) => {
+            const file = event.target.files[0]
+            if (file) {
+                onFileSelected?.(file)
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    if (e.target?.result) {
+                        onImageSelected?.(e.target.result as string)
+                    }
+                }
+                reader.readAsDataURL(file)
+            }
+        }
+
+        input.click()
+        setShowImageModal(false)
     }
 
-    const renderImageItem = (uri: string, index: number) => (
-        <Animated.View
-            key={`${uri}-${index}`}
-            style={[
-                styles.imageContainer,
-                {
-                    transform: [{ scale: draggedIndex === index ? 1.05 : 1 }],
-                    opacity: draggedIndex === index ? 0.8 : 1,
-                },
-            ]}
+    // Capture photo from webcam
+    const captureWebcamPhoto = () => {
+        if (!webcamStream || Platform.OS !== "web") return
+
+        const video = document.getElementById("webcam-video") as HTMLVideoElement
+        if (!video) return
+
+        const canvas = document.createElement("canvas")
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+            ctx.drawImage(video, 0, 0)
+            const imageData = canvas.toDataURL("image/jpeg", 0.7)
+            onImageSelected?.(imageData)
+            stopWebcam()
+        }
+    }
+
+    // Stop webcam
+    const stopWebcam = () => {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach((track) => track.stop())
+            setWebcamStream(null)
+        }
+        setIsWebcamActive(false)
+    }
+
+    const renderImagePickerModal = () => (
+        <Modal
+            visible={showImageModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowImageModal(false)}
         >
-            <Image source={{ uri }} style={styles.image} />
-
-            {/* Main photo badge */}
-            {index === 0 && (
-                <View style={[styles.mainPhotoBadge, { backgroundColor: colors.primary }]}>
-                    <Feather name="star" size={12} color="white" />
-                    <Text style={styles.mainPhotoText}>Principal</Text>
-                </View>
-            )}
-
-            {/* Remove button */}
-            <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => removeImage(index)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-                <Feather name="x" size={16} color="white" />
-            </TouchableOpacity>
-
-            {/* Drag handle */}
-            <TouchableOpacity
-                style={styles.dragHandle}
-                onPressIn={() => setDraggedIndex(index)}
-                onPressOut={() => setDraggedIndex(null)}
-            >
-                <Feather name="move" size={14} color="white" />
-            </TouchableOpacity>
-
-            {/* Image overlay with info */}
-            <LinearGradient colors={["transparent", "rgba(0,0,0,0.3)"]} style={styles.imageOverlay}>
-                <Text style={styles.imageIndex}>{index + 1}</Text>
-            </LinearGradient>
-        </Animated.View>
-    )
-
-    const renderAddButton = () => (
-        <TouchableOpacity
-            style={[
-                styles.addButton,
-                {
-                    backgroundColor: isDarkTheme ? "#374151" : "white",
-                    borderColor: isDarkTheme ? "#4B5563" : "#E5E7EB",
-                },
-            ]}
-            onPress={showImageOptions}
-        >
-            <LinearGradient colors={[`${colors.primary}20`, `${colors.secondary}20`]} style={styles.addButtonGradient}>
-                <Feather name="plus" size={24} color={colors.primary} />
-                <Text style={[styles.addButtonText, { color: colors.primary }]}>Adicionar</Text>
-                <Text style={[styles.addButtonSubtext, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
-                    {images.length}/{maxImages}
-                </Text>
-            </LinearGradient>
-        </TouchableOpacity>
-    )
-
-    return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: isDarkTheme ? "white" : "#374151" }]}>{title} *</Text>
-                <View style={styles.counter}>
-                    <Text style={[styles.counterText, { color: colors.primary }]}>
-                        {images.length}/{maxImages}
-                    </Text>
-                </View>
-            </View>
-
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-                style={styles.scrollView}
-            >
-                {images.map((uri, index) => renderImageItem(uri, index))}
-                {images.length < maxImages && renderAddButton()}
-            </ScrollView>
-
-            <Text style={[styles.hint, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
-                A primeira foto será a principal. Arraste para reordenar.
-            </Text>
-
-            {/* Enhanced Modal */}
-            <Modal visible={showModal} transparent animationType="none" onRequestClose={hideModal}>
-                <View style={styles.modalOverlay}>
-                    <Animated.View
-                        style={[
-                            styles.modalContent,
-                            {
-                                backgroundColor: isDarkTheme ? "#1F2937" : "white",
-                                opacity: fadeAnim,
-                                transform: [
-                                    {
-                                        translateY: fadeAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [300, 0],
-                                        }),
-                                    },
-                                ],
-                            },
-                        ]}
-                    >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                    <View style={[styles.modalContent, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Adicionar Foto</Text>
+                            <Text style={[styles.modalTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                Adicionar Foto de Perfil
+                            </Text>
                             <Text style={[styles.modalSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
-                                Escolha como deseja adicionar a foto do pet
+                                Escolha como deseja adicionar sua foto
                             </Text>
                         </View>
 
-                        <View style={styles.modalOptions}>
-                            <TouchableOpacity
-                                style={[styles.modalOption, { backgroundColor: `${colors.primary}15`, borderColor: colors.primary }]}
-                                onPress={takePhoto}
-                            >
-                                <View style={[styles.modalOptionIcon, { backgroundColor: colors.primary }]}>
-                                    <Feather name="camera" size={24} color="white" />
-                                </View>
-                                <View style={styles.modalOptionContent}>
-                                    <Text style={[styles.modalOptionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                        Tirar Foto
-                                    </Text>
-                                    <Text style={[styles.modalOptionSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
-                                        Use a câmera do dispositivo
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={colors.primary} />
-                            </TouchableOpacity>
+                        <View style={styles.modalButtons}>
+                            {Platform.OS === "web" ? (
+                                // Web options
+                                <>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            { backgroundColor: `${colors.primary}15`, borderColor: colors.primary },
+                                        ]}
+                                        onPress={startWebcam}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.primary }]}>
+                                            <Feather name="video" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Usar Webcam
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Tirar foto com a webcam
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
 
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            { backgroundColor: `${colors.secondary}15`, borderColor: colors.secondary },
+                                        ]}
+                                        onPress={uploadFileFromWeb}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.secondary }]}>
+                                            <Feather name="upload" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Enviar Arquivo
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Selecionar arquivo do computador
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                // Mobile options (Android/iOS)
+                                <>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            { backgroundColor: `${colors.primary}15`, borderColor: colors.primary },
+                                        ]}
+                                        onPress={takePhotoWithCamera}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.primary }]}>
+                                            <Feather name="camera" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Tirar Foto
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Use a câmera do dispositivo
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalButton,
+                                            { backgroundColor: `${colors.secondary}15`, borderColor: colors.secondary },
+                                        ]}
+                                        onPress={pickImageFromGallery}
+                                    >
+                                        <View style={[styles.modalButtonIcon, { backgroundColor: colors.secondary }]}>
+                                            <Feather name="image" size={24} color="white" />
+                                        </View>
+                                        <View style={styles.modalButtonContent}>
+                                            <Text style={[styles.modalButtonTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
+                                                Escolher da Galeria
+                                            </Text>
+                                            <Text style={[styles.modalButtonSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
+                                                Selecione fotos existentes
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </View>
+
+                        <View style={styles.modalCancelContainer}>
                             <TouchableOpacity
-                                style={[
-                                    styles.modalOption,
-                                    { backgroundColor: `${colors.secondary}15`, borderColor: colors.secondary },
-                                ]}
-                                onPress={pickFromGallery}
+                                style={[styles.modalCancelButton, { backgroundColor: isDarkTheme ? "#374151" : "#F3F4F6" }]}
+                                onPress={() => setShowImageModal(false)}
                             >
-                                <View style={[styles.modalOptionIcon, { backgroundColor: colors.secondary }]}>
-                                    <Feather name="image" size={24} color="white" />
-                                </View>
-                                <View style={styles.modalOptionContent}>
-                                    <Text style={[styles.modalOptionTitle, { color: isDarkTheme ? "white" : "#374151" }]}>
-                                        Escolher da Galeria
-                                    </Text>
-                                    <Text style={[styles.modalOptionSubtitle, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
-                                        Selecione fotos existentes
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color={colors.secondary} />
+                                <Text style={[styles.modalCancelText, { color: isDarkTheme ? "#D1D5DB" : "#6B7280" }]}>Cancelar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    )
+
+    // Webcam modal for web
+    const renderWebcamModal = () =>
+        Platform.OS === "web" && (
+            <Modal visible={isWebcamActive} transparent={true} animationType="slide" onRequestClose={stopWebcam}>
+                <View style={styles.webcamOverlay}>
+                    <View style={[styles.webcamContainer, { backgroundColor: isDarkTheme ? "#1F2937" : "white" }]}>
+                        <View style={styles.webcamHeader}>
+                            <Text style={[styles.webcamTitle, { color: isDarkTheme ? "white" : "#374151" }]}>Tirar Foto</Text>
+                            <TouchableOpacity onPress={stopWebcam} style={styles.webcamCloseButton}>
+                                <Feather name="x" size={24} color={isDarkTheme ? "white" : "#374151"} />
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity
-                            style={[styles.modalCancel, { backgroundColor: isDarkTheme ? "#374151" : "#F3F4F6" }]}
-                            onPress={hideModal}
-                        >
-                            <Text style={[styles.modalCancelText, { color: isDarkTheme ? "#D1D5DB" : "#6B7280" }]}>Cancelar</Text>
-                        </TouchableOpacity>
-                    </Animated.View>
+                        <View style={styles.webcamVideoContainer}>
+                            {Platform.OS === "web" && (
+                                <video
+                                    id="webcam-video"
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        borderRadius: 12,
+                                    }}
+                                    ref={(video) => {
+                                        if (video && webcamStream) {
+                                            video.srcObject = webcamStream
+                                        }
+                                    }}
+                                />
+                            )}
+                        </View>
+
+                        <View style={styles.webcamControls}>
+                            <TouchableOpacity
+                                style={[styles.webcamCaptureButton, { backgroundColor: colors.primary }]}
+                                onPress={captureWebcamPhoto}
+                            >
+                                <Feather name="camera" size={24} color="white" />
+                                <Text style={styles.webcamCaptureText}>Capturar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
             </Modal>
+        )
+
+    return (
+        <View style={styles.container}>
+            <TouchableOpacity
+                style={[
+                    styles.imageContainer,
+                    {
+                        width: size,
+                        height: size,
+                        backgroundColor: isDarkTheme ? "#374151" : "#F3F4F6",
+                        borderColor: isDarkTheme ? "#4B5563" : "#E5E7EB",
+                    },
+                ]}
+                onPress={() => setShowImageModal(true)}
+            >
+                {currentImage ? (
+                    <Image source={{ uri: currentImage }} style={styles.image} />
+                ) : (
+                    <View style={styles.placeholderContainer}>
+                        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}20` }]}>
+                            <Feather name="camera" size={size * 0.25} color={colors.primary} />
+                        </View>
+                        <Text style={[styles.placeholderText, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>Adicionar foto</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+
+            {renderImagePickerModal()}
+            {renderWebcamModal()}
         </View>
     )
 }
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 20,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 12,
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: "600",
-    },
-    counter: {
-        backgroundColor: "rgba(59, 130, 246, 0.1)",
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    counterText: {
-        fontSize: 12,
-        fontWeight: "600",
-    },
-    scrollView: {
-        marginBottom: 8,
-    },
-    scrollContent: {
-        paddingRight: 16,
     },
     imageContainer: {
-        position: "relative",
-        marginRight: 12,
-        borderRadius: 12,
+        borderRadius: 70,
+        borderWidth: 3,
+        borderStyle: "dashed",
+        alignItems: "center",
+        justifyContent: "center",
         overflow: "hidden",
     },
     image: {
-        width: 120,
-        height: 120,
-        borderRadius: 12,
+        width: "100%",
+        height: "100%",
     },
-    mainPhotoBadge: {
-        position: "absolute",
-        top: 8,
-        left: 8,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 6,
-        paddingVertical: 3,
-        borderRadius: 10,
-        gap: 3,
-    },
-    mainPhotoText: {
-        color: "white",
-        fontSize: 10,
-        fontWeight: "600",
-    },
-    removeButton: {
-        position: "absolute",
-        top: 8,
-        right: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
+    placeholderContainer: {
         alignItems: "center",
         justifyContent: "center",
     },
-    dragHandle: {
-        position: "absolute",
-        bottom: 8,
-        right: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: "center",
         justifyContent: "center",
+        marginBottom: 8,
     },
-    imageOverlay: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 30,
-        justifyContent: "flex-end",
-        alignItems: "flex-start",
-        paddingLeft: 8,
-        paddingBottom: 6,
-    },
-    imageIndex: {
-        color: "white",
+    placeholderText: {
         fontSize: 12,
-        fontWeight: "600",
+        textAlign: "center",
     },
-    addButton: {
-        width: 120,
-        height: 120,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderStyle: "dashed",
-        overflow: "hidden",
-    },
-    addButtonGradient: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 4,
-    },
-    addButtonText: {
-        fontSize: 14,
-        fontWeight: "600",
-    },
-    addButtonSubtext: {
-        fontSize: 11,
-    },
-    hint: {
-        fontSize: 12,
-        fontStyle: "italic",
-    },
+    // Modal styles
     modalOverlay: {
         flex: 1,
         backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "flex-end",
+    },
+    modalContainer: {
         justifyContent: "flex-end",
     },
     modalContent: {
@@ -434,6 +394,7 @@ const styles = StyleSheet.create({
         paddingTop: 8,
         paddingBottom: Platform.OS === "ios" ? 34 : 24,
         paddingHorizontal: 24,
+        minHeight: 280,
     },
     modalHeader: {
         alignItems: "center",
@@ -451,18 +412,18 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: "center",
     },
-    modalOptions: {
+    modalButtons: {
         gap: 12,
         marginBottom: 20,
     },
-    modalOption: {
+    modalButton: {
         flexDirection: "row",
         alignItems: "center",
         padding: 16,
         borderRadius: 16,
         borderWidth: 2,
     },
-    modalOptionIcon: {
+    modalButtonIcon: {
         width: 48,
         height: 48,
         borderRadius: 24,
@@ -470,27 +431,88 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         marginRight: 16,
     },
-    modalOptionContent: {
+    modalButtonContent: {
         flex: 1,
     },
-    modalOptionTitle: {
+    modalButtonTitle: {
         fontSize: 16,
         fontWeight: "600",
         marginBottom: 2,
     },
-    modalOptionSubtitle: {
+    modalButtonSubtitle: {
         fontSize: 13,
     },
-    modalCancel: {
+    modalCancelContainer: {
+        borderTopWidth: 1,
+        borderTopColor: "#E5E7EB",
+        paddingTop: 16,
+    },
+    modalCancelButton: {
         paddingVertical: 14,
         borderRadius: 12,
         alignItems: "center",
-        borderTopWidth: 1,
-        borderTopColor: "#E5E7EB",
-        paddingTop: 20,
     },
     modalCancelText: {
         fontSize: 16,
         fontWeight: "500",
+    },
+    // Webcam modal styles
+    webcamOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+    },
+    webcamContainer: {
+        width: "100%",
+        maxWidth: 600,
+        height: "80%",
+        borderRadius: 20,
+        overflow: "hidden",
+    },
+    webcamHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: "#E5E7EB",
+    },
+    webcamTitle: {
+        fontSize: 18,
+        fontWeight: "700",
+    },
+    webcamCloseButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.1)",
+    },
+    webcamVideoContainer: {
+        flex: 1,
+        margin: 20,
+        borderRadius: 12,
+        overflow: "hidden",
+        backgroundColor: "#000",
+    },
+    webcamControls: {
+        padding: 20,
+        alignItems: "center",
+    },
+    webcamCaptureButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 25,
+        gap: 8,
+    },
+    webcamCaptureText: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "600",
     },
 })

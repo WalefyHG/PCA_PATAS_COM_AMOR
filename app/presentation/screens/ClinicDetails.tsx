@@ -380,7 +380,17 @@ const ClinicDetails: React.FC = () => {
                         <Feather name="calendar" size={20} color={colors.primary} style={styles.infoIcon} />
                         <View style={{ flex: 1 }}>
                             <Text style={styles.infoLabel}>Data de Cadastro</Text>
-                            <Text style={styles.infoText}>{clinic.createdAt.toLocaleDateString("pt-BR")}</Text>
+                            <Text style={styles.infoText}>
+                                {(
+                                    typeof clinic.createdAt?.toDate === "function"
+                                        ? clinic.createdAt.toDate()
+                                        : new Date(
+                                            typeof clinic.createdAt === "string" || typeof clinic.createdAt === "number"
+                                                ? clinic.createdAt
+                                                : ""
+                                        )
+                                ).toLocaleDateString("pt-BR")}
+                            </Text>
                         </View>
                     </View>
                 </View>
