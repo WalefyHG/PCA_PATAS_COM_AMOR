@@ -68,25 +68,6 @@ export default function AddBlogPost() {
     const categories = ["Cuidados", "Alimentação", "Adoção", "Comportamento", "Saúde", "Dicas"]
 
     useEffect(() => {
-        // Verificar se o usuário é admin
-        const checkAdminStatus = async () => {
-            if (auth.currentUser) {
-                const adminStatus = await isUserAdmin(auth.currentUser.uid)
-                setIsAdmin(adminStatus)
-
-                if (!adminStatus) {
-                    Alert.alert("Acesso Restrito", "Apenas administradores podem criar ou editar posts.", [
-                        { text: "OK", onPress: () => navigation.goBack() },
-                    ])
-                }
-            } else {
-                Alert.alert("Não Autenticado", "Você precisa estar logado para acessar esta página.", [
-                    { text: "OK", onPress: () => navigation.goBack() },
-                ])
-            }
-        }
-
-        checkAdminStatus()
 
         // Se estiver editando, carregar dados do post
         if (isEditing) {
@@ -746,6 +727,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         minWidth: isSmallScreen ? 80 : 100,
         alignItems: "center",
+        marginBottom: isSmallScreen ? 12 : 16,
     },
     categoryButtonText: {
         fontWeight: "600",

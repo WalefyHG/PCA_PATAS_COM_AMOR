@@ -146,7 +146,9 @@ const MyClinics: React.FC = () => {
           </Text>
         </View>
         <Text style={[styles.clinicDate, { color: isDarkTheme ? "#9CA3AF" : "#6B7280" }]}>
-          Criada em {item.createdAt.toLocaleDateString("pt-BR")}
+          Criada em {item.createdAt && "toDate" in item.createdAt
+            ? item.createdAt.toDate().toLocaleDateString("pt-BR")
+            : ""}
         </Text>
         <Feather name="chevron-right" size={16} color={isDarkTheme ? "#9CA3AF" : "#6B7280"} />
       </View>
